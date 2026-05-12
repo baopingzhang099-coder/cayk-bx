@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, h } from 'vue'
+import { ref, computed, watch, watchEffect, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Icon } from 'tdesign-vue-next'
 import { useUserStore } from '@/stores/user'
@@ -218,24 +218,6 @@ const getDefaultPathByRole = (role) => {
   return '/insurance/purchase'
 }
 
-const syncMenuByRoute = (path) => {
-  for (const item of filteredMenuItems.value) {
-    if (item.children) {
-      const child = item.children.find(c => c.path === path)
-      if (child) {
-        currentMenu.value = child.key
-        return true
-      }
-    } else {
-      if (item.path === path) {
-        currentMenu.value = item.key
-        return true
-      }
-    }
-  }
-  return false
-}
-
 const handleMenuChange = (value) => {
   const path = findPathByMenuKey(value)
   if (path && path !== route.path) router.push(path)
@@ -254,13 +236,16 @@ const handleUserMenuClick = (data) => {
   }
 }
 
-watch(() => route.path, (newPath) => {
-  syncMenuByRoute(newPath)
-}, { immediate: true })
+watchEffect(() => {
+  const menuKey = route.meta?.menuKey
+  if (menuKey) currentMenu.value = menuKey
+})
 
-watch(() => userStore.role, () => {
-  const ok = syncMenuByRoute(route.path)
-  if (!ok) router.push(getDefaultPathByRole(userStore.role))
+watch(() => userStore.role, (role) => {
+  const roles = route.meta?.roles
+  if (Array.isArray(roles) && roles.length > 0 && !roles.includes(role)) {
+    router.push(getDefaultPathByRole(role))
+  }
 })
 </script>
 

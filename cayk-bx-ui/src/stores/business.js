@@ -360,9 +360,18 @@ export const useBusinessStore = defineStore('business', {
           lossDescription: '货物在运输过程中发生损毁',
           estimatedLossAmount: 50000,
           claimAmount: null,
+          lossDate: '2026-05-05',
+          lossCurrency: 'USD',
           status: 'processing',
           statusName: '处理中',
-          createTime: '2026-05-08 10:00:00'
+          createTime: '2026-05-08 10:00:00',
+          reportDeadline: '风险发生后10日',
+          investigationDeadline: '简单10工作日/复杂30日',
+          paymentDeadline: '协议后10日/最长60日',
+          claimContact: '张三',
+          claimPhone: '138****1234',
+          claimEmail: 'zhangsan@example.com',
+          bankAccount: '中国工商银行 6222****12345678'
         },
         {
           id: 'CL2026002',
@@ -375,9 +384,18 @@ export const useBusinessStore = defineStore('business', {
           lossDescription: '买方拖欠货款超过90天',
           estimatedLossAmount: 80000,
           claimAmount: 64000,
+          lossDate: '2026-04-15',
+          lossCurrency: 'USD',
           status: 'decided',
           statusName: '已决定',
-          createTime: '2026-05-05 14:30:00'
+          createTime: '2026-05-05 14:30:00',
+          reportDeadline: '拖欠30日/其他10工作日',
+          investigationDeadline: '30工作日',
+          paymentDeadline: '核赔后10日',
+          claimContact: '李四',
+          claimPhone: '139****5678',
+          claimEmail: 'lisi@example.com',
+          bankAccount: '中国建设银行 6227****87654321'
         },
         {
           id: 'CL2026003',
@@ -386,13 +404,22 @@ export const useBusinessStore = defineStore('business', {
           insuranceCompany: '平安产险',
           buyerName: 'JKL Co',
           claimType: 'other',
-          claimTypeName: '其他',
+          claimTypeName: '政治风险',
           lossDescription: '因政治风险导致的损失',
           estimatedLossAmount: 30000,
           claimAmount: null,
+          lossDate: '2026-04-20',
+          lossCurrency: 'USD',
           status: 'pending',
           statusName: '待处理',
-          createTime: '2026-04-28 09:15:00'
+          createTime: '2026-04-28 09:15:00',
+          reportDeadline: '按保单条款',
+          investigationDeadline: '按保单条款',
+          paymentDeadline: '按保单条款',
+          claimContact: '王五',
+          claimPhone: '137****9012',
+          claimEmail: 'wangwu@example.com',
+          bankAccount: '中国农业银行 6228****24680135'
         }
       ]
     },

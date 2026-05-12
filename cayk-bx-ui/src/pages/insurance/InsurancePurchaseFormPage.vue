@@ -644,64 +644,64 @@ const detailData = computed(() => {
 })
 
 const customerColumns = [
-  { label: '公司中文全称', value: 'companyName' },
-  { label: '统一社会信用代码', value: 'unifiedSocialCreditCode' },
-  { label: '注册地址', value: 'registeredAddress' },
-  { label: '营业地址', value: 'businessAddress' },
-  { label: '组织机构代码', value: 'organizationCode' },
-  { label: '成立年份', value: 'establishmentYear' },
-  { label: '法定代表人', value: 'legalRepresentative' },
-  { label: '企业性质', value: 'enterpriseNature' },
-  { label: '经营性质', value: 'businessType' },
-  { label: '联系人', value: 'contactName' },
-  { label: '联系人职务', value: 'contactPosition' },
-  { label: '联系电话', value: 'contactPhone' },
-  { label: '企业邮箱', value: 'companyEmail' }
+  { label: '公司中文全称', key: 'companyName' },
+  { label: '统一社会信用代码', key: 'unifiedSocialCreditCode' },
+  { label: '注册地址', key: 'registeredAddress' },
+  { label: '营业地址', key: 'businessAddress' },
+  { label: '组织机构代码', key: 'organizationCode' },
+  { label: '成立年份', key: 'establishmentYear' },
+  { label: '法定代表人', key: 'legalRepresentative' },
+  { label: '企业性质', key: 'enterpriseNature' },
+  { label: '经营性质', key: 'businessType' },
+  { label: '联系人', key: 'contactName' },
+  { label: '联系人职务', key: 'contactPosition' },
+  { label: '联系电话', key: 'contactPhone' },
+  { label: '企业邮箱', key: 'companyEmail' }
 ]
 
 const businessColumns = [
-  { label: '出口业务经营历史', value: 'exportBusinessHistory' },
-  { label: '出口主要国别/地区', value: 'exportMainCountries' },
-  { label: '主营出口行业', value: 'mainExportIndustry' },
-  { label: '预计可保营业额', value: (v) => `${v.turnoverCurrency || 'USD'} ${Number(v.expectedInsurableTurnover || 0).toLocaleString()}` },
-  { label: '主要付款方式', value: 'mainPaymentMethods' },
-  { label: '最常用付款期限（天）', value: 'mostUsedPaymentTerm' },
-  { label: '最长付款期限（天）', value: 'longestPaymentTerm' },
-  { label: '较长赊账期', value: 'hasLongerCreditPeriod' },
-  { label: '最长赊账期（天）', value: 'longestCreditPeriod' }
+  { label: '出口业务经营历史', key: 'exportBusinessHistory' },
+  { label: '出口主要国别/地区', key: 'exportMainCountries' },
+  { label: '主营出口行业', key: 'mainExportIndustry' },
+  { label: '预计可保营业额', key: 'expectedInsurableTurnover', formatter: (v, row) => `${row.turnoverCurrency || 'USD'} ${Number(v || 0).toLocaleString()}` },
+  { label: '主要付款方式', key: 'mainPaymentMethods' },
+  { label: '最常用付款期限（天）', key: 'mostUsedPaymentTerm' },
+  { label: '最长付款期限（天）', key: 'longestPaymentTerm' },
+  { label: '较长赊账期', key: 'hasLongerCreditPeriod' },
+  { label: '最长赊账期（天）', key: 'longestCreditPeriod' }
 ]
 
 const insuranceColumns = [
-  { label: '投保类型', value: 'insuranceType' },
-  { label: '投保倾向机构类型', value: 'preferredInsuranceOrgType' },
-  { label: '投保业务范围', value: 'insuranceBusinessScope' },
-  { label: '投保币种', value: 'insuranceCurrency' },
-  { label: '投保金额', value: (v) => `${v.insuranceCurrency || 'USD'} ${Number(v.insuranceAmount || 0).toLocaleString()}` },
-  { label: '期望保险期间', value: 'expectedInsurancePeriod' },
-  { label: '投保主要目的1', value: 'insurancePrimaryPurpose1' },
-  { label: '投保主要目的2', value: 'insurancePrimaryPurpose2' },
-  { label: '投保主要目的3', value: 'insurancePrimaryPurpose3' },
-  { label: '投保主要目的4', value: 'insurancePrimaryPurpose4' }
+  { label: '投保类型', key: 'insuranceType' },
+  { label: '投保倾向机构类型', key: 'preferredInsuranceOrgType' },
+  { label: '投保业务范围', key: 'insuranceBusinessScope' },
+  { label: '投保币种', key: 'insuranceCurrency' },
+  { label: '投保金额', key: 'insuranceAmount', formatter: (v, row) => `${row.insuranceCurrency || 'USD'} ${Number(v || 0).toLocaleString()}` },
+  { label: '期望保险期间', key: 'expectedInsurancePeriod' },
+  { label: '投保主要目的1', key: 'insurancePrimaryPurpose1' },
+  { label: '投保主要目的2', key: 'insurancePrimaryPurpose2' },
+  { label: '投保主要目的3', key: 'insurancePrimaryPurpose3' },
+  { label: '投保主要目的4', key: 'insurancePrimaryPurpose4' }
 ]
 
 const buyerColumns = [
-  { label: '买方全称', value: 'buyerName' },
-  { label: '买方所在国别', value: 'buyerCountry' },
-  { label: '买方注册地址', value: 'buyerAddress' },
-  { label: '与买方合作年限', value: 'cooperationYearsWithBuyer' },
-  { label: '过去12个月出口交易额（万美元）', value: 'last12MonthExportAmount' },
-  { label: '过去12个月赊销交易额（万美元）', value: 'last12MonthCreditSalesAmount' },
-  { label: '预计未来12个月赊销总额', value: (v) => `${v.creditSalesCurrency || 'USD'} ${Number(v.expectedNext12MonthCreditSales || 0).toLocaleString()}` },
-  { label: '付款条件', value: 'paymentTerms' },
-  { label: '拟申请信用限额', value: (v) => `${v.creditLimitCurrency || 'USD'} ${Number(v.appliedCreditLimit || 0).toLocaleString()}` },
-  { label: '信用证开证行/SWIFT', value: 'lcIssuingBank' }
+  { label: '买方全称', key: 'buyerName' },
+  { label: '买方所在国别', key: 'buyerCountry' },
+  { label: '买方注册地址', key: 'buyerAddress' },
+  { label: '与买方合作年限', key: 'cooperationYearsWithBuyer' },
+  { label: '过去12个月出口交易额（万美元）', key: 'last12MonthExportAmount' },
+  { label: '过去12个月赊销交易额（万美元）', key: 'last12MonthCreditSalesAmount' },
+  { label: '预计未来12个月赊销总额', key: 'expectedNext12MonthCreditSales', formatter: (v, row) => `${row.creditSalesCurrency || 'USD'} ${Number(v || 0).toLocaleString()}` },
+  { label: '付款条件', key: 'paymentTerms' },
+  { label: '拟申请信用限额', key: 'appliedCreditLimit', formatter: (v, row) => `${row.creditLimitCurrency || 'USD'} ${Number(v || 0).toLocaleString()}` },
+  { label: '信用证开证行/SWIFT', key: 'lcIssuingBank' }
 ]
 
 const tradeColumns = [
-  { label: '出口商品/服务品类', value: 'exportProductCategory' },
-  { label: '涉及管制商品', value: 'involvesControlledGoods' },
-  { label: '管制商品名称', value: 'controlledGoodsDescription' },
-  { label: '含物权保留条款', value: 'hasTitleRetentionClause' }
+  { label: '出口商品/服务品类', key: 'exportProductCategory' },
+  { label: '涉及管制商品', key: 'involvesControlledGoods' },
+  { label: '管制商品名称', key: 'controlledGoodsDescription' },
+  { label: '含物权保留条款', key: 'hasTitleRetentionClause' }
 ]
 
 const processTimeline = computed(() => {

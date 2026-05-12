@@ -104,6 +104,9 @@
         </t-form-item>
 
         <t-divider>附件与授权</t-divider>
+        <t-form-item label="授权文件（必传）" name="authorizationDocument">
+          <t-upload v-model="formData.authorizationDocument" action="https://demo.com/upload" tips="必传：授权保险公司联系买方的签字文件（PDF）" />
+        </t-form-item>
         <t-form-item label="历史交易记录（附件）" name="historyFiles">
           <t-upload v-model="formData.historyFiles" action="https://demo.com/upload" tips="可选：PDF/Excel" multiple />
         </t-form-item>
@@ -224,6 +227,7 @@ const formData = reactive({
   estimatedAnnualShipment: 0,
   hasGuarantee: 'no',
   guarantorName: '',
+  authorizationDocument: null,
   historyFiles: null,
   buyerQualificationFiles: null,
   allowContactBuyer: 'yes'
@@ -234,7 +238,8 @@ const formRules = {
   appliedLimit: [{ required: true, message: '请输入申请额度', type: 'error' }],
   currency: [{ required: true, message: '请选择币种', type: 'error' }],
   paymentTermsDays: [{ required: true, message: '请输入账期天数', type: 'error' }],
-  paymentMethod: [{ required: true, message: '请选择支付方式', type: 'error' }]
+  paymentMethod: [{ required: true, message: '请选择支付方式', type: 'error' }],
+  authorizationDocument: [{ required: true, message: '请上传授权文件', type: 'error' }]
 }
 
 const handleSearch = (params) => {

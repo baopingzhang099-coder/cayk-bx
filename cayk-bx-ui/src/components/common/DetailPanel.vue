@@ -5,7 +5,7 @@
     </div>
     <div class="panel-body">
       <t-description
-        :columns="columns"
+        :columns="processedColumns"
         :data="data"
         :item-class="itemClass"
         layout="vertical"
@@ -15,11 +15,25 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   title: { type: String, default: '' },
   columns: { type: Array, default: () => [] },
   data: { type: Object, default: () => ({}) },
   itemClass: { type: String, default: 'detail-item' }
+})
+
+const processedColumns = computed(() => {
+  return props.columns.map(col => {
+    if (col.formatter && typeof col.formatter === 'function') {
+      return {
+        ...col,
+        content: (row, column) => col.formatter(row[col.key])
+      }
+    }
+    return col
+  })
 })
 </script>
 

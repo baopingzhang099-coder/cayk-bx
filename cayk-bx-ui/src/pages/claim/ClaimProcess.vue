@@ -4,43 +4,49 @@
       <div class="page-title">理赔流程管理</div>
     </div>
 
-    <t-card class="search-card">
-      <t-form layout="inline">
-        <t-form-item label="理赔单号">
-          <t-input v-model="searchParams.claimNo" placeholder="请输入理赔单号" clearable />
-        </t-form-item>
-        <t-form-item label="当前节点">
-          <t-select v-model="searchParams.currentNode" placeholder="请选择节点" clearable>
-            <t-option v-for="item in nodeOptions" :key="item.value" :value="item.value" :label="item.label" />
-          </t-select>
-        </t-form-item>
-        <t-form-item>
-          <t-space>
-            <t-button theme="primary" @click="handleSearch">查询</t-button>
-            <t-button variant="outline" @click="handleReset">重置</t-button>
-          </t-space>
-        </t-form-item>
-      </t-form>
-    </t-card>
+    <t-row :gutter="16" class="mb-16">
+      <t-col :span="6">
+        <stat-card title="报案中" :value="pendingCount" icon="edit-1" color="warning" />
+      </t-col>
+      <t-col :span="6">
+        <stat-card title="调查中" :value="investigatingCount" icon="search" color="primary" />
+      </t-col>
+      <t-col :span="6">
+        <stat-card title="核赔中" :value="processingCount" icon="loading" color="warning" />
+      </t-col>
+      <t-col :span="6">
+        <stat-card title="已完成" :value="completedCount" icon="check-circle" color="success" />
+      </t-col>
+    </t-row>
 
-    <div class="stats-grid mb-16">
-      <stat-card title="待提交资料" :value="3" icon="edit-1" color="warning" />
-      <stat-card title="调查中" :value="5" icon="search" color="primary" />
-      <stat-card title="核损定损中" :value="2" icon="calculator" color="primary" />
-      <stat-card title="待支付赔款" :value="1" icon="money" color="danger" />
-    </div>
+    <t-card class="mb-16">
+      <div class="section-header">
+        <span class="section-title">保险公司理赔规则参考</span>
+      </div>
+      <t-table :data="companyRules" :columns="ruleColumns" row-key="company" hover stripe>
+        <template #reportDeadline="{ row }">
+          <t-tag :theme="getDeadlineTheme(row.reportDeadline)">{{ row.reportDeadline }}</t-tag>
+        </template>
+        <template #investigatePeriod="{ row }">
+          <span>{{ row.investigatePeriod }}</span>
+        </template>
+        <template #compensatePeriod="{ row }">
+          <span>{{ row.compensatePeriod }}</span>
+        </template>
+      </t-table>
+    </t-card>
 
     <t-card>
       <div class="table-header">
-        <span class="table-title">理赔流程列表</span>
+        <span class="table-title">理赔案件列表</span>
         <span class="table-count">共 {{ pagination.total }} 条记录</span>
       </div>
-      <t-table :data="tableData" :columns="columns" :loading="loading" row-key="id" hover stripe>
+      <t-table :data="tableData" :columns="columns" :loading="loading" row-key="id" hover stripe @page-change="handlePageChange">
         <template #status="{ row }">
           <status-tag :status="row.status" :status-map="statusMap" />
         </template>
-        <template #currentNode="{ row }">
-          <t-tag :theme="getNodeTheme(row.nodeIndex)">{{ row.currentNode }}</t-tag>
+        <template #currentStep="{ row }">
+          <t-tag :theme="getStepTheme(row.currentStep)">{{ getStepName(row.currentStep) }}</t-tag>
         </template>
         <template #operation="{ row }">
           <t-space>
@@ -51,100 +57,161 @@
       </t-table>
     </t-card>
 
-    <t-dialog v-model:visible="detailVisible" header="理赔流程详情" width="800px" :footer="false">
-      <t-steps :current="currentProcess?.nodeIndex || 0" layout="vertical" status="process">
-        <t-step-item v-for="(step, index) in processSteps" :key="index" :title="step.title" :content="step.content" />
-      </t-steps>
-    </t-dialog>
+    <t-drawer v-model:visible="detailVisible" header="理赔案件详情" size="800px" :footer="false">
+      <div v-if="currentRow">
+        <detail-panel title="基本信息" :columns="detailColumns" :data="currentRow" />
+        <t-divider />
+        <div class="company-rules">
+          <div class="rules-title">适用保险公司规则</div>
+          <t-table :data="getCompanyRules(currentRow.insuranceCompany)" :columns="ruleColumns" row-key="company" size="small">
+            <template #reportDeadline="{ row }">
+              <t-tag :theme="getDeadlineTheme(row.reportDeadline)">{{ row.reportDeadline }}</t-tag>
+            </template>
+          </t-table>
+        </div>
+        <t-divider />
+        <div class="process-timeline">
+          <div class="timeline-title">理赔流程进度</div>
+          <t-steps :current="currentRow.currentStep || 1" layout="vertical" status="process">
+            <t-step-item title="报案提交" :content="`报案时间：${currentRow.createTime}`" />
+            <t-step-item title="资料审核" content="跟单员审核资料的完整性和规范性" />
+            <t-step-item title="保险公司调查" :content="`根据${currentRow.insuranceCompany}规则进行调查`" />
+            <t-step-item title="定损核赔" content="保险公司核定损失和赔偿比例" />
+            <t-step-item title="赔付支付" content="保险公司支付赔款" />
+            <t-step-item title="追偿（如有）" content="被保险人配合保险公司进行追偿" />
+          </t-steps>
+        </div>
+      </div>
+    </t-drawer>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useBusinessStore } from '@/stores/business'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
+import DetailPanel from '@/components/common/DetailPanel.vue'
 
+const store = useBusinessStore()
 const loading = ref(false)
-const detailVisible = ref(false)
-const currentProcess = ref(null)
-
-const searchParams = reactive({ claimNo: '', currentNode: '' })
-
-const nodeOptions = [
-  { value: 'report', label: '理赔报案' },
-  { value: 'material', label: '资料移交' },
-  { value: 'investigate', label: '审核调查' },
-  { value: 'assess', label: '核损定损' },
-  { value: 'decide', label: '理赔决定' },
-  { value: 'pay', label: '赔款支付' }
-]
 
 const statusMap = {
+  pending: '待处理',
   processing: '处理中',
+  investigating: '调查中',
+  supplement: '补充材料',
+  decided: '已决定',
   completed: '已完成',
-  pending: '待处理'
+  rejected: '已拒赔'
 }
 
-const processSteps = [
-  { title: '理赔报案', content: '客户提交可能损失通知书' },
-  { title: '理赔申请', content: '提交理赔资料清单' },
-  { title: '资料移交', content: '移交审核资料至保险公司' },
-  { title: '审核调查', content: '保险公司进行理赔审核调查' },
-  { title: '核损定损', content: '核定损失金额' },
-  { title: '理赔决定', content: '保险公司出具理赔决定书' },
-  { title: '赔款支付', content: '支付赔款至被保险人' }
+const statusList = computed(() => store.claims || [])
+const pendingCount = computed(() => statusList.value.filter(c => c.status === 'pending').length)
+const investigatingCount = computed(() => statusList.value.filter(c => c.status === 'investigating').length)
+const processingCount = computed(() => statusList.value.filter(c => ['processing', 'decided'].includes(c.status)).length)
+const completedCount = computed(() => statusList.value.filter(c => ['completed', 'rejected'].includes(c.status)).length)
+
+const companyRules = [
+  { company: '中国信保', reportDeadline: '风险发生后30日内（拖欠）/10工作日（破产/拒收/政治风险）', reportMethod: '中国国际贸易单一窗口/客服热线95387', investigatePeriod: '简单15日/复杂4个月', compensatePeriod: '核赔后10日支付', recourse: '赔付后6个月内启动，通常1-3年完成' },
+  { company: '人保财险', reportDeadline: '风险发生后10日内', reportMethod: 'APP/95518/线下网点', investigatePeriod: '简单10工作日/复杂30日', compensatePeriod: '达成协议后10日/最长60日', recourse: '3个月内启动，通常6个月-2年完成' },
+  { company: '太平洋保险', reportDeadline: '拖欠30日/其他10工作日', reportMethod: '官网/APP/95500', investigatePeriod: '30工作日出具结论', compensatePeriod: '核赔后10日支付', recourse: '6个月内启动，通常1-2年完成' },
+  { company: '大地保险', reportDeadline: '风险发生后30日内', reportMethod: '95590/线下网点', investigatePeriod: '小额24小时/大额45工作日', compensatePeriod: '小额24小时/大额10日', recourse: '3个月内启动，通常6个月-1年完成' }
+]
+
+const ruleColumns = [
+  { colKey: 'company', title: '保险公司', width: 120 },
+  { colKey: 'reportDeadline', title: '报案时限', width: 200, slot: 'reportDeadline' },
+  { colKey: 'reportMethod', title: '报案方式', width: 180 },
+  { colKey: 'investigatePeriod', title: '调查审核时限', width: 150 },
+  { colKey: 'compensatePeriod', title: '赔付时限', width: 150 }
 ]
 
 const columns = [
   { colKey: 'claimNo', title: '理赔单号', width: 140 },
-  { colKey: 'policyNo', title: '保单号' },
+  { colKey: 'insuranceCompany', title: '保险公司', width: 100 },
   { colKey: 'buyerName', title: '买方名称' },
-  { colKey: 'claimType', title: '报案类型' },
-  { colKey: 'currentNode', title: '当前节点', width: 120, slot: 'currentNode' },
-  { colKey: 'claimAmount', title: '理赔金额', align: 'right' },
-  { colKey: 'updateTime', title: '更新时间', width: 160 },
-  { colKey: 'status', title: '状态', width: 100, slot: 'status' },
-  { colKey: 'operation', title: '操作', width: 120, slot: 'operation' }
+  { colKey: 'claimTypeName', title: '报案类型', width: 100 },
+  { colKey: 'estimatedLossAmount', title: '预估损失', align: 'right', width: 120 },
+  { colKey: 'currentStep', title: '当前阶段', width: 100, slot: 'currentStep' },
+  { colKey: 'status', title: '案件状态', width: 100, slot: 'status' },
+  { colKey: 'createTime', title: '报案时间', width: 160 },
+  { colKey: 'operation', title: '操作', width: 120, fixed: 'right', slot: 'operation' }
 ]
 
-const tableData = ref([])
+const detailColumns = [
+  { label: '理赔单号', key: 'claimNo' },
+  { label: '保险公司', key: 'insuranceCompany' },
+  { label: '买方名称', key: 'buyerName' },
+  { label: '报案类型', key: 'claimTypeName' },
+  { label: '预估损失金额', key: 'estimatedLossAmount' },
+  { label: '实际赔付金额', key: 'claimAmount' },
+  { label: '报案时间', key: 'createTime' },
+  { label: '案件状态', key: 'statusName' }
+]
+
 const pagination = reactive({ total: 0, current: 1, pageSize: 20 })
 
-const getNodeTheme = (nodeIndex) => {
-  if (nodeIndex < 3) return 'primary'
-  if (nodeIndex < 5) return 'warning'
+const tableData = computed(() => {
+  pagination.total = store.claims.length
+  const start = (pagination.current - 1) * pagination.pageSize
+  return store.claims.slice(start, start + pagination.pageSize)
+})
+
+const getStepTheme = (step) => {
+  if (step <= 2) return 'primary'
+  if (step <= 4) return 'warning'
   return 'success'
 }
 
-const fetchData = () => {
-  loading.value = true
-  setTimeout(() => {
-    tableData.value = [
-      { id: 1, claimNo: 'CL2026050801', policyNo: 'PI2026001234', buyerName: 'ABC Corporation', claimType: '货物损失', currentNode: '审核调查', nodeIndex: 3, claimAmount: 50000, updateTime: '2026-05-10 14:30', status: 'processing' },
-      { id: 2, claimNo: 'CL2026050602', policyNo: 'PI2026001235', buyerName: 'DEF GmbH', claimType: '买方违约', currentNode: '核损定损', nodeIndex: 4, claimAmount: 30000, updateTime: '2026-05-09 10:20', status: 'processing' },
-      { id: 3, claimNo: 'CL2026050503', policyNo: 'PI2025000987', buyerName: 'GHI Ltd', claimType: '货物损失', currentNode: '理赔决定', nodeIndex: 5, claimAmount: 80000, updateTime: '2026-05-08 16:45', status: 'processing' },
-      { id: 4, claimNo: 'CL2026050304', policyNo: 'PI2025000765', buyerName: 'JKL Co', claimType: '其他', currentNode: '资料移交', nodeIndex: 2, claimAmount: 20000, updateTime: '2026-05-07 09:30', status: 'processing' }
-    ]
-    pagination.total = 4
-    loading.value = false
-  }, 300)
+const getStepName = (step) => {
+  const steps = ['报案提交', '资料审核', '保险公司调查', '定损核赔', '赔付支付', '追偿']
+  return steps[step - 1] || '未知'
 }
 
-const handleSearch = () => fetchData()
-const handleReset = () => fetchData()
-const handleView = (row) => { currentProcess.value = row; detailVisible.value = true }
-const handleProcess = (row) => console.log('process:', row)
+const getDeadlineTheme = (deadline) => {
+  if (deadline.includes('30')) return 'warning'
+  if (deadline.includes('10')) return 'danger'
+  return 'primary'
+}
 
-onMounted(() => fetchData())
+const getCompanyRules = (company) => {
+  return companyRules.filter(r => r.company === company)
+}
+
+const detailVisible = ref(false)
+const currentRow = ref(null)
+
+const handlePageChange = (pageInfo) => {
+  pagination.current = pageInfo.current
+  pagination.pageSize = pageInfo.pageSize
+}
+
+const handleView = (row) => {
+  currentRow.value = row
+  detailVisible.value = true
+}
+
+const handleProcess = (row) => {
+  console.log('process:', row)
+}
+
+onMounted(() => {
+  store.ensureSeeded()
+})
 </script>
 
 <style lang="scss" scoped>
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .page-title { font-size: 18px; font-weight: 600; color: #333; }
-.search-card { margin-bottom: 16px; }
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+.mb-16 { margin-bottom: 16px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.section-title { font-size: 16px; font-weight: 600; color: #333; }
 .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .table-title { font-size: 16px; font-weight: 600; color: #333; }
 .table-count { font-size: 14px; color: #999; }
-.mb-16 { margin-bottom: 16px; }
+.company-rules { margin: 16px 0; }
+.rules-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; }
+.process-timeline { margin: 16px 0; }
+.timeline-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; }
 </style>

@@ -140,6 +140,60 @@ export const useBusinessStore = defineStore('business', {
           status: 'pending_submit',
           createTime: '2026-05-01',
           updateTime: '2026-05-01 10:30:00'
+        },
+        {
+          id: 'TB2026002',
+          enterpriseName: '上海YY进出口公司',
+          unifiedSocialCreditCode: '91310000XXXXXXXXXX',
+          enterpriseAddress: '上海市浦东新区XX路XX号',
+          contactName: '李经理',
+          contactPhone: '139****6666',
+          contactEmail: 'li@yy-trade.com',
+          buyerName: 'DEF GmbH',
+          buyerCountry: '德国',
+          buyerAddress: 'Hamburg, Germany',
+          buyerContact: 'Hans Mueller',
+          buyerPhone: '+49-40-555-1234',
+          historicalTransactionAmount: '$800,000',
+          insuranceScheme: '方案B-基础保障',
+          coverageAmount: 300000,
+          premium: 7500,
+          expectedInsuranceCompany: '中国信保',
+          policyDuration: '1年',
+          specialRequirements: '',
+          businessLicense: [{ name: '营业执照.pdf' }],
+          importExportQualification: [{ name: '进出口资质.pdf' }],
+          authorizationDocument: [{ name: '授权文件.pdf' }],
+          status: 'credit_investigating',
+          createTime: '2026-04-28',
+          updateTime: '2026-05-05 14:20:00'
+        },
+        {
+          id: 'TB2026003',
+          enterpriseName: '北京ZZ贸易集团',
+          unifiedSocialCreditCode: '91110000XXXXXXXXXX',
+          enterpriseAddress: '北京市朝阳区XX路XX号',
+          contactName: '王总监',
+          contactPhone: '137****9999',
+          contactEmail: 'wang@zz-trade.com',
+          buyerName: 'GHI Ltd',
+          buyerCountry: '英国',
+          buyerAddress: 'London, UK',
+          buyerContact: 'Robert Brown',
+          buyerPhone: '+44-20-7123-4567',
+          historicalTransactionAmount: '$600,000',
+          insuranceScheme: '方案A-全程保障',
+          coverageAmount: 400000,
+          premium: 10000,
+          expectedInsuranceCompany: '太保产险',
+          policyDuration: '1年',
+          specialRequirements: '',
+          businessLicense: [{ name: '营业执照.jpg' }],
+          importExportQualification: [{ name: '进出口资质.jpg' }],
+          authorizationDocument: [{ name: '授权文件.pdf' }],
+          status: 'completed',
+          createTime: '2026-03-15',
+          updateTime: '2026-04-20 11:00:00'
         }
       ]
       this.policies = [
@@ -157,12 +211,43 @@ export const useBusinessStore = defineStore('business', {
           statusName: '有效',
           usedQuota: 320000,
           remainingQuota: 180000
+        },
+        {
+          id: 'P2026002',
+          policyNo: 'PI2025009876',
+          insuranceCompany: '太保产险',
+          policyholder: '北京ZZ贸易集团',
+          insured: 'GHI Ltd',
+          coverageAmount: 400000,
+          premium: 10000,
+          effectiveDate: '2026-04-01',
+          expiryDate: '2027-04-01',
+          status: 'active',
+          statusName: '有效',
+          usedQuota: 150000,
+          remainingQuota: 250000
+        },
+        {
+          id: 'P2025008',
+          policyNo: 'PI2025008765',
+          insuranceCompany: '平安产险',
+          policyholder: '广州AA实业公司',
+          insured: 'JKL Co',
+          coverageAmount: 200000,
+          premium: 5000,
+          effectiveDate: '2025-10-01',
+          expiryDate: '2026-10-01',
+          status: 'expiring',
+          statusName: '即将到期',
+          usedQuota: 180000,
+          remainingQuota: 20000
         }
       ]
       this.creditLimits = [
         {
           id: 'CL2026001',
           buyerName: 'ABC Corporation',
+          buyerCountry: '美国',
           appliedLimit: 500000,
           usedLimit: 320000,
           remainingLimit: 180000,
@@ -170,6 +255,30 @@ export const useBusinessStore = defineStore('business', {
           status: 'active',
           effectiveDate: '2026-02-01',
           expiryDate: '2027-01-31'
+        },
+        {
+          id: 'CL2026002',
+          buyerName: 'DEF GmbH',
+          buyerCountry: '德国',
+          appliedLimit: 300000,
+          usedLimit: 150000,
+          remainingLimit: 150000,
+          usageRate: 50,
+          status: 'active',
+          effectiveDate: '2026-03-01',
+          expiryDate: '2027-02-28'
+        },
+        {
+          id: 'CL2026003',
+          buyerName: 'GHI Ltd',
+          buyerCountry: '英国',
+          appliedLimit: 400000,
+          usedLimit: 400000,
+          remainingLimit: 0,
+          usageRate: 100,
+          status: 'exhausted',
+          effectiveDate: '2026-04-01',
+          expiryDate: '2027-03-31'
         }
       ]
       this.shipments = [
@@ -220,6 +329,22 @@ export const useBusinessStore = defineStore('business', {
           status: 'pending_declare',
           statusName: '待申报',
           isOverdue: true
+        },
+        {
+          id: 'SD2026004',
+          declarationNo: 'SD20260420004',
+          buyerName: 'JKL Co',
+          relatedPolicyNo: 'PI2025008765',
+          shipmentDate: '2026-04-20',
+          destinationPort: 'Tokyo, Japan',
+          shipmentAmount: 45000,
+          currency: 'USD',
+          declarationType: 'monthly',
+          declarationTypeName: '月度汇总',
+          deadline: '2026-05-10',
+          status: 'declared',
+          statusName: '已申报',
+          isOverdue: false
         }
       ]
       this.shipments = this.shipments.map(normalizeShipment)
@@ -228,15 +353,46 @@ export const useBusinessStore = defineStore('business', {
           id: 'CL2026001',
           claimNo: 'CL20260508001',
           relatedPolicyNo: 'PI2026001234',
+          insuranceCompany: '人保财险',
           buyerName: 'ABC Corporation',
           claimType: 'goods_damage',
           claimTypeName: '货物损失',
           lossDescription: '货物在运输过程中发生损毁',
           estimatedLossAmount: 50000,
+          claimAmount: null,
           status: 'processing',
           statusName: '处理中',
-          claimAmount: null,
           createTime: '2026-05-08 10:00:00'
+        },
+        {
+          id: 'CL2026002',
+          claimNo: 'CL20260505002',
+          relatedPolicyNo: 'PI2025009876',
+          insuranceCompany: '太保产险',
+          buyerName: 'GHI Ltd',
+          claimType: 'buyer_default',
+          claimTypeName: '买方拖欠',
+          lossDescription: '买方拖欠货款超过90天',
+          estimatedLossAmount: 80000,
+          claimAmount: 64000,
+          status: 'decided',
+          statusName: '已决定',
+          createTime: '2026-05-05 14:30:00'
+        },
+        {
+          id: 'CL2026003',
+          claimNo: 'CL20260428003',
+          relatedPolicyNo: 'PI2025008765',
+          insuranceCompany: '平安产险',
+          buyerName: 'JKL Co',
+          claimType: 'other',
+          claimTypeName: '其他',
+          lossDescription: '因政治风险导致的损失',
+          estimatedLossAmount: 30000,
+          claimAmount: null,
+          status: 'pending',
+          statusName: '待处理',
+          createTime: '2026-04-28 09:15:00'
         }
       ]
     },

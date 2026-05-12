@@ -12,14 +12,20 @@
 
     <t-card v-if="mode === 'detail'">
       <t-tabs default-value="customer">
-        <t-tab-panel value="customer" label="客户基本信息">
-          <detail-panel :data="detailData" :columns="customerColumns" title="客户基本信息" />
+        <t-tab-panel value="customer" label="客户基础信息">
+          <detail-panel :data="detailData" :columns="customerColumns" title="客户基础信息" />
+        </t-tab-panel>
+        <t-tab-panel value="business" label="业务信息">
+          <detail-panel :data="detailData" :columns="businessColumns" title="业务信息" />
+        </t-tab-panel>
+        <t-tab-panel value="insurance" label="投保核心需求">
+          <detail-panel :data="detailData" :columns="insuranceColumns" title="投保核心需求" />
         </t-tab-panel>
         <t-tab-panel value="buyer" label="买方信息">
           <detail-panel :data="detailData" :columns="buyerColumns" title="买方信息" />
         </t-tab-panel>
-        <t-tab-panel value="insurance" label="投保需求">
-          <detail-panel :data="detailData" :columns="insuranceColumns" title="投保需求" />
+        <t-tab-panel value="trade" label="贸易基础信息">
+          <detail-panel :data="detailData" :columns="tradeColumns" title="贸易基础信息" />
         </t-tab-panel>
         <t-tab-panel value="process" label="流程记录">
           <t-timeline mode="alternate">
@@ -29,120 +35,411 @@
       </t-tabs>
     </t-card>
 
-    <div v-else class="form-layout">
+    <div v-if="mode !== 'detail'" class="form-layout">
       <t-card class="step-card">
         <t-steps layout="vertical" :current="activeStep">
-          <t-step title="客户基本信息" />
+          <t-step title="客户基础信息" />
+          <t-step title="业务信息" />
+          <t-step title="投保核心需求" />
           <t-step title="买方信息" />
-          <t-step title="投保需求" />
-          <t-step title="上传附件" />
+          <t-step title="贸易基础信息" />
+          <t-step title="补充资料" />
+          <t-step title="投保声明" />
         </t-steps>
         <div class="step-actions">
           <t-space>
             <t-button variant="outline" :disabled="activeStep === 0" @click="activeStep -= 1">上一步</t-button>
-            <t-button theme="primary" :disabled="activeStep === 3" @click="activeStep += 1">下一步</t-button>
+            <t-button theme="primary" :disabled="activeStep === 6" @click="activeStep += 1">下一步</t-button>
           </t-space>
         </div>
       </t-card>
 
       <t-card class="form-card">
         <t-form ref="formRef" :data="formData" :rules="rules" label-align="top">
+          <!-- Step 0: 客户基础信息 -->
           <template v-if="activeStep === 0">
-            <div class="section-title">客户基本信息</div>
+            <div class="section-title">主体信息</div>
             <div class="form-grid">
-              <t-form-item label="企业名称" name="enterpriseName">
-                <t-input v-model="formData.enterpriseName" placeholder="请输入企业名称（与证照一致）" />
+              <t-form-item label="公司中文全称" name="companyName">
+                <t-input v-model="formData.companyName" placeholder="准确填写，需与工商注册信息一致" />
               </t-form-item>
               <t-form-item label="统一社会信用代码" name="unifiedSocialCreditCode">
-                <t-input v-model="formData.unifiedSocialCreditCode" placeholder="请输入18位统一社会信用代码" />
+                <t-input v-model="formData.unifiedSocialCreditCode" placeholder="请输入18位统一社会信用代码" :maxlength="18" />
               </t-form-item>
-              <t-form-item label="企业实际经营地址" name="enterpriseAddress" class="form-item-full">
-                <t-input v-model="formData.enterpriseAddress" placeholder="请输入企业实际经营地址" />
+              <t-form-item label="注册地址" name="registeredAddress" class="form-item-full">
+                <t-input v-model="formData.registeredAddress" placeholder="详细填写省/市/区/街道门牌号" />
               </t-form-item>
+              <t-form-item label="营业地址" name="businessAddress" class="form-item-full">
+                <t-input v-model="formData.businessAddress" placeholder="详细填写实际经营地址，与注册地址不一致需注明" />
+              </t-form-item>
+              <t-form-item label="组织机构代码" name="organizationCode">
+                <t-input v-model="formData.organizationCode" placeholder="请输入组织机构代码" />
+              </t-form-item>
+              <t-form-item label="成立年份" name="establishmentYear">
+                <t-input v-model="formData.establishmentYear" placeholder="YYYY格式，如2020" />
+              </t-form-item>
+              <t-form-item label="法定代表人姓名" name="legalRepresentative">
+                <t-input v-model="formData.legalRepresentative" placeholder="请输入法定代表人姓名" />
+              </t-form-item>
+              <t-form-item label="企业性质" name="enterpriseNature">
+                <t-select v-model="formData.enterpriseNature" placeholder="请选择企业性质" clearable>
+                  <t-option value="国有企业" label="国有企业" />
+                  <t-option value="民营企业" label="民营企业" />
+                  <t-option value="外资企业" label="外资企业" />
+                  <t-option value="其他" label="其他" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="经营性质" name="businessType">
+                <t-select v-model="formData.businessType" placeholder="请选择经营性质" clearable>
+                  <t-option value="生产型企业" label="生产型企业" />
+                  <t-option value="贸易公司" label="贸易公司" />
+                  <t-option value="贸易代理" label="贸易代理" />
+                </t-select>
+              </t-form-item>
+            </div>
+
+            <div class="section-title">联系信息</div>
+            <div class="form-grid">
               <t-form-item label="联系人姓名" name="contactName">
                 <t-input v-model="formData.contactName" placeholder="请输入联系人姓名" />
               </t-form-item>
+              <t-form-item label="联系人职务" name="contactPosition">
+                <t-input v-model="formData.contactPosition" placeholder="请输入联系人职务" />
+              </t-form-item>
               <t-form-item label="联系电话" name="contactPhone">
-                <t-input v-model="formData.contactPhone" placeholder="请输入联系电话" />
+                <t-input v-model="formData.contactPhone" placeholder="请输入有效手机号" />
               </t-form-item>
-              <t-form-item label="电子邮箱" name="contactEmail">
-                <t-input v-model="formData.contactEmail" placeholder="请输入电子邮箱" />
+              <t-form-item label="企业邮箱" name="companyEmail">
+                <t-input v-model="formData.companyEmail" placeholder="请输入企业邮箱" />
               </t-form-item>
             </div>
           </template>
 
+          <!-- Step 1: 业务信息 -->
           <template v-else-if="activeStep === 1">
-            <div class="section-title">买方信息</div>
+            <div class="section-title">出口业务经营</div>
             <div class="form-grid">
-              <t-form-item label="买方准确全称" name="buyerName">
-                <t-input v-model="formData.buyerName" placeholder="请输入买方准确全称（与合同一致）" />
-              </t-form-item>
-              <t-form-item label="买方所在国家/地区" name="buyerCountry">
-                <t-select v-model="formData.buyerCountry" placeholder="请选择买方所在国家/地区" clearable>
-                  <t-option value="美国" label="美国" />
-                  <t-option value="德国" label="德国" />
-                  <t-option value="日本" label="日本" />
-                  <t-option value="英国" label="英国" />
+              <t-form-item label="出口业务经营历史" name="exportBusinessHistory">
+                <t-select v-model="formData.exportBusinessHistory" placeholder="请选择出口业务经营历史" clearable>
+                  <t-option value="1年以内" label="1年以内" />
+                  <t-option value="1-3年" label="1-3年" />
+                  <t-option value="3年以上" label="3年以上" />
+                  <t-option value="即将从事出口业务" label="即将从事出口业务" />
                 </t-select>
               </t-form-item>
-              <t-form-item label="买方实际地址" name="buyerAddress" class="form-item-full">
-                <t-input v-model="formData.buyerAddress" placeholder="请输入买方实际地址" />
+              <t-form-item label="出口主要国别/地区" name="exportMainCountries" class="form-item-full">
+                <t-select v-model="formData.exportMainCountries" multiple placeholder="最多选择5个，请选择出口主要国别/地区" clearable filterable max="5">
+                  <t-option v-for="item in countryOptions" :key="item.value" :value="item.value" :label="item.label" />
+                </t-select>
               </t-form-item>
-              <t-form-item label="买方联系人" name="buyerContact">
-                <t-input v-model="formData.buyerContact" placeholder="请输入买方联系人信息" />
+              <t-form-item label="主营出口行业" name="mainExportIndustry" class="form-item-full">
+                <t-select v-model="formData.mainExportIndustry" placeholder="请选择主营出口行业" clearable>
+                  <t-option value="金属" label="金属" />
+                  <t-option value="化工" label="化工" />
+                  <t-option value="建筑" label="建筑" />
+                  <t-option value="能源" label="能源" />
+                  <t-option value="交通工具制造" label="交通工具制造" />
+                  <t-option value="IT服务" label="IT服务" />
+                  <t-option value="汽车制造" label="汽车制造" />
+                  <t-option value="汽车零部件" label="汽车零部件" />
+                  <t-option value="食品" label="食品" />
+                  <t-option value="计算机及通讯" label="计算机及通讯" />
+                  <t-option value="零售" label="零售" />
+                  <t-option value="家用电器" label="家用电器" />
+                  <t-option value="医疗" label="医疗" />
+                  <t-option value="运输" label="运输" />
+                  <t-option value="纺织" label="纺织" />
+                  <t-option value="造纸" label="造纸" />
+                  <t-option value="电子" label="电子" />
+                  <t-option value="机械" label="机械" />
+                </t-select>
               </t-form-item>
-              <t-form-item label="买方联系电话" name="buyerPhone">
-                <t-input v-model="formData.buyerPhone" placeholder="请输入买方联系电话" />
+              <t-form-item label="预计未来12个月可保营业额" name="expectedInsurableTurnover" class="form-item-full">
+                <t-input-number v-model="formData.expectedInsurableTurnover" placeholder="请输入金额" :min="0" style="width: 100%">
+                  <template #suffix>
+                    <t-select v-model="formData.turnoverCurrency" placeholder="币种" style="width: 80px">
+                      <t-option value="USD" label="USD" />
+                      <t-option value="CNY" label="CNY" />
+                      <t-option value="EUR" label="EUR" />
+                    </t-select>
+                  </template>
+                </t-input-number>
               </t-form-item>
-              <t-form-item label="历史交易总额" name="historicalTransactionAmount">
-                <t-input v-model="formData.historicalTransactionAmount" placeholder="请输入历史交易总额" />
+              <t-form-item label="主要付款方式" name="mainPaymentMethods" class="form-item-full">
+                <t-select v-model="formData.mainPaymentMethods" placeholder="请选择主要付款方式" clearable>
+                  <t-option value="LC" label="信用证（LC）" />
+                  <t-option value="OA" label="放账（OA）" />
+                  <t-option value="DP" label="D/P（托收）" />
+                  <t-option value="DA" label="DA（承兑）" />
+                  <t-option value="预付款" label="预付款" />
+                  <t-option value="其他" label="其他" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="最常用的付款期限（天）" name="mostUsedPaymentTerm">
+                <t-input-number v-model="formData.mostUsedPaymentTerm" placeholder="如30/60/90" :min="0" />
+              </t-form-item>
+              <t-form-item label="最长付款期限（天）" name="longestPaymentTerm">
+                <t-input-number v-model="formData.longestPaymentTerm" placeholder="如120/180" :min="0" />
+              </t-form-item>
+              <t-form-item label="是否为买家提供较长赊账期" name="hasLongerCreditPeriod" class="form-item-full">
+                <t-select v-model="formData.hasLongerCreditPeriod" placeholder="请选择" clearable>
+                  <t-option value="是" label="是" />
+                  <t-option value="否" label="否" />
+                </t-select>
+              </t-form-item>
+              <t-form-item v-if="formData.hasLongerCreditPeriod === '是'" label="最长赊账期（天）" name="longestCreditPeriod">
+                <t-input-number v-model="formData.longestCreditPeriod" placeholder="请输入天数" :min="0" />
               </t-form-item>
             </div>
           </template>
 
+          <!-- Step 2: 投保核心需求 -->
           <template v-else-if="activeStep === 2">
-            <div class="section-title">投保需求</div>
+            <div class="section-title">投保意向</div>
             <div class="form-grid">
-              <t-form-item label="投保方案选择" name="insuranceScheme">
-                <t-select v-model="formData.insuranceScheme" placeholder="请选择投保方案" clearable>
-                  <t-option value="方案A-全程保障" label="方案A-全程保障" />
-                  <t-option value="方案B-基本保障" label="方案B-基本保障" />
-                  <t-option value="方案C-标准保障" label="方案C-标准保障" />
+              <t-form-item label="投保类型" name="insuranceType">
+                <t-select v-model="formData.insuranceType" placeholder="请选择投保类型" clearable>
+                  <t-option value="短期出口信用保险" label="短期出口信用保险" />
                 </t-select>
               </t-form-item>
-              <t-form-item label="投保金额/保额" name="coverageAmount">
-                <t-input-number v-model="formData.coverageAmount" placeholder="请输入投保金额" :min="0" />
-              </t-form-item>
-              <t-form-item label="期望保险公司" name="expectedInsuranceCompany">
-                <t-select v-model="formData.expectedInsuranceCompany" placeholder="请选择期望保险公司" clearable>
-                  <t-option value="人保财险" label="人保财险" />
-                  <t-option value="平安保险" label="平安保险" />
-                  <t-option value="太平洋保险" label="太平洋保险" />
+              <t-form-item label="投保倾向机构类型" name="preferredInsuranceOrgType">
+                <t-select v-model="formData.preferredInsuranceOrgType" placeholder="请选择投保倾向机构类型" clearable>
+                  <t-option value="政策性保险机构" label="政策性保险机构" />
+                  <t-option value="商业性保险机构" label="商业性保险机构" />
+                  <t-option value="无偏好" label="无偏好" />
                 </t-select>
               </t-form-item>
-              <t-form-item label="保单期限" name="policyDuration">
-                <t-select v-model="formData.policyDuration" placeholder="请选择保单期限" clearable>
-                  <t-option value="1年" label="1年" />
-                  <t-option value="2年" label="2年" />
+              <t-form-item label="投保业务范围" name="insuranceBusinessScope" class="form-item-full">
+                <t-select v-model="formData.insuranceBusinessScope" placeholder="请选择投保业务范围" clearable>
+                  <t-option value="全部适保业务" label="全部适保业务" />
+                  <t-option value="部分适保业务-全部信用证" label="部分适保业务-全部信用证支付方式的出口" />
+                  <t-option value="部分适保业务-全部非信用证" label="部分适保业务-全部非信用证支付方式的出口" />
+                  <t-option value="部分适保业务-全部" label="部分适保业务-全部非信用证及信用证支付方式的出口" />
                 </t-select>
               </t-form-item>
-              <t-form-item label="特殊需求说明" name="specialRequirements" class="form-item-full">
-                <t-textarea v-model="formData.specialRequirements" placeholder="如有特殊需求请在此说明" :autosize="{ minRows: 3, maxRows: 5 }" />
+              <t-form-item label="投保币种" name="insuranceCurrency">
+                <t-select v-model="formData.insuranceCurrency" placeholder="请选择投保币种" clearable>
+                  <t-option value="USD" label="USD" />
+                  <t-option value="CNY" label="CNY" />
+                  <t-option value="EUR" label="EUR" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="投保金额" name="insuranceAmount">
+                <t-input-number v-model="formData.insuranceAmount" placeholder="请输入投保金额" :min="0" />
+              </t-form-item>
+              <t-form-item label="期望保险期间" name="expectedInsurancePeriod" class="form-item-full">
+                <t-date-range-picker v-model="formData.expectedInsurancePeriod" placeholder="请选择保险期间" />
+              </t-form-item>
+            </div>
+
+            <div class="section-title">投保主要目的（按重要性填写1-4）</div>
+            <div class="form-grid">
+              <t-form-item label="最重要的目的" name="insurancePrimaryPurpose1">
+                <t-select v-model="formData.insurancePrimaryPurpose1" placeholder="1=最重要" clearable>
+                  <t-option value="保障出口收汇安全" label="保障出口收汇安全" />
+                  <t-option value="获取银行贸易融资" label="获取银行贸易融资" />
+                  <t-option value="提升公司内部管理" label="提升公司内部管理" />
+                  <t-option value="取得海外买方信息" label="取得海外买方信息" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="次重要的目的" name="insurancePrimaryPurpose2">
+                <t-select v-model="formData.insurancePrimaryPurpose2" placeholder="请选择" clearable>
+                  <t-option value="保障出口收汇安全" label="保障出口收汇安全" />
+                  <t-option value="获取银行贸易融资" label="获取银行贸易融资" />
+                  <t-option value="提升公司内部管理" label="提升公司内部管理" />
+                  <t-option value="取得海外买方信息" label="取得海外买方信息" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="第三重要的目的" name="insurancePrimaryPurpose3">
+                <t-select v-model="formData.insurancePrimaryPurpose3" placeholder="请选择" clearable>
+                  <t-option value="保障出口收汇安全" label="保障出口收汇安全" />
+                  <t-option value="获取银行贸易融资" label="获取银行贸易融资" />
+                  <t-option value="提升公司内部管理" label="提升公司内部管理" />
+                  <t-option value="取得海外买方信息" label="取得海外买方信息" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="最次要的目的" name="insurancePrimaryPurpose4">
+                <t-select v-model="formData.insurancePrimaryPurpose4" placeholder="请选择" clearable>
+                  <t-option value="保障出口收汇安全" label="保障出口收汇安全" />
+                  <t-option value="获取银行贸易融资" label="获取银行贸易融资" />
+                  <t-option value="提升公司内部管理" label="提升公司内部管理" />
+                  <t-option value="取得海外买方信息" label="取得海外买方信息" />
+                </t-select>
               </t-form-item>
             </div>
           </template>
 
-          <template v-else>
-            <div class="section-title">上传附件</div>
+          <!-- Step 3: 买方信息 -->
+          <template v-else-if="activeStep === 3">
+            <div class="section-title">买方基础信息</div>
+            <div class="form-grid">
+              <t-form-item label="买方全称（中文/英文）" name="buyerName" class="form-item-full">
+                <t-input v-model="formData.buyerName" placeholder="境内买方填中文，境外买方填英文全称" />
+              </t-form-item>
+              <t-form-item label="买方所在国别/地区" name="buyerCountry">
+                <t-select v-model="formData.buyerCountry" placeholder="请选择买方所在国家/地区" clearable filterable>
+                  <t-option v-for="item in countryOptions" :key="item.value" :value="item.value" :label="item.label" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="买方注册地址" name="buyerAddress" class="form-item-full">
+                <t-input v-model="formData.buyerAddress" placeholder="详细填写买方注册地址" />
+              </t-form-item>
+            </div>
+
+            <div class="section-title">买方业务信息</div>
+            <div class="form-grid">
+              <t-form-item label="与该买方合作年限" name="cooperationYearsWithBuyer">
+                <t-select v-model="formData.cooperationYearsWithBuyer" placeholder="请选择合作年限" clearable>
+                  <t-option value="1年以内" label="1年以内" />
+                  <t-option value="1-3年" label="1-3年" />
+                  <t-option value="3年以上" label="3年以上" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="过去12个月出口交易额（万美元）" name="last12MonthExportAmount">
+                <t-input-number v-model="formData.last12MonthExportAmount" placeholder="填写具体金额" :min="0" />
+              </t-form-item>
+              <t-form-item label="过去12个月出口赊销交易额（万美元）" name="last12MonthCreditSalesAmount">
+                <t-input-number v-model="formData.last12MonthCreditSalesAmount" placeholder="填写具体金额" :min="0" />
+              </t-form-item>
+              <t-form-item label="预计未来12个月的赊销总额" name="expectedNext12MonthCreditSales">
+                <t-input-number v-model="formData.expectedNext12MonthCreditSales" placeholder="填写具体金额" :min="0">
+                  <template #suffix>
+                    <t-select v-model="formData.creditSalesCurrency" placeholder="币种" style="width: 80px">
+                      <t-option value="USD" label="USD" />
+                      <t-option value="CNY" label="CNY" />
+                      <t-option value="EUR" label="EUR" />
+                    </t-select>
+                  </template>
+                </t-input-number>
+              </t-form-item>
+              <t-form-item label="付款条件" name="paymentTerms" class="form-item-full">
+                <t-input v-model="formData.paymentTerms" placeholder="填写'发送货物后XX天'或'开具发票后XX天'" />
+              </t-form-item>
+              <t-form-item label="拟申请信用限额（最大应收账款余额）" name="appliedCreditLimit">
+                <t-input-number v-model="formData.appliedCreditLimit" placeholder="填写具体金额" :min="0">
+                  <template #suffix>
+                    <t-select v-model="formData.creditLimitCurrency" placeholder="币种" style="width: 80px">
+                      <t-option value="USD" label="USD" />
+                      <t-option value="CNY" label="CNY" />
+                      <t-option value="EUR" label="EUR" />
+                    </t-select>
+                  </template>
+                </t-input-number>
+              </t-form-item>
+              <t-form-item v-if="formData.mainPaymentMethods === 'LC'" label="信用证开证行名称、SWIFT CODE" name="lcIssuingBank" class="form-item-full">
+                <t-input v-model="formData.lcIssuingBank" placeholder="仅信用证支付方式需填写" />
+              </t-form-item>
+            </div>
+          </template>
+
+          <!-- Step 4: 贸易基础信息 -->
+          <template v-else-if="activeStep === 4">
+            <div class="section-title">贸易基础信息</div>
+            <div class="form-grid">
+              <t-form-item label="出口商品/服务品类" name="exportProductCategory" class="form-item-full">
+                <t-input v-model="formData.exportProductCategory" placeholder="详细填写具体商品名称" />
+              </t-form-item>
+              <t-form-item label="是否涉及管制商品" name="involvesControlledGoods">
+                <t-select v-model="formData.involvesControlledGoods" placeholder="请选择" clearable>
+                  <t-option value="是" label="是" />
+                  <t-option value="否" label="否" />
+                </t-select>
+              </t-form-item>
+              <t-form-item v-if="formData.involvesControlledGoods === '是'" label="管制商品名称" name="controlledGoodsDescription">
+                <t-input v-model="formData.controlledGoodsDescription" placeholder="请注明具体商品名称" />
+              </t-form-item>
+              <t-form-item label="贸易合同是否含物权保留条款" name="hasTitleRetentionClause">
+                <t-select v-model="formData.hasTitleRetentionClause" placeholder="请选择" clearable>
+                  <t-option value="是" label="是" />
+                  <t-option value="否" label="否" />
+                </t-select>
+              </t-form-item>
+            </div>
+          </template>
+
+          <!-- Step 5: 补充资料上传 -->
+          <template v-else-if="activeStep === 5">
+            <div class="section-title">必传资料</div>
             <div class="form-grid">
               <t-form-item label="企业法人营业执照扫描件" name="businessLicense" class="form-item-full">
-                <t-upload v-model="formData.businessLicense" action="https://demo.com/upload" tips="请上传营业执照扫描件" />
+                <t-upload
+                  v-model="formData.businessLicense"
+                  action="https://demo.com/upload"
+                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
               </t-form-item>
               <t-form-item label="对外贸易经营者备案登记表" name="importExportQualification" class="form-item-full">
-                <t-upload v-model="formData.importExportQualification" action="https://demo.com/upload" tips="请上传进出口资质文件" />
+                <t-upload
+                  v-model="formData.importExportQualification"
+                  action="https://demo.com/upload"
+                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
+              </t-form-item>
+              <t-form-item label="近期贸易合同扫描件（样本）" name="tradeContract" class="form-item-full">
+                <t-upload
+                  v-model="formData.tradeContract"
+                  action="https://demo.com/upload"
+                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB，最多3份；内容：含买卖双方名称、商品名称、付款方式、账期条款"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  multiple
+                />
+              </t-form-item>
+              <t-form-item label="出口报关单扫描件（样本）" name="customsDeclaration" class="form-item-full">
+                <t-upload
+                  v-model="formData.customsDeclaration"
+                  action="https://demo.com/upload"
+                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB，最多2份；内容：含报关单号、出口国别、商品名称、金额"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  multiple
+                />
+              </t-form-item>
+              <t-form-item v-if="formData.involvesControlledGoods === '是'" label="出口许可证" name="exportLicense" class="form-item-full">
+                <t-upload
+                  v-model="formData.exportLicense"
+                  action="https://demo.com/upload"
+                  tips="格式：PDF/JPG/PNG；大小：单文件≤5MB，最多1份"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
               </t-form-item>
               <t-form-item label="授权保险公司联系买方的签字文件" name="authorizationDocument" class="form-item-full">
-                <t-upload v-model="formData.authorizationDocument" action="https://demo.com/upload" tips="请上传授权文件" />
+                <t-upload
+                  v-model="formData.authorizationDocument"
+                  action="https://demo.com/upload"
+                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
+              </t-form-item>
+            </div>
+          </template>
+
+          <!-- Step 6: 投保声明 -->
+          <template v-else-if="activeStep === 6">
+            <div class="section-title">投保人声明签署</div>
+            <div class="form-grid">
+              <t-form-item label="投保人声明" name="applicantDeclaration" class="form-item-full">
+                <div class="declaration-text">
+                  <p>本人/本公司作为投保人，郑重声明：</p>
+                  <p>1. 所填写的各项内容均真实、准确、完整，如有虚假，愿承担相应法律责任；</p>
+                  <p>2. 已充分了解所投保的保险条款、保险责任、责任免除等内容；</p>
+                  <p>3. 授权保险公司或其委托的第三方进行必要的调查和核实；</p>
+                  <p>4. 同意投保单作为保险合同的组成部分。</p>
+                </div>
+              </t-form-item>
+              <t-form-item label="投保人授权人签字" name="declarationSignature">
+                <t-input v-model="formData.declarationSignature" placeholder="请输入授权人签字" />
+              </t-form-item>
+              <t-form-item label="声明日期" name="declarationDate">
+                <t-date-picker v-model="formData.declarationDate" placeholder="请选择日期" />
+              </t-form-item>
+              <t-form-item label="加盖公司公章" name="companySeal" class="form-item-full">
+                <t-upload
+                  v-model="formData.companySeal"
+                  action="https://demo.com/upload"
+                  tips="请上传加盖公司公章的声明文件"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
               </t-form-item>
             </div>
           </template>
@@ -166,6 +463,29 @@ const store = useBusinessStore()
 const formRef = ref(null)
 const activeStep = ref(0)
 
+const countryOptions = [
+  { value: '美国', label: '美国' },
+  { value: '德国', label: '德国' },
+  { value: '日本', label: '日本' },
+  { value: '英国', label: '英国' },
+  { value: '法国', label: '法国' },
+  { value: '加拿大', label: '加拿大' },
+  { value: '澳大利亚', label: '澳大利亚' },
+  { value: '韩国', label: '韩国' },
+  { value: '新加坡', label: '新加坡' },
+  { value: '荷兰', label: '荷兰' },
+  { value: '意大利', label: '意大利' },
+  { value: '西班牙', label: '西班牙' },
+  { value: '巴西', label: '巴西' },
+  { value: '印度', label: '印度' },
+  { value: '越南', label: '越南' },
+  { value: '印度尼西亚', label: '印度尼西亚' },
+  { value: '泰国', label: '泰国' },
+  { value: '马来西亚', label: '马来西亚' },
+  { value: '俄罗斯', label: '俄罗斯' },
+  { value: '墨西哥', label: '墨西哥' }
+]
+
 const mode = computed(() => {
   if (route.name === 'InsurancePurchaseDetail') return 'detail'
   if (route.name === 'InsurancePurchaseEdit') return 'edit'
@@ -179,42 +499,142 @@ const pageTitle = computed(() => {
 })
 
 const formData = reactive({
-  id: '',
-  enterpriseName: '',
+  // 主体信息
+  companyName: '',
   unifiedSocialCreditCode: '',
-  enterpriseAddress: '',
+  registeredAddress: '',
+  businessAddress: '',
+  organizationCode: '',
+  establishmentYear: '',
+  legalRepresentative: '',
+  enterpriseNature: '',
+  businessType: '',
+  // 联系信息
   contactName: '',
+  contactPosition: '',
   contactPhone: '',
-  contactEmail: '',
-  businessLicense: null,
-  importExportQualification: null,
+  companyEmail: '',
+  // 业务信息
+  exportBusinessHistory: '',
+  exportMainCountries: [],
+  mainExportIndustry: '',
+  expectedInsurableTurnover: null,
+  turnoverCurrency: 'USD',
+  mainPaymentMethods: '',
+  mostUsedPaymentTerm: null,
+  longestPaymentTerm: null,
+  hasLongerCreditPeriod: '',
+  longestCreditPeriod: null,
+  // 投保核心需求
+  insuranceType: '',
+  preferredInsuranceOrgType: '',
+  insuranceBusinessScope: '',
+  insuranceCurrency: 'USD',
+  insuranceAmount: null,
+  expectedInsurancePeriod: [],
+  insurancePrimaryPurpose1: '',
+  insurancePrimaryPurpose2: '',
+  insurancePrimaryPurpose3: '',
+  insurancePrimaryPurpose4: '',
+  // 买方基础信息
   buyerName: '',
   buyerCountry: '',
   buyerAddress: '',
-  buyerContact: '',
-  buyerPhone: '',
-  historicalTransactionAmount: '',
+  // 买方业务信息
+  cooperationYearsWithBuyer: '',
+  last12MonthExportAmount: null,
+  last12MonthCreditSalesAmount: null,
+  expectedNext12MonthCreditSales: null,
+  creditSalesCurrency: 'USD',
+  paymentTerms: '',
+  appliedCreditLimit: null,
+  creditLimitCurrency: 'USD',
+  lcIssuingBank: '',
+  // 贸易基础信息
+  exportProductCategory: '',
+  involvesControlledGoods: '',
+  controlledGoodsDescription: '',
+  hasTitleRetentionClause: '',
+  // 补充资料
+  businessLicense: null,
+  importExportQualification: null,
+  tradeContract: null,
+  customsDeclaration: null,
+  exportLicense: null,
   authorizationDocument: null,
-  insuranceScheme: '',
-  coverageAmount: null,
-  expectedInsuranceCompany: '',
-  policyDuration: '',
-  specialRequirements: ''
+  // 投保声明
+  declarationSignature: '',
+  declarationDate: '',
+  companySeal: null
 })
 
 const rules = {
-  enterpriseName: [{ required: true, message: '请输入企业名称', trigger: 'blur' }],
-  unifiedSocialCreditCode: [{ required: true, message: '请输入统一社会信用代码', trigger: 'blur' }],
+  // 主体信息
+  companyName: [{ required: true, message: '请输入公司中文全称', trigger: 'blur' }],
+  unifiedSocialCreditCode: [
+    { required: true, message: '请输入统一社会信用代码', trigger: 'blur' },
+    { pattern: /^[0-9A-Z]{18}$/, message: '统一社会信用代码为18位', trigger: 'blur' }
+  ],
+  registeredAddress: [{ required: true, message: '请输入注册地址', trigger: 'blur' }],
+  businessAddress: [{ required: true, message: '请输入营业地址', trigger: 'blur' }],
+  organizationCode: [{ required: true, message: '请输入组织机构代码', trigger: 'blur' }],
+  establishmentYear: [
+    { required: true, message: '请输入成立年份', trigger: 'blur' },
+    { pattern: /^\d{4}$/, message: '成立年份为4位数字', trigger: 'blur' }
+  ],
+  legalRepresentative: [{ required: true, message: '请输入法定代表人姓名', trigger: 'blur' }],
+  enterpriseNature: [{ required: true, message: '请选择企业性质', trigger: 'change' }],
+  businessType: [{ required: true, message: '请选择经营性质', trigger: 'change' }],
+  // 联系信息
   contactName: [{ required: true, message: '请输入联系人姓名', trigger: 'blur' }],
-  contactPhone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
-  buyerName: [{ required: true, message: '请输入买方名称', trigger: 'blur' }],
-  buyerCountry: [{ required: true, message: '请选择买方国别', trigger: 'change' }],
-  buyerAddress: [{ required: true, message: '请输入买方地址', trigger: 'blur' }],
-  insuranceScheme: [{ required: true, message: '请选择投保方案', trigger: 'change' }],
-  coverageAmount: [{ required: true, message: '请输入投保金额', trigger: 'blur' }],
+  contactPosition: [{ required: true, message: '请输入联系人职务', trigger: 'blur' }],
+  contactPhone: [
+    { required: true, message: '请输入联系电话', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入有效手机号', trigger: 'blur' }
+  ],
+  companyEmail: [
+    { required: true, message: '请输入企业邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' }
+  ],
+  // 业务信息
+  exportBusinessHistory: [{ required: true, message: '请选择出口业务经营历史', trigger: 'change' }],
+  exportMainCountries: [{ required: true, message: '请选择出口主要国别/地区', trigger: 'change' }],
+  mainExportIndustry: [{ required: true, message: '请选择主营出口行业', trigger: 'change' }],
+  expectedInsurableTurnover: [{ required: true, message: '请输入预计可保营业额', trigger: 'blur' }],
+  mainPaymentMethods: [{ required: true, message: '请选择主要付款方式', trigger: 'change' }],
+  mostUsedPaymentTerm: [{ required: true, message: '请输入最常用的付款期限', trigger: 'blur' }],
+  longestPaymentTerm: [{ required: true, message: '请输入最长付款期限', trigger: 'blur' }],
+  hasLongerCreditPeriod: [{ required: true, message: '请选择是否为买家提供较长赊账期', trigger: 'change' }],
+  // 投保核心需求
+  insuranceType: [{ required: true, message: '请选择投保类型', trigger: 'change' }],
+  preferredInsuranceOrgType: [{ required: true, message: '请选择投保倾向机构类型', trigger: 'change' }],
+  insuranceBusinessScope: [{ required: true, message: '请选择投保业务范围', trigger: 'change' }],
+  insuranceCurrency: [{ required: true, message: '请选择投保币种', trigger: 'change' }],
+  insuranceAmount: [{ required: true, message: '请输入投保金额', trigger: 'blur' }],
+  expectedInsurancePeriod: [{ required: true, message: '请选择期望保险期间', trigger: 'change' }],
+  insurancePrimaryPurpose1: [{ required: true, message: '请选择最重要的投保目的', trigger: 'change' }],
+  // 买方信息
+  buyerName: [{ required: true, message: '请输入买方全称', trigger: 'blur' }],
+  buyerCountry: [{ required: true, message: '请选择买方所在国家/地区', trigger: 'change' }],
+  buyerAddress: [{ required: true, message: '请输入买方注册地址', trigger: 'blur' }],
+  cooperationYearsWithBuyer: [{ required: true, message: '请选择与买方合作年限', trigger: 'change' }],
+  last12MonthExportAmount: [{ required: true, message: '请输入过去12个月出口交易额', trigger: 'blur' }],
+  paymentTerms: [{ required: true, message: '请输入付款条件', trigger: 'blur' }],
+  appliedCreditLimit: [{ required: true, message: '请输入拟申请信用限额', trigger: 'blur' }],
+  // 贸易基础信息
+  exportProductCategory: [{ required: true, message: '请输入出口商品/服务品类', trigger: 'blur' }],
+  involvesControlledGoods: [{ required: true, message: '请选择是否涉及管制商品', trigger: 'change' }],
+  hasTitleRetentionClause: [{ required: true, message: '请选择贸易合同是否含物权保留条款', trigger: 'change' }],
+  // 补充资料
   businessLicense: [{ required: true, message: '请上传企业法人营业执照扫描件', trigger: 'change' }],
   importExportQualification: [{ required: true, message: '请上传对外贸易经营者备案登记表', trigger: 'change' }],
-  authorizationDocument: [{ required: true, message: '请上传授权保险公司联系买方的签字文件', trigger: 'change' }]
+  tradeContract: [{ required: true, message: '请上传近期贸易合同扫描件', trigger: 'change' }],
+  customsDeclaration: [{ required: true, message: '请上传出口报关单扫描件', trigger: 'change' }],
+  authorizationDocument: [{ required: true, message: '请上传授权保险公司联系买方的签字文件', trigger: 'change' }],
+  // 投保声明
+  declarationSignature: [{ required: true, message: '请输入投保人授权人签字', trigger: 'blur' }],
+  declarationDate: [{ required: true, message: '请选择声明日期', trigger: 'change' }],
+  companySeal: [{ required: true, message: '请上传加盖公司公章的声明文件', trigger: 'change' }]
 }
 
 const detailData = computed(() => {
@@ -224,29 +644,64 @@ const detailData = computed(() => {
 })
 
 const customerColumns = [
-  { label: '企业名称', value: 'enterpriseName' },
+  { label: '公司中文全称', value: 'companyName' },
   { label: '统一社会信用代码', value: 'unifiedSocialCreditCode' },
-  { label: '企业地址', value: 'enterpriseAddress' },
+  { label: '注册地址', value: 'registeredAddress' },
+  { label: '营业地址', value: 'businessAddress' },
+  { label: '组织机构代码', value: 'organizationCode' },
+  { label: '成立年份', value: 'establishmentYear' },
+  { label: '法定代表人', value: 'legalRepresentative' },
+  { label: '企业性质', value: 'enterpriseNature' },
+  { label: '经营性质', value: 'businessType' },
   { label: '联系人', value: 'contactName' },
+  { label: '联系人职务', value: 'contactPosition' },
   { label: '联系电话', value: 'contactPhone' },
-  { label: '电子邮箱', value: 'contactEmail' }
+  { label: '企业邮箱', value: 'companyEmail' }
 ]
 
-const buyerColumns = [
-  { label: '买方名称', value: 'buyerName' },
-  { label: '买方国别', value: 'buyerCountry' },
-  { label: '买方地址', value: 'buyerAddress' },
-  { label: '买方联系人', value: 'buyerContact' },
-  { label: '联系电话', value: 'buyerPhone' },
-  { label: '历史交易金额', value: 'historicalTransactionAmount' }
+const businessColumns = [
+  { label: '出口业务经营历史', value: 'exportBusinessHistory' },
+  { label: '出口主要国别/地区', value: 'exportMainCountries' },
+  { label: '主营出口行业', value: 'mainExportIndustry' },
+  { label: '预计可保营业额', value: (v) => `${v.turnoverCurrency || 'USD'} ${Number(v.expectedInsurableTurnover || 0).toLocaleString()}` },
+  { label: '主要付款方式', value: 'mainPaymentMethods' },
+  { label: '最常用付款期限（天）', value: 'mostUsedPaymentTerm' },
+  { label: '最长付款期限（天）', value: 'longestPaymentTerm' },
+  { label: '较长赊账期', value: 'hasLongerCreditPeriod' },
+  { label: '最长赊账期（天）', value: 'longestCreditPeriod' }
 ]
 
 const insuranceColumns = [
-  { label: '投保方案', value: 'insuranceScheme' },
-  { label: '投保金额', value: (v) => `¥${Number(v.coverageAmount || 0).toLocaleString()}` },
-  { label: '期望保险公司', value: 'expectedInsuranceCompany' },
-  { label: '保单期限', value: 'policyDuration' },
-  { label: '特殊需求', value: 'specialRequirements' }
+  { label: '投保类型', value: 'insuranceType' },
+  { label: '投保倾向机构类型', value: 'preferredInsuranceOrgType' },
+  { label: '投保业务范围', value: 'insuranceBusinessScope' },
+  { label: '投保币种', value: 'insuranceCurrency' },
+  { label: '投保金额', value: (v) => `${v.insuranceCurrency || 'USD'} ${Number(v.insuranceAmount || 0).toLocaleString()}` },
+  { label: '期望保险期间', value: 'expectedInsurancePeriod' },
+  { label: '投保主要目的1', value: 'insurancePrimaryPurpose1' },
+  { label: '投保主要目的2', value: 'insurancePrimaryPurpose2' },
+  { label: '投保主要目的3', value: 'insurancePrimaryPurpose3' },
+  { label: '投保主要目的4', value: 'insurancePrimaryPurpose4' }
+]
+
+const buyerColumns = [
+  { label: '买方全称', value: 'buyerName' },
+  { label: '买方所在国别', value: 'buyerCountry' },
+  { label: '买方注册地址', value: 'buyerAddress' },
+  { label: '与买方合作年限', value: 'cooperationYearsWithBuyer' },
+  { label: '过去12个月出口交易额（万美元）', value: 'last12MonthExportAmount' },
+  { label: '过去12个月赊销交易额（万美元）', value: 'last12MonthCreditSalesAmount' },
+  { label: '预计未来12个月赊销总额', value: (v) => `${v.creditSalesCurrency || 'USD'} ${Number(v.expectedNext12MonthCreditSales || 0).toLocaleString()}` },
+  { label: '付款条件', value: 'paymentTerms' },
+  { label: '拟申请信用限额', value: (v) => `${v.creditLimitCurrency || 'USD'} ${Number(v.appliedCreditLimit || 0).toLocaleString()}` },
+  { label: '信用证开证行/SWIFT', value: 'lcIssuingBank' }
+]
+
+const tradeColumns = [
+  { label: '出口商品/服务品类', value: 'exportProductCategory' },
+  { label: '涉及管制商品', value: 'involvesControlledGoods' },
+  { label: '管制商品名称', value: 'controlledGoodsDescription' },
+  { label: '含物权保留条款', value: 'hasTitleRetentionClause' }
 ]
 
 const processTimeline = computed(() => {
@@ -265,27 +720,72 @@ const initForm = () => {
   const row = detailData.value
   if (!row) return
   Object.assign(formData, {
-    id: row.id,
-    enterpriseName: row.enterpriseName || '',
+    // 主体信息
+    companyName: row.companyName || '',
     unifiedSocialCreditCode: row.unifiedSocialCreditCode || '',
-    enterpriseAddress: row.enterpriseAddress || '',
+    registeredAddress: row.registeredAddress || '',
+    businessAddress: row.businessAddress || '',
+    organizationCode: row.organizationCode || '',
+    establishmentYear: row.establishmentYear || '',
+    legalRepresentative: row.legalRepresentative || '',
+    enterpriseNature: row.enterpriseNature || '',
+    businessType: row.businessType || '',
+    // 联系信息
     contactName: row.contactName || '',
+    contactPosition: row.contactPosition || '',
     contactPhone: row.contactPhone || '',
-    contactEmail: row.contactEmail || '',
-    businessLicense: row.businessLicense ?? null,
-    importExportQualification: row.importExportQualification ?? null,
+    companyEmail: row.companyEmail || '',
+    // 业务信息
+    exportBusinessHistory: row.exportBusinessHistory || '',
+    exportMainCountries: row.exportMainCountries || [],
+    mainExportIndustry: row.mainExportIndustry || '',
+    expectedInsurableTurnover: row.expectedInsurableTurnover ?? null,
+    turnoverCurrency: row.turnoverCurrency || 'USD',
+    mainPaymentMethods: row.mainPaymentMethods || '',
+    mostUsedPaymentTerm: row.mostUsedPaymentTerm ?? null,
+    longestPaymentTerm: row.longestPaymentTerm ?? null,
+    hasLongerCreditPeriod: row.hasLongerCreditPeriod || '',
+    longestCreditPeriod: row.longestCreditPeriod ?? null,
+    // 投保核心需求
+    insuranceType: row.insuranceType || '',
+    preferredInsuranceOrgType: row.preferredInsuranceOrgType || '',
+    insuranceBusinessScope: row.insuranceBusinessScope || '',
+    insuranceCurrency: row.insuranceCurrency || 'USD',
+    insuranceAmount: row.insuranceAmount ?? null,
+    expectedInsurancePeriod: row.expectedInsurancePeriod || [],
+    insurancePrimaryPurpose1: row.insurancePrimaryPurpose1 || '',
+    insurancePrimaryPurpose2: row.insurancePrimaryPurpose2 || '',
+    insurancePrimaryPurpose3: row.insurancePrimaryPurpose3 || '',
+    insurancePrimaryPurpose4: row.insurancePrimaryPurpose4 || '',
+    // 买方信息
     buyerName: row.buyerName || '',
     buyerCountry: row.buyerCountry || '',
     buyerAddress: row.buyerAddress || '',
-    buyerContact: row.buyerContact || '',
-    buyerPhone: row.buyerPhone || '',
-    historicalTransactionAmount: row.historicalTransactionAmount || '',
+    cooperationYearsWithBuyer: row.cooperationYearsWithBuyer || '',
+    last12MonthExportAmount: row.last12MonthExportAmount ?? null,
+    last12MonthCreditSalesAmount: row.last12MonthCreditSalesAmount ?? null,
+    expectedNext12MonthCreditSales: row.expectedNext12MonthCreditSales ?? null,
+    creditSalesCurrency: row.creditSalesCurrency || 'USD',
+    paymentTerms: row.paymentTerms || '',
+    appliedCreditLimit: row.appliedCreditLimit ?? null,
+    creditLimitCurrency: row.creditLimitCurrency || 'USD',
+    lcIssuingBank: row.lcIssuingBank || '',
+    // 贸易基础信息
+    exportProductCategory: row.exportProductCategory || '',
+    involvesControlledGoods: row.involvesControlledGoods || '',
+    controlledGoodsDescription: row.controlledGoodsDescription || '',
+    hasTitleRetentionClause: row.hasTitleRetentionClause || '',
+    // 补充资料
+    businessLicense: row.businessLicense ?? null,
+    importExportQualification: row.importExportQualification ?? null,
+    tradeContract: row.tradeContract ?? null,
+    customsDeclaration: row.customsDeclaration ?? null,
+    exportLicense: row.exportLicense ?? null,
     authorizationDocument: row.authorizationDocument ?? null,
-    insuranceScheme: row.insuranceScheme || '',
-    coverageAmount: row.coverageAmount ?? null,
-    expectedInsuranceCompany: row.expectedInsuranceCompany || '',
-    policyDuration: row.policyDuration || '',
-    specialRequirements: row.specialRequirements || ''
+    // 投保声明
+    declarationSignature: row.declarationSignature || '',
+    declarationDate: row.declarationDate || '',
+    companySeal: row.companySeal ?? null
   })
 }
 
@@ -341,5 +841,22 @@ onMounted(() => {
 
 .form-item-full {
   grid-column: 1 / -1;
+}
+
+.declaration-text {
+  background: #f5f5f5;
+  padding: 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #666;
+}
+
+.declaration-text p {
+  margin: 0 0 8px 0;
+}
+
+.declaration-text p:last-child {
+  margin-bottom: 0;
 }
 </style>

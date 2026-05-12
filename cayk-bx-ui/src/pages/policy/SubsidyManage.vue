@@ -6,16 +6,16 @@
 
     <t-row :gutter="16" class="mb-16">
       <t-col :span="6">
-        <stat-card title="申请中" :value="8" icon="edit-1" color="warning" />
+        <stat-card title="申请中" :value="pendingCount" icon="edit-1" color="warning" />
       </t-col>
       <t-col :span="6">
-        <stat-card title="已审批" :value="25" icon="check-circle" color="success" />
+        <stat-card title="已审批" :value="approvedCount" icon="check-circle" color="success" />
       </t-col>
       <t-col :span="6">
-        <stat-card title="待发放" :value="3" icon="wallet" color="primary" />
+        <stat-card title="待发放" :value="waitingCount" icon="wallet" color="primary" />
       </t-col>
       <t-col :span="6">
-        <stat-card title="累计补贴金额" value="$125,000" icon="money" color="success" />
+        <stat-card title="累计补贴金额" :value="`$${totalSubsidy.toLocaleString()}`" icon="money" color="success" />
       </t-col>
     </t-row>
 
@@ -50,7 +50,7 @@
         <template #status="{ row }">
           <status-tag :status="row.status" :status-map="statusMap" />
         </template>
-        <template #subsidyAmount="{ row }">¥{{ row.subsidyAmount.toLocaleString() }}</template>
+        <template #subsidyAmount="{ row }">¥{{ (row.subsidyAmount || 0).toLocaleString() }}</template>
         <template #operation="{ row }">
           <t-space>
             <t-link @click="handleView(row)">查看</t-link>
@@ -59,13 +59,61 @@
         </template>
       </t-table>
     </t-card>
+
+    <t-drawer v-model:visible="viewVisible" header="补贴详情" size="700px" :footer="false">
+      <detail-panel v-if="currentRow" title="补贴详情" :columns="detailColumns" :data="currentRow" />
+    </t-drawer>
+
+    <t-drawer v-model:visible="processVisible" header="补贴审批" size="700px">
+      <t-form ref="processFormRef" :data="processForm" :rules="processRules" label-width="120px" @submit="handleProcessSubmit">
+        <t-form-item label="申请编号">
+          <t-input :value="currentRow?.applicationNo" disabled />
+        </t-form-item>
+        <t-form-item label="企业名称">
+          <t-input :value="currentRow?.enterpriseName" disabled />
+        </t-form-item>
+        <t-form-item label="关联保单">
+          <t-input :value="currentRow?.policyNo" disabled />
+        </t-form-item>
+        <t-form-item label="保费金额">
+          <t-input :value="`¥${(currentRow?.premiumAmount || 0).toLocaleString()}`" disabled />
+        </t-form-item>
+        <t-form-item label="申请补贴金额">
+          <t-input :value="`¥${(currentRow?.subsidyAmount || 0).toLocaleString()}`" disabled />
+        </t-form-item>
+        <t-form-item label="补贴比例">
+          <t-input :value="currentRow?.subsidyRate" disabled />
+        </t-form-item>
+        <t-divider>审批结果</t-divider>
+        <t-form-item label="审批结果" name="result">
+          <t-radio-group v-model="processForm.result">
+            <t-radio value="approved">批准</t-radio>
+            <t-radio value="rejected">驳回</t-radio>
+          </t-radio-group>
+        </t-form-item>
+        <t-form-item label="审批备注" name="remark">
+          <t-textarea v-model="processForm.remark" placeholder="请输入审批备注" :autosize="{ minRows: 3, maxRows: 5 }" />
+        </t-form-item>
+        <t-form-item label="实际发放金额" name="actualAmount">
+          <t-input-number v-model="processForm.actualAmount" :min="0" placeholder="请输入实际发放金额" />
+        </t-form-item>
+        <t-form-item>
+          <t-space>
+            <t-button theme="primary" type="submit">确认提交</t-button>
+            <t-button variant="outline" @click="processVisible = false">取消</t-button>
+          </t-space>
+        </t-form-item>
+      </t-form>
+    </t-drawer>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { MessagePlugin } from 'tdesign-vue-next'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
+import DetailPanel from '@/components/common/DetailPanel.vue'
 
 const loading = ref(false)
 const searchParams = reactive({ enterpriseName: '', status: '' })
@@ -92,6 +140,37 @@ const columns = [
 
 const tableData = ref([])
 
+const pendingCount = computed(() => tableData.value.filter(t => t.status === 'pending').length)
+const approvedCount = computed(() => tableData.value.filter(t => t.status === 'approved').length)
+const waitingCount = computed(() => tableData.value.filter(t => t.status === 'waiting').length)
+const totalSubsidy = computed(() => tableData.value.reduce((sum, t) => sum + (t.subsidyAmount || 0), 0))
+
+const viewVisible = ref(false)
+const processVisible = ref(false)
+const currentRow = ref(null)
+const processFormRef = ref(null)
+const processForm = reactive({
+  result: 'approved',
+  remark: '',
+  actualAmount: 0
+})
+
+const processRules = {
+  result: [{ required: true, message: '请选择审批结果', type: 'error' }],
+  actualAmount: [{ required: true, message: '请输入实际发放金额', type: 'error' }]
+}
+
+const detailColumns = [
+  { label: '申请编号', key: 'applicationNo' },
+  { label: '企业名称', key: 'enterpriseName' },
+  { label: '关联保单', key: 'policyNo' },
+  { label: '保费金额', key: 'premiumAmount' },
+  { label: '补贴金额', key: 'subsidyAmount' },
+  { label: '补贴比例', key: 'subsidyRate' },
+  { label: '所属区域', key: 'region' },
+  { label: '状态', key: 'status' }
+]
+
 const fetchData = () => {
   loading.value = true
   setTimeout(() => {
@@ -99,7 +178,7 @@ const fetchData = () => {
       { id: 1, applicationNo: 'SUB2026001', enterpriseName: '深圳XX国际贸易有限公司', policyNo: 'PI2026001234', premiumAmount: 12500, subsidyAmount: 3750, subsidyRate: '30%', region: '深圳市南山区', status: 'completed' },
       { id: 2, applicationNo: 'SUB2026002', enterpriseName: '上海YY进出口公司', policyNo: 'PI2026001235', premiumAmount: 8000, subsidyAmount: 2400, subsidyRate: '30%', region: '上海市浦东新区', status: 'waiting' },
       { id: 3, applicationNo: 'SUB2026003', enterpriseName: '北京ZZ贸易集团', policyNo: 'PI2025000987', premiumAmount: 20000, subsidyAmount: 6000, subsidyRate: '30%', region: '北京市朝阳区', status: 'approved' },
-      { id: 4, applicationNo: 'SUB2026004', enterpriseName: '广州AA实业公司', policyNo: 'PI2025000765', premiumAmount: 15000, subsidyAmount: null, subsidyRate: '30%', region: '广州市天河区', status: 'pending' }
+      { id: 4, applicationNo: 'SUB2026004', enterpriseName: '广州AA实业公司', policyNo: 'PI2025000765', premiumAmount: 15000, subsidyAmount: 4500, subsidyRate: '30%', region: '广州市天河区', status: 'pending' }
     ]
     pagination.total = 4
     loading.value = false
@@ -107,9 +186,38 @@ const fetchData = () => {
 }
 
 const handleSearch = () => fetchData()
-const handleReset = () => fetchData()
-const handleView = (row) => console.log('view:', row)
-const handleProcess = (row) => console.log('process:', row)
+const handleReset = () => {
+  searchParams.enterpriseName = ''
+  searchParams.status = ''
+  fetchData()
+}
+const handleView = (row) => {
+  currentRow.value = row
+  viewVisible.value = true
+}
+const handleProcess = (row) => {
+  currentRow.value = row
+  processForm.actualAmount = row.subsidyAmount
+  processForm.result = 'approved'
+  processForm.remark = ''
+  processVisible.value = true
+}
+
+const handleProcessSubmit = async ({ validateResult }) => {
+  if (validateResult !== true) return
+  const idx = tableData.value.findIndex(t => t.id === currentRow.value.id)
+  if (idx >= 0) {
+    if (processForm.result === 'approved') {
+      tableData.value[idx].status = 'waiting'
+      tableData.value[idx].actualAmount = processForm.actualAmount
+      MessagePlugin.success('补贴申请已批准，进入待发放状态')
+    } else {
+      tableData.value[idx].status = 'rejected'
+      MessagePlugin.warning('补贴申请已驳回')
+    }
+  }
+  processVisible.value = false
+}
 
 onMounted(() => fetchData())
 </script>

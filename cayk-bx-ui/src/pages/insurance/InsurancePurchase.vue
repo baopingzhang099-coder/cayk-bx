@@ -18,9 +18,21 @@
         <t-form-item label="买方名称">
           <t-input v-model="searchParams.buyerName" placeholder="请输入买方名称" clearable />
         </t-form-item>
+        <t-form-item label="买方国别">
+          <t-select v-model="searchParams.buyerCountry" placeholder="请选择买方国别" clearable filterable>
+            <t-option v-for="item in countryOptions" :key="item.value" :value="item.value" :label="item.label" />
+          </t-select>
+        </t-form-item>
         <t-form-item label="状态">
           <t-select v-model="searchParams.status" placeholder="请选择状态" clearable>
             <t-option v-for="item in statusOptions" :key="item.value" :value="item.value" :label="item.label" />
+          </t-select>
+        </t-form-item>
+        <t-form-item label="投保机构类型">
+          <t-select v-model="searchParams.preferredInsuranceOrgType" placeholder="请选择" clearable>
+            <t-option value="政策性保险机构" label="政策性保险机构" />
+            <t-option value="商业性保险机构" label="商业性保险机构" />
+            <t-option value="无偏好" label="无偏好" />
           </t-select>
         </t-form-item>
         <t-form-item label="申请日期">
@@ -67,7 +79,7 @@
           <status-tag :status="row.status" :status-map="statusMap" />
         </template>
         <template #coverageAmount="{ row }">
-          ¥{{ row.coverageAmount.toLocaleString() }}
+          {{ row.insuranceCurrency || 'USD' }}{{ Number(row.insuranceAmount || 0).toLocaleString() }}
         </template>
         <template #operation="{ row }">
           <t-space>
@@ -98,9 +110,34 @@ const loading = computed(() => false)
 const searchParams = reactive({
   enterpriseName: '',
   buyerName: '',
+  buyerCountry: '',
   status: '',
+  preferredInsuranceOrgType: '',
   dateRange: []
 })
+
+const countryOptions = [
+  { value: '美国', label: '美国' },
+  { value: '德国', label: '德国' },
+  { value: '日本', label: '日本' },
+  { value: '英国', label: '英国' },
+  { value: '法国', label: '法国' },
+  { value: '加拿大', label: '加拿大' },
+  { value: '澳大利亚', label: '澳大利亚' },
+  { value: '韩国', label: '韩国' },
+  { value: '新加坡', label: '新加坡' },
+  { value: '荷兰', label: '荷兰' },
+  { value: '意大利', label: '意大利' },
+  { value: '西班牙', label: '西班牙' },
+  { value: '巴西', label: '巴西' },
+  { value: '印度', label: '印度' },
+  { value: '越南', label: '越南' },
+  { value: '印度尼西亚', label: '印度尼西亚' },
+  { value: '泰国', label: '泰国' },
+  { value: '马来西亚', label: '马来西亚' },
+  { value: '俄罗斯', label: '俄罗斯' },
+  { value: '墨西哥', label: '墨西哥' }
+]
 
 const statusOptions = [
   { value: 'draft', label: '草稿' },
@@ -130,8 +167,10 @@ const columns = [
   { colKey: 'id', title: '投保编号', width: 130 },
   { colKey: 'enterpriseName', title: '企业名称', ellipsis: true },
   { colKey: 'buyerName', title: '买方名称', ellipsis: true },
-  { colKey: 'insuranceScheme', title: '投保方案' },
-  { colKey: 'coverageAmount', title: '投保金额', align: 'right', width: 130 },
+  { colKey: 'buyerCountry', title: '买方国别', width: 100 },
+  { colKey: 'insuranceType', title: '投保类型', width: 120 },
+  { colKey: 'preferredInsuranceOrgType', title: '机构类型', width: 120 },
+  { colKey: 'insuranceAmount', title: '投保金额', align: 'right', width: 130 },
   { colKey: 'status', title: '状态', width: 110, slot: 'status' },
   { colKey: 'createTime', title: '申请日期', width: 120 },
   { colKey: 'operation', title: '操作', width: 220, fixed: 'right', slot: 'operation' }
@@ -144,7 +183,9 @@ const filteredData = computed(() => {
   return list.filter((it) => {
     if (searchParams.enterpriseName && !String(it.enterpriseName || '').includes(searchParams.enterpriseName)) return false
     if (searchParams.buyerName && !String(it.buyerName || '').includes(searchParams.buyerName)) return false
+    if (searchParams.buyerCountry && it.buyerCountry !== searchParams.buyerCountry) return false
     if (searchParams.status && it.status !== searchParams.status) return false
+    if (searchParams.preferredInsuranceOrgType && it.preferredInsuranceOrgType !== searchParams.preferredInsuranceOrgType) return false
     return true
   })
 })
@@ -167,7 +208,7 @@ const paginationConfig = computed(() => ({
 }))
 
 const handleSearch = () => { pagination.current = 1 }
-const handleReset = () => { searchParams.enterpriseName = ''; searchParams.buyerName = ''; searchParams.status = ''; searchParams.dateRange = []; pagination.current = 1 }
+const handleReset = () => { searchParams.enterpriseName = ''; searchParams.buyerName = ''; searchParams.buyerCountry = ''; searchParams.status = ''; searchParams.preferredInsuranceOrgType = ''; searchParams.dateRange = []; pagination.current = 1 }
 const handlePageChange = (pageInfo) => { pagination.current = pageInfo.current; pagination.pageSize = pageInfo.pageSize }
 const handleExport = () => { console.log('export') }
 

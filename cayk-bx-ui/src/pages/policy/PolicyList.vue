@@ -94,31 +94,44 @@
       </t-form>
     </t-drawer>
 
-    <t-drawer v-model:visible="changeVisible" header="发起保单变更" size="760px">
-      <t-form ref="changeFormRef" :data="changeForm" :rules="changeRules" label-width="120px" @submit="handleChangeSubmit">
+    <t-drawer v-model:visible="changeVisible" header="发起保单变更" size="800px">
+      <t-form ref="changeFormRef" :data="changeForm" :rules="changeRules" label-width="140px" @submit="handleChangeSubmit">
         <t-form-item label="关联保单号">
           <t-input :value="currentRow?.policyNo" disabled />
         </t-form-item>
+        <t-form-item label="变更申请日期">
+          <t-input :value="new Date().toISOString().split('T')[0]" disabled />
+        </t-form-item>
         <t-form-item label="变更类型" name="changeType">
           <t-select v-model="changeForm.changeType" placeholder="请选择变更类型" clearable>
-            <t-option value="insured_info" label="被保险人信息变更" />
-            <t-option value="add_buyer" label="新增买方" />
-            <t-option value="adjust_coverage" label="调整保额/费率" />
+            <t-option value="add_buyer" label="增加买方" />
+            <t-option value="remove_buyer" label="减少买方" />
+            <t-option value="extend_period" label="延期" />
+            <t-option value="adjust_limit" label="变更限额" />
+            <t-option value="insured_info" label="变更被保险人信息" />
+            <t-option value="contact_info" label="变更联系人" />
+            <t-option value="address_info" label="变更地址" />
             <t-option value="other" label="其他变更" />
           </t-select>
         </t-form-item>
         <t-form-item label="变更原因" name="changeReason">
           <t-textarea v-model="changeForm.changeReason" placeholder="请输入变更原因" :autosize="{ minRows: 3, maxRows: 5 }" />
         </t-form-item>
-        <t-form-item label="变更申请书" name="changeApplicationForm">
-          <t-upload v-model="changeForm.changeApplicationForm" action="https://demo.com/upload" tips="必传：保险合同变更申请书" />
+        <t-form-item label="变更前内容" name="changeBefore">
+          <t-textarea v-model="changeForm.changeBefore" placeholder="请描述变更前的内容" :autosize="{ minRows: 2, maxRows: 4 }" />
+        </t-form-item>
+        <t-form-item label="变更后内容" name="changeAfter">
+          <t-textarea v-model="changeForm.changeAfter" placeholder="请描述变更后的内容" :autosize="{ minRows: 2, maxRows: 4 }" />
+        </t-form-item>
+        <t-form-item label="变更申请书（必传）" name="changeApplicationForm">
+          <t-upload v-model="changeForm.changeApplicationForm" action="https://demo.com/upload" tips="必传：保险合同变更申请书（PDF）" />
         </t-form-item>
         <t-form-item label="证明文件" name="proofFiles">
-          <t-upload v-model="changeForm.proofFiles" action="https://demo.com/upload" tips="按变更类型上传相应证明文件（可多文件）" multiple />
+          <t-upload v-model="changeForm.proofFiles" action="https://demo.com/upload" tips="按变更类型上传相应证明文件（可多文件，PDF/JPG/PNG）" multiple />
         </t-form-item>
         <t-form-item>
           <t-space>
-            <t-button theme="primary" type="submit">提交变更</t-button>
+            <t-button theme="primary" type="submit">提交变更申请</t-button>
             <t-button variant="outline" @click="changeVisible = false">取消</t-button>
           </t-space>
         </t-form-item>
@@ -332,10 +345,13 @@ const detailColumns = [
   { label: '保险公司', key: 'insuranceCompany' },
   { label: '被保险人', key: 'policyholder' },
   { label: '投保买方', key: 'insured' },
-  { label: '保险金额', key: 'coverageAmount' },
+  { label: '保险金额', key: 'coverageAmount', formatter: (v) => `$${Number(v).toLocaleString()}` },
+  { label: '保费金额', key: 'premium', formatter: (v) => `$${Number(v).toLocaleString()}` },
   { label: '生效日期', key: 'effectiveDate' },
   { label: '到期日期', key: 'expiryDate' },
-  { label: '状态', key: 'status' }
+  { label: '已用额度', key: 'usedQuota', formatter: (v) => `$${Number(v).toLocaleString()}` },
+  { label: '剩余额度', key: 'remainingQuota', formatter: (v) => `$${Number(v).toLocaleString()}` },
+  { label: '状态', key: 'statusName' }
 ]
 
 const editForm = reactive({

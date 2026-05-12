@@ -56,10 +56,33 @@
               <t-icon name="notification" size="20px" class="header-icon" />
             </t-badge>
           </t-tooltip>
+          
+          <div class="role-switch">
+            <t-radio-group v-model="currentRole" direction="horizontal" button-style="solid">
+              <t-radio value="customer">
+                <template #icon>
+                  <t-icon name="user" size="16px" />
+                </template>
+                客户
+              </t-radio>
+              <t-radio value="inkasso">
+                <template #icon>
+                  <t-icon name="building" size="16px" />
+                </template>
+                长安银科
+              </t-radio>
+              <t-radio value="clerk">
+                <template #icon>
+                  <t-icon name="user-check" size="16px" />
+                </template>
+                跟单员
+              </t-radio>
+            </t-radio-group>
+          </div>
+
           <t-dropdown :options="userMenuOptions" @click="handleUserMenuClick">
             <div class="user-info">
               <t-avatar size="small">{{ userStore.avatarText }}</t-avatar>
-              <span class="role-badge">{{ userStore.roleLabel }}</span>
               <span class="user-name">{{ userStore.userName }}</span>
               <t-icon name="chevron-down" size="16px" />
             </div>
@@ -87,6 +110,7 @@ const userStore = useUserStore()
 
 const currentMenu = ref('insurance-purchase')
 const notificationCount = ref(5)
+const currentRole = ref(userStore.role)
 
 const allMenuItems = [
   { 
@@ -182,9 +206,8 @@ const menuConfig = {
 }
 
 const userMenuOptions = [
-  { content: '切换到：客户', value: 'role-customer' },
-  { content: '切换到：长安银科', value: 'role-inkasso' },
-  { content: '切换到：跟单员', value: 'role-clerk' },
+  { content: '个人设置', value: 'settings' },
+  { content: '帮助中心', value: 'help' },
   { content: '退出登录', value: 'logout' }
 ]
 
@@ -224,17 +247,19 @@ const handleMenuChange = (value) => {
 }
 
 const handleUserMenuClick = (data) => {
-  if (data.value?.startsWith?.('role-')) {
-    const role = data.value.replace('role-', '')
-    userStore.setRole(role)
-    const target = getDefaultPathByRole(role)
-    if (route.path !== target) router.push(target)
-    return
-  }
   if (data.value === 'logout') {
     console.log('logout')
   }
 }
+
+const handleRoleChange = (role) => {
+  if (role === userStore.role) return
+  userStore.setRole(role)
+  const target = getDefaultPathByRole(role)
+  if (route.path !== target) router.push(target)
+}
+
+watch(currentRole, handleRoleChange)
 
 watchEffect(() => {
   const menuKey = route.meta?.menuKey
@@ -242,6 +267,7 @@ watchEffect(() => {
 })
 
 watch(() => userStore.role, (role) => {
+  currentRole.value = role
   const roles = route.meta?.roles
   if (Array.isArray(roles) && roles.length > 0 && !roles.includes(role)) {
     router.push(getDefaultPathByRole(role))
@@ -374,6 +400,43 @@ watch(() => userStore.role, (role) => {
   &:hover {
     background: #f3f3f3;
     color: #0052D9;
+  }
+}
+
+.role-switch {
+  :deep(.t-radio-group) {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 2px;
+  }
+
+  :deep(.t-radio__button) {
+    border: none;
+    background: transparent;
+    padding: 6px 16px;
+    font-size: 13px;
+    color: #64748b;
+    border-radius: 6px;
+    transition: all 0.2s;
+
+    &:hover {
+      background: rgba(0, 82, 217, 0.08);
+      color: #0052D9;
+    }
+
+    &.t-is-checked {
+      background: #0052D9;
+      color: #fff;
+
+      :deep(.t-icon) {
+        color: #fff;
+      }
+    }
+  }
+
+  :deep(.t-radio__icon) {
+    margin-right: 6px;
+    color: #64748b;
   }
 }
 

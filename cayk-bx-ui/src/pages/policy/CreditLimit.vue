@@ -14,10 +14,10 @@
     />
 
     <div class="stats-grid mb-24">
-      <stat-card title="有效限额" :value="15" icon="protect" color="success" />
-      <stat-card title="审批中" :value="3" icon="loading" color="warning" />
-      <stat-card title="额度总额" value="$5,000,000" icon="wallet" color="primary" />
-      <stat-card title="已用额度" value="$3,450,000" icon="credit-card" color="danger" />
+      <stat-card title="有效限额" :value="activeCount" icon="protect" color="success" />
+      <stat-card title="审批中" :value="pendingCount" icon="loading" color="warning" />
+      <stat-card title="额度总额" :value="`$${appliedSum.toLocaleString()}`" icon="wallet" color="primary" />
+      <stat-card title="已用额度" :value="`$${usedSum.toLocaleString()}`" icon="credit-card" color="danger" />
     </div>
 
     <data-table
@@ -45,13 +45,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import SearchFilter from '@/components/common/SearchFilter.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
+import { useBusinessStore } from '@/stores/business'
 
-const loading = ref(false)
+const store = useBusinessStore()
+const loading = computed(() => false)
+const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRange: [] })
 
 const statusOptions = [
   { value: 'active', label: '有效' },
@@ -79,40 +82,46 @@ const columns = [
   { colKey: 'operation', title: '操作', width: 120, fixed: 'right', slot: 'operation' }
 ]
 
-const tableData = ref([])
 const pagination = reactive({
   total: 0,
   current: 1,
   pageSize: 20
 })
 
-const fetchData = () => {
-  loading.value = true
-  setTimeout(() => {
-    tableData.value = [
-      { id: 1, buyerName: 'ABC Corporation', appliedLimit: 500000, usedLimit: 320000, remainingLimit: 180000, usageRate: 64, effectiveDate: '2026-02-01', expiryDate: '2027-01-31', status: 'active' },
-      { id: 2, buyerName: 'DEF GmbH', appliedLimit: 300000, usedLimit: 150000, remainingLimit: 150000, usageRate: 50, effectiveDate: '2026-03-01', expiryDate: '2027-02-28', status: 'active' },
-      { id: 3, buyerName: 'GHI Ltd', appliedLimit: 200000, usedLimit: 200000, remainingLimit: 0, usageRate: 100, effectiveDate: '2026-01-01', expiryDate: '2026-12-31', status: 'exhausted' },
-      { id: 4, buyerName: 'JKL Co', appliedLimit: 400000, usedLimit: 280000, remainingLimit: 120000, usageRate: 70, effectiveDate: '2026-04-01', expiryDate: '2027-03-31', status: 'active' }
-    ]
-    pagination.total = 4
-    loading.value = false
-  }, 500)
-}
+const filteredData = computed(() => {
+  const list = store.creditLimits || []
+  const p = searchParams.value
+  return list.filter((it) => {
+    if (p.buyerName && !String(it.buyerName || '').includes(p.buyerName)) return false
+    if (p.status && it.status !== p.status) return false
+    return true
+  })
+})
+
+const tableData = computed(() => {
+  pagination.total = filteredData.value.length
+  const start = (pagination.current - 1) * pagination.pageSize
+  return filteredData.value.slice(start, start + pagination.pageSize)
+})
+
+const activeCount = computed(() => (store.creditLimits || []).filter(it => it.status === 'active').length)
+const pendingCount = computed(() => (store.creditLimits || []).filter(it => it.status === 'pending').length)
+const appliedSum = computed(() => (store.creditLimits || []).reduce((sum, it) => sum + (Number(it.appliedLimit) || 0), 0))
+const usedSum = computed(() => (store.creditLimits || []).reduce((sum, it) => sum + (Number(it.usedLimit) || 0), 0))
 
 const handleSearch = (params) => {
-  console.log('search:', params)
-  fetchData()
+  searchParams.value = params
+  pagination.current = 1
 }
 
 const handleReset = () => {
-  fetchData()
+  searchParams.value = { enterpriseName: '', buyerName: '', status: '', dateRange: [] }
+  pagination.current = 1
 }
 
 const handlePageChange = (pageInfo) => {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
-  fetchData()
 }
 
 const handleAdd = () => {
@@ -128,7 +137,7 @@ const handleEdit = (row) => {
 }
 
 onMounted(() => {
-  fetchData()
+  store.ensureSeeded()
 })
 </script>
 

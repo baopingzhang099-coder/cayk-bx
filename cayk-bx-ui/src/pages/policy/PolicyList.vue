@@ -18,10 +18,10 @@
     </search-filter>
 
     <div class="stats-grid mb-24">
-      <stat-card title="有效保单" :value="28" icon="file" color="success" />
-      <stat-card title="本月新增" :value="5" icon="add" color="primary" />
-      <stat-card title="即将到期" :value="3" icon="time" color="warning" />
-      <stat-card title="已用额度" value="$3,450,000" icon="credit-card" color="danger" />
+      <stat-card title="有效保单" :value="activePolicyCount" icon="file" color="success" />
+      <stat-card title="本月新增" :value="store.policies.length" icon="add" color="primary" />
+      <stat-card title="即将到期" :value="expiringPolicyCount" icon="time" color="warning" />
+      <stat-card title="已用额度" :value="`$${usedQuotaSum.toLocaleString()}`" icon="credit-card" color="danger" />
     </div>
 
     <data-table
@@ -47,13 +47,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { computed, reactive, ref, onMounted } from 'vue'
 import SearchFilter from '@/components/common/SearchFilter.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
+import { useBusinessStore } from '@/stores/business'
 
-const loading = ref(false)
+const store = useBusinessStore()
+const loading = computed(() => false)
+const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRange: [] })
 
 const statusOptions = [
   { value: 'active', label: '有效' },
@@ -87,40 +90,46 @@ const columns = [
   { colKey: 'operation', title: '操作', width: 140, fixed: 'right', slot: 'operation' }
 ]
 
-const tableData = ref([])
 const pagination = reactive({
   total: 0,
   current: 1,
   pageSize: 20
 })
 
-const fetchData = () => {
-  loading.value = true
-  setTimeout(() => {
-    tableData.value = [
-      { id: 1, policyNo: 'PI2026001234', insuranceCompany: '人保财险', policyholder: '深圳XX国际贸易有限公司', insured: 'ABC Corporation', coverageAmount: 500000, effectiveDate: '2026-01-01', expiryDate: '2027-01-01', status: 'active' },
-      { id: 2, policyNo: 'PI2026001235', insuranceCompany: '平安保险', policyholder: '上海YY进出口公司', insured: 'DEF GmbH', coverageAmount: 300000, effectiveDate: '2026-02-01', expiryDate: '2027-02-01', status: 'active' },
-      { id: 3, policyNo: 'PI2025000987', insuranceCompany: '太平洋保险', policyholder: '北京ZZ贸易集团', insured: 'GHI Ltd', coverageAmount: 800000, effectiveDate: '2025-11-01', expiryDate: '2026-11-01', status: 'suspended' },
-      { id: 4, policyNo: 'PI2025000765', insuranceCompany: '人保财险', policyholder: '广州AA实业公司', insured: 'JKL Co', coverageAmount: 600000, effectiveDate: '2025-10-01', expiryDate: '2026-10-01', status: 'expired' }
-    ]
-    pagination.total = 4
-    loading.value = false
-  }, 500)
-}
+const filteredData = computed(() => {
+  const list = store.policies || []
+  const p = searchParams.value
+  return list.filter((it) => {
+    if (p.enterpriseName && !String(it.policyholder || '').includes(p.enterpriseName)) return false
+    if (p.buyerName && !String(it.insured || '').includes(p.buyerName)) return false
+    if (p.status && it.status !== p.status) return false
+    return true
+  })
+})
+
+const tableData = computed(() => {
+  pagination.total = filteredData.value.length
+  const start = (pagination.current - 1) * pagination.pageSize
+  return filteredData.value.slice(start, start + pagination.pageSize)
+})
+
+const activePolicyCount = computed(() => (store.policies || []).filter(p => p.status === 'active').length)
+const expiringPolicyCount = computed(() => (store.policies || []).filter(p => p.status === 'expiring').length)
+const usedQuotaSum = computed(() => (store.policies || []).reduce((sum, p) => sum + (Number(p.usedQuota) || 0), 0))
 
 const handleSearch = (params) => {
-  console.log('search:', params)
-  fetchData()
+  searchParams.value = params
+  pagination.current = 1
 }
 
 const handleReset = () => {
-  fetchData()
+  searchParams.value = { enterpriseName: '', buyerName: '', status: '', dateRange: [] }
+  pagination.current = 1
 }
 
 const handlePageChange = (pageInfo) => {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
-  fetchData()
 }
 
 const handleAdd = () => {
@@ -144,7 +153,7 @@ const handleExport = () => {
 }
 
 onMounted(() => {
-  fetchData()
+  store.ensureSeeded()
 })
 </script>
 

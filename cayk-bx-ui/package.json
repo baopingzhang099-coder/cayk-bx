@@ -13,6 +13,7 @@
     "vue-router": "^4.3.0",
     "pinia": "^2.1.7",
     "tdesign-vue-next": "^1.9.6",
+    "tdesign-icons-vue-next": "^0.4.4",
     "axios": "^1.6.7"
   },
   "devDependencies": {

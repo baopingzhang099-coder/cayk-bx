@@ -13,31 +13,31 @@
 
     <t-row :gutter="16" class="mb-16">
       <t-col :span="6">
-        <stat-card title="本月投保" :value="45" icon="document" color="primary" :trend="12" suffix="份" />
+        <stat-card title="投保统计" :value="kpis.insuranceCount" icon="document" color="primary" suffix="份" />
       </t-col>
       <t-col :span="6">
-        <stat-card title="申请限额" :value="32" icon="protect" color="success" :trend="8" suffix="笔" />
+        <stat-card title="限额统计" :value="kpis.limitCount" icon="protect" color="success" suffix="笔" />
       </t-col>
       <t-col :span="6">
-        <stat-card title="申报出运" :value="78" icon="airplane" color="primary" :trend="5" suffix="笔" />
+        <stat-card title="出运统计" :value="kpis.shipmentCount" icon="airplane" color="primary" suffix="笔" />
       </t-col>
       <t-col :span="6">
-        <stat-card title="理赔案件" :value="12" icon="first-aid-kit" color="warning" :trend="-3" suffix="件" />
+        <stat-card title="理赔统计" :value="kpis.claimCount" icon="first-aid-kit" color="warning" suffix="件" />
       </t-col>
     </t-row>
 
     <t-row :gutter="16" class="mb-16">
       <t-col :span="6">
-        <stat-card title="投保金额" value="$2,350,000" icon="money" color="success" />
+        <stat-card title="投保金额" :value="`$${kpis.coverageAmount.toLocaleString()}`" icon="money" color="success" />
       </t-col>
       <t-col :span="6">
-        <stat-card title="审批通过" :value="28" icon="check-circle" color="success" suffix="笔" />
+        <stat-card title="审批通过" :value="store.creditLimits.filter(it => it.status === 'active').length" icon="check-circle" color="success" suffix="笔" />
       </t-col>
       <t-col :span="6">
         <stat-card title="申报及时率" value="95.5%" icon="chart" color="primary" />
       </t-col>
       <t-col :span="6">
-        <stat-card title="赔付金额" value="$456,000" icon="alert" color="danger" />
+        <stat-card title="赔付金额" :value="`$${kpis.claimAmount.toLocaleString()}`" icon="alert" color="danger" />
       </t-col>
     </t-row>
 
@@ -89,10 +89,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import StatCard from '@/components/common/StatCard.vue'
+import { useBusinessStore } from '@/stores/business'
 
 const dateRange = ref([])
+const store = useBusinessStore()
+const kpis = computed(() => store.businessKpis)
 
 const columns = [
   { colKey: 'month', title: '月份', width: 100 },
@@ -105,13 +108,15 @@ const columns = [
   { colKey: 'claimAmount', title: '理赔金额', align: 'right' }
 ]
 
-const tableData = ref([
-  { id: 1, month: '2026-01', insuranceCount: 38, coverageAmount: 1850000, limitCount: 28, shipmentCount: 65, shipmentAmount: 1650000, claimCount: 8, claimAmount: 320000 },
-  { id: 2, month: '2026-02', insuranceCount: 35, coverageAmount: 1680000, limitCount: 25, shipmentCount: 58, shipmentAmount: 1480000, claimCount: 10, claimAmount: 450000 },
-  { id: 3, month: '2026-03', insuranceCount: 42, coverageAmount: 2100000, limitCount: 30, shipmentCount: 72, shipmentAmount: 1780000, claimCount: 15, claimAmount: 580000 },
-  { id: 4, month: '2026-04', insuranceCount: 48, coverageAmount: 2350000, limitCount: 35, shipmentCount: 85, shipmentAmount: 2100000, claimCount: 12, claimAmount: 420000 },
-  { id: 5, month: '2026-05', insuranceCount: 45, coverageAmount: 2350000, limitCount: 32, shipmentCount: 78, shipmentAmount: 1890000, claimCount: 12, claimAmount: 456000 }
-])
+const tableData = computed(() => {
+  const now = new Date()
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  return [
+    { id: 1, month, insuranceCount: kpis.value.insuranceCount, coverageAmount: kpis.value.coverageAmount, limitCount: kpis.value.limitCount, shipmentCount: kpis.value.shipmentCount, shipmentAmount: kpis.value.shipmentAmount, claimCount: kpis.value.claimCount, claimAmount: kpis.value.claimAmount }
+  ]
+})
+
+onMounted(() => store.ensureSeeded())
 </script>
 
 <style lang="scss" scoped>

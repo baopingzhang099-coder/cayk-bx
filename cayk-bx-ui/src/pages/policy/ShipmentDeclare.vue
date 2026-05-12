@@ -15,9 +15,9 @@
 
     <t-alert theme="warning" class="mb-16">
       <template #message>
-        <span>超时预警：3 笔</span>
-        <span style="margin-left: 24px;">即将到期（3天内）：5 笔</span>
-        <span style="margin-left: 24px;">正常：45 笔</span>
+        <span>超时预警：{{ overdueCount }} 笔</span>
+        <span style="margin-left: 24px;">即将到期（3天内）：{{ dueSoonCount }} 笔</span>
+        <span style="margin-left: 24px;">正常：{{ normalCount }} 笔</span>
       </template>
     </t-alert>
 
@@ -43,12 +43,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import SearchFilter from '@/components/common/SearchFilter.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
+import { useBusinessStore } from '@/stores/business'
 
-const loading = ref(false)
+const store = useBusinessStore()
+const loading = computed(() => false)
+const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRange: [] })
 
 const statusOptions = [
   { value: 'pending_declare', label: '待申报' },
@@ -75,41 +78,63 @@ const columns = [
   { colKey: 'shipmentDate', title: '出运日期', width: 120 },
   { colKey: 'shipmentAmount', title: '出运金额', align: 'right' },
   { colKey: 'destinationPort', title: '目的港' },
-  { colKey: 'declarationType', title: '申报类型' },
+  { colKey: 'declarationTypeName', title: '申报类型' },
   { colKey: 'deadline', title: '申报期限', width: 120 },
   { colKey: 'status', title: '状态', width: 100, slot: 'status' },
   { colKey: 'operation', title: '操作', width: 120, fixed: 'right', slot: 'operation' }
 ]
 
-const tableData = ref([])
 const pagination = reactive({
   total: 0,
   current: 1,
   pageSize: 20
 })
 
-const fetchData = () => {
-  loading.value = true
-  setTimeout(() => {
-    tableData.value = [
-      { id: 1, declarationNo: 'SD20260510001', buyerName: 'ABC Corporation', shipmentDate: '2026-05-10', shipmentAmount: 50000, destinationPort: 'New York, USA', declarationType: '逐笔申报', deadline: '2026-05-25', status: 'declared' },
-      { id: 2, declarationNo: 'SD20260508002', buyerName: 'DEF GmbH', shipmentDate: '2026-05-08', shipmentAmount: 30000, destinationPort: 'Hamburg, Germany', declarationType: '逐笔申报', deadline: '2026-05-23', status: 'timeout_warning' },
-      { id: 3, declarationNo: 'SD20260505003', buyerName: 'GHI Ltd', shipmentDate: '2026-05-05', shipmentAmount: 80000, destinationPort: 'London, UK', declarationType: '月度汇总', deadline: '2026-05-15', status: 'pending_declare' },
-      { id: 4, declarationNo: 'SD20260501004', buyerName: 'JKL Co', shipmentDate: '2026-05-01', shipmentAmount: 45000, destinationPort: 'Tokyo, Japan', declarationType: '逐笔申报', deadline: '2026-05-16', status: 'completed' }
-    ]
-    pagination.total = 4
-    loading.value = false
-  }, 500)
-}
+const filteredData = computed(() => {
+  const list = store.shipments || []
+  const p = searchParams.value
+  return list.filter((it) => {
+    if (p.buyerName && !String(it.buyerName || '').includes(p.buyerName)) return false
+    if (p.status && it.status !== p.status) return false
+    return true
+  })
+})
 
-const handleSearch = (params) => { fetchData() }
-const handleReset = () => { fetchData() }
-const handlePageChange = (pageInfo) => { fetchData() }
+const tableData = computed(() => {
+  pagination.total = filteredData.value.length
+  const start = (pagination.current - 1) * pagination.pageSize
+  return filteredData.value.slice(start, start + pagination.pageSize)
+})
+
+const overdueCount = computed(() => {
+  const today = new Date()
+  return (store.shipments || []).filter((it) => {
+    if (!it.deadline) return false
+    return new Date(it.deadline) < today && it.status !== 'declared'
+  }).length
+})
+
+const dueSoonCount = computed(() => {
+  const today = new Date()
+  const in3d = new Date()
+  in3d.setDate(in3d.getDate() + 3)
+  return (store.shipments || []).filter((it) => {
+    if (!it.deadline) return false
+    const d = new Date(it.deadline)
+    return d >= today && d <= in3d && it.status !== 'declared'
+  }).length
+})
+
+const normalCount = computed(() => (store.shipments || []).length - overdueCount.value - dueSoonCount.value)
+
+const handleSearch = (params) => { searchParams.value = params; pagination.current = 1 }
+const handleReset = () => { searchParams.value = { enterpriseName: '', buyerName: '', status: '', dateRange: [] }; pagination.current = 1 }
+const handlePageChange = (pageInfo) => { pagination.current = pageInfo.current; pagination.pageSize = pageInfo.pageSize }
 const handleAdd = () => { console.log('add') }
 const handleView = (row) => { console.log('view:', row) }
 const handleEdit = (row) => { console.log('edit:', row) }
 
-onMounted(() => { fetchData() })
+onMounted(() => { store.ensureSeeded() })
 </script>
 
 <style lang="scss" scoped>

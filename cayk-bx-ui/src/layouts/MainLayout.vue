@@ -1,9 +1,12 @@
 <template>
   <t-layout class="main-layout">
-    <t-aside width="220px" class="layout-aside">
+    <t-aside width="260px" class="layout-aside">
       <div class="logo">
-        <t-icon name="insurance" size="32px" />
-        <span class="logo-text">长安银科保险</span>
+        <t-avatar size="40px" class="logo-avatar">C</t-avatar>
+        <div class="logo-texts">
+          <div class="logo-title">长安银科</div>
+          <div class="logo-subtitle">Chang'an Inkasso</div>
+        </div>
       </div>
       <t-menu
         v-model:value="currentMenu"
@@ -12,7 +15,7 @@
         :style="{ border: 'none' }"
         @change="handleMenuChange"
       >
-        <template v-for="item in menuItems" :key="item.key">
+        <template v-for="item in filteredMenuItems" :key="item.key">
           <t-submenu
             v-if="item.children && item.children.length > 0"
             :value="item.key"
@@ -55,8 +58,9 @@
           </t-tooltip>
           <t-dropdown :options="userMenuOptions" @click="handleUserMenuClick">
             <div class="user-info">
-              <t-avatar size="small">张</t-avatar>
-              <span class="user-name">张经理</span>
+              <t-avatar size="small">{{ userStore.avatarText }}</t-avatar>
+              <span class="role-badge">{{ userStore.roleLabel }}</span>
+              <span class="user-name">{{ userStore.userName }}</span>
               <t-icon name="chevron-down" size="16px" />
             </div>
           </t-dropdown>
@@ -64,6 +68,7 @@
       </t-header>
 
       <t-content class="layout-content">
+        <div class="content-topbar"></div>
         <router-view />
       </t-content>
     </t-layout>
@@ -74,22 +79,24 @@
 import { ref, computed, watch, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Icon } from 'tdesign-vue-next'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 
 const currentMenu = ref('insurance-purchase')
 const notificationCount = ref(5)
 
-const menuItems = [
+const allMenuItems = [
   { 
     key: 'insurance', 
     title: '保险购买', 
-    icon: 'document', 
+    icon: 'document-popular', 
     children: [
-      { key: 'insurance-purchase', title: '投保信息管理', path: '/insurance/purchase' },
-      { key: 'insurance-apply', title: '投保流程管理', path: '/insurance/apply' },
-      { key: 'insurance-report', title: '投保数据报表', path: '/insurance/report' }
+      { key: 'insurance-purchase', title: '投保信息管理', path: '/insurance/purchase', roles: ['customer', 'inkasso', 'clerk'], icon: 'clipboard' },
+      { key: 'insurance-apply', title: '投保流程管理', path: '/insurance/apply', roles: ['inkasso', 'clerk'], icon: 'switch' },
+      { key: 'insurance-report', title: '投保数据报表', path: '/insurance/report', roles: ['inkasso'], icon: 'chart' }
     ]
   },
   { 
@@ -97,46 +104,60 @@ const menuItems = [
     title: '保单管理', 
     icon: 'file', 
     children: [
-      { key: 'policy-list', title: '保单信息管理', path: '/policy/list' },
-      { key: 'policy-trade', title: '贸易信息管理', path: '/policy/trade' },
-      { key: 'policy-limit', title: '信用限额管理', path: '/policy/limit' },
-      { key: 'policy-shipment', title: '出运申报管理', path: '/policy/shipment' },
-      { key: 'policy-process', title: '流程管理', path: '/policy/process' },
-      { key: 'policy-subsidy', title: '保费补贴管理', path: '/policy/subsidy' },
-      { key: 'policy-performance', title: '保单履约报表', path: '/policy/performance' }
+      { key: 'policy-list', title: '保单信息管理', path: '/policy/list', roles: ['customer', 'inkasso', 'clerk'], icon: 'file' },
+      { key: 'policy-trade', title: '贸易信息管理', path: '/policy/trade', roles: ['inkasso', 'clerk'], icon: 'truck' },
+      { key: 'policy-limit', title: '信用限额管理', path: '/policy/limit', roles: ['inkasso', 'clerk'], icon: 'credit-card' },
+      { key: 'policy-shipment', title: '出运申报管理', path: '/policy/shipment', roles: ['customer', 'inkasso', 'clerk'], icon: 'airplane' },
+      { key: 'policy-process', title: '流程管理', path: '/policy/process', roles: ['inkasso', 'clerk'], icon: 'fork' },
+      { key: 'policy-subsidy', title: '保费补贴管理', path: '/policy/subsidy', roles: ['inkasso'], icon: 'wallet' },
+      { key: 'policy-performance', title: '保单履约报表', path: '/policy/performance', roles: ['inkasso'], icon: 'chart' }
     ]
   },
   { 
     key: 'claim', 
     title: '保险理赔', 
-    icon: 'first-aid-kit', 
+    icon: 'error-circle', 
     children: [
-      { key: 'claim-list', title: '理赔信息管理', path: '/claim/list' },
-      { key: 'claim-process', title: '理赔流程管理', path: '/claim/process' },
-      { key: 'claim-report', title: '理赔报表管理', path: '/claim/report' }
+      { key: 'claim-list', title: '理赔信息管理', path: '/claim/list', roles: ['customer', 'inkasso', 'clerk'], icon: 'first-aid-kit' },
+      { key: 'claim-process', title: '理赔流程管理', path: '/claim/process', roles: ['inkasso', 'clerk'], icon: 'route' },
+      { key: 'claim-report', title: '理赔报表管理', path: '/claim/report', roles: ['inkasso'], icon: 'chart' }
     ]
   },
   { 
     key: 'clerk', 
     title: '跟单员管理', 
-    icon: 'person', 
+    icon: 'user', 
+    roles: ['inkasso'],
     children: [
-      { key: 'clerk-list', title: '跟单员信息', path: '/clerk/list' },
-      { key: 'clerk-permission', title: '权限管理', path: '/clerk/permission' },
-      { key: 'clerk-task', title: '业务管理', path: '/clerk/task' },
-      { key: 'clerk-performance', title: '考核管理', path: '/clerk/performance' }
+      { key: 'clerk-list', title: '跟单员信息', path: '/clerk/list', roles: ['inkasso'], icon: 'user' },
+      { key: 'clerk-permission', title: '权限管理', path: '/clerk/permission', roles: ['inkasso'], icon: 'lock-on' },
+      { key: 'clerk-task', title: '业务管理', path: '/clerk/task', roles: ['inkasso', 'clerk'], icon: 'task' },
+      { key: 'clerk-performance', title: '考核管理', path: '/clerk/performance', roles: ['inkasso', 'clerk'], icon: 'trophy' }
     ]
   },
   { 
     key: 'stats', 
     title: '数据统计', 
     icon: 'chart', 
+    roles: ['inkasso', 'clerk'],
     children: [
-      { key: 'stats-business', title: '业务数据统计', path: '/stats/business' },
-      { key: 'stats-risk', title: '风险数据分析', path: '/stats/risk' }
+      { key: 'stats-business', title: '业务数据统计', path: '/stats/business', roles: ['inkasso', 'clerk'], icon: 'chart' },
+      { key: 'stats-risk', title: '风险数据分析', path: '/stats/risk', roles: ['inkasso'], icon: 'warning' }
     ]
   }
 ]
+
+const filteredMenuItems = computed(() => {
+  const role = userStore.role
+  return allMenuItems
+    .filter(m => !m.roles || m.roles.includes(role))
+    .map((m) => {
+      if (!m.children) return m
+      const children = m.children.filter(c => !c.roles || c.roles.includes(role))
+      return { ...m, children }
+    })
+    .filter(m => !m.children || m.children.length > 0)
+})
 
 const menuConfig = {
   'insurance-purchase': { parent: '保险购买', current: '投保信息管理' },
@@ -161,15 +182,19 @@ const menuConfig = {
 }
 
 const userMenuOptions = [
-  { content: '个人中心', value: 'profile' },
-  { content: '修改密码', value: 'password' },
+  { content: '切换到：客户', value: 'role-customer' },
+  { content: '切换到：长安银科', value: 'role-inkasso' },
+  { content: '切换到：跟单员', value: 'role-clerk' },
   { content: '退出登录', value: 'logout' }
 ]
 
 const breadcrumbItems = computed(() => {
   const key = route.meta?.menuKey || currentMenu.value
   const config = menuConfig[key]
-  return config ? [config.parent, config.current] : ['首页']
+  if (!config) return ['首页']
+  const title = route.meta?.title
+  if (title && title !== config.current) return [config.parent, config.current, title]
+  return [config.parent, config.current]
 })
 
 const renderIcon = (iconName) => {
@@ -177,7 +202,7 @@ const renderIcon = (iconName) => {
 }
 
 const findPathByMenuKey = (key) => {
-  for (const item of menuItems) {
+  for (const item of filteredMenuItems.value) {
     if (item.key === key && item.path) return item.path
     if (item.children) {
       const child = item.children.find(c => c.key === key)
@@ -187,33 +212,56 @@ const findPathByMenuKey = (key) => {
   return ''
 }
 
+const getDefaultPathByRole = (role) => {
+  if (role === 'customer') return '/insurance/purchase'
+  if (role === 'clerk') return '/insurance/apply'
+  return '/insurance/purchase'
+}
+
+const syncMenuByRoute = (path) => {
+  for (const item of filteredMenuItems.value) {
+    if (item.children) {
+      const child = item.children.find(c => c.path === path)
+      if (child) {
+        currentMenu.value = child.key
+        return true
+      }
+    } else {
+      if (item.path === path) {
+        currentMenu.value = item.key
+        return true
+      }
+    }
+  }
+  return false
+}
+
 const handleMenuChange = (value) => {
   const path = findPathByMenuKey(value)
   if (path && path !== route.path) router.push(path)
 }
 
 const handleUserMenuClick = (data) => {
+  if (data.value?.startsWith?.('role-')) {
+    const role = data.value.replace('role-', '')
+    userStore.setRole(role)
+    const target = getDefaultPathByRole(role)
+    if (route.path !== target) router.push(target)
+    return
+  }
   if (data.value === 'logout') {
     console.log('logout')
   }
 }
 
 watch(() => route.path, (newPath) => {
-  for (const item of menuItems) {
-    if (item.children) {
-      const child = item.children.find(c => c.path === newPath)
-      if (child) {
-        currentMenu.value = child.key
-        return
-      }
-    } else {
-      if (item.path === newPath) {
-        currentMenu.value = item.key
-        return
-      }
-    }
-  }
+  syncMenuByRoute(newPath)
 }, { immediate: true })
+
+watch(() => userStore.role, () => {
+  const ok = syncMenuByRoute(route.path)
+  if (!ok) router.push(getDefaultPathByRole(userStore.role))
+})
 </script>
 
 <style lang="scss" scoped>
@@ -223,13 +271,44 @@ watch(() => route.path, (newPath) => {
 }
 
 .layout-aside {
-  background: #fff;
-  border-right: 1px solid #e7e7e7;
+  background: #eef2f7;
+  border-right: 1px solid #d9e2ec;
   display: flex;
   flex-direction: column;
 
   :deep(.t-menu) {
     border: none;
+    background: transparent;
+  }
+
+  :deep(.t-menu__item),
+  :deep(.t-menu__submenu-title) {
+    margin: 4px 12px;
+    border-radius: 10px;
+    height: 44px;
+    color: #334155;
+  }
+
+  :deep(.t-menu__item:hover),
+  :deep(.t-menu__submenu-title:hover) {
+    background: rgba(30, 64, 175, 0.08);
+  }
+
+  :deep(.t-menu__item.t-is-active),
+  :deep(.t-menu__item--active),
+  :deep(.t-menu__submenu-title.t-is-active),
+  :deep(.t-menu__submenu-title--active) {
+    background: #1f4e79;
+    color: #fff;
+  }
+
+  :deep(.t-menu__item.t-is-active .t-icon),
+  :deep(.t-menu__submenu-title.t-is-active .t-icon) {
+    color: #fff;
+  }
+
+  :deep(.t-menu__sub .t-menu__item) {
+    padding-left: 44px;
   }
 }
 
@@ -237,24 +316,40 @@ watch(() => route.path, (newPath) => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e7e7e7;
-  color: #0052D9;
-  background: linear-gradient(135deg, #0052D9 0%, #3680eb 100%);
+  padding: 18px 16px;
+  border-bottom: 1px solid #d9e2ec;
+  background: #fff;
 
-  .logo-text {
-    font-size: 18px;
-    font-weight: 600;
+  .logo-avatar {
+    background: #1f4e79;
     color: #fff;
-    letter-spacing: 1px;
+    font-weight: 700;
   }
+}
+
+.logo-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.logo-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 1px;
+}
+
+.logo-subtitle {
+  font-size: 14px;
+  color: #64748b;
 }
 
 .layout-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: #f6f8fb;
   overflow: hidden;
 }
 
@@ -316,9 +411,25 @@ watch(() => route.path, (newPath) => {
   font-size: 14px;
 }
 
+.role-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 82, 217, 0.12);
+  color: #0052D9;
+}
+
 .layout-content {
   padding: 20px 24px;
   overflow-y: auto;
   flex: 1;
+  background: #f6f8fb;
+}
+
+.content-topbar {
+  height: 6px;
+  background: #2f7ed8;
+  border-radius: 4px;
+  margin-bottom: 16px;
 }
 </style>

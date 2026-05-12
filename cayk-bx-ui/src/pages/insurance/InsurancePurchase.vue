@@ -42,10 +42,10 @@
     </t-card>
 
     <div class="stats-grid mb-16">
-      <stat-card title="本月新增" :value="12" icon="document-add" color="primary" />
-      <stat-card title="审核中" :value="8" icon="clipboard" color="warning" />
-      <stat-card title="已完成" :value="45" icon="check-circle" color="success" />
-      <stat-card title="待处理" :value="5" icon="time" color="danger" />
+      <stat-card title="待提交" :value="insuranceStats.pending_submit" icon="send" color="warning" />
+      <stat-card title="资信调查中" :value="insuranceStats.credit_investigating" icon="search" color="primary" />
+      <stat-card title="已完成" :value="insuranceStats.completed" icon="check-circle" color="success" />
+      <stat-card title="草稿" :value="insuranceStats.draft" icon="edit" color="danger" />
     </div>
 
     <t-card>
@@ -73,52 +73,27 @@
           <t-space>
             <t-link @click="handleView(row)">查看</t-link>
             <t-link @click="handleEdit(row)">编辑</t-link>
-            <t-link v-if="row.status === 'pending_submit'" theme="warning" @click="handleSubmit(row)">提交</t-link>
+            <t-link v-if="row.status === 'pending_submit' || row.status === 'draft'" theme="warning" @click="handleSubmit(row)">提交</t-link>
+            <t-link v-if="row.status === 'credit_investigating'" theme="success" @click="handleApprove(row)">模拟通过</t-link>
             <t-link v-if="row.status === 'draft'" theme="danger" @click="handleDelete(row)">删除</t-link>
           </t-space>
         </template>
       </t-table>
     </t-card>
-
-    <t-dialog v-model:visible="dialogVisible" :header="dialogTitle" width="1000px" :footer="false">
-      <insurance-form v-if="dialogVisible" :data="currentRow" @submit="handleFormSubmit" @cancel="dialogVisible = false" />
-    </t-dialog>
-
-    <t-dialog v-model:visible="detailVisible" header="投保详情" width="900px" :footer="false">
-      <div v-if="currentRow" class="detail-container">
-        <t-tabs default-value="customer">
-          <t-tab-panel value="customer" label="客户信息">
-            <detail-panel :data="currentRow" :columns="customerColumns" title="客户基本信息" />
-          </t-tab-panel>
-          <t-tab-panel value="buyer" label="买方信息">
-            <detail-panel :data="currentRow" :columns="buyerColumns" title="买方信息" />
-          </t-tab-panel>
-          <t-tab-panel value="insurance" label="投保需求">
-            <detail-panel :data="currentRow" :columns="insuranceColumns" title="投保需求" />
-          </t-tab-panel>
-          <t-tab-panel value="process" label="流程记录">
-            <t-timeline mode="alternate">
-              <t-timeline-item v-for="item in processTimeline" :key="item.time" :content="item.content" :time="item.time" :color="item.color" />
-            </t-timeline>
-          </t-tab-panel>
-        </t-tabs>
-      </div>
-    </t-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { MessagePlugin } from 'tdesign-vue-next'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
-import DetailPanel from '@/components/common/DetailPanel.vue'
-import InsuranceForm from '@/components/form/InsuranceForm.vue'
+import { useBusinessStore } from '@/stores/business'
 
-const loading = ref(false)
-const dialogVisible = ref(false)
-const detailVisible = ref(false)
-const dialogTitle = ref('新增投保')
-const currentRow = ref(null)
+const router = useRouter()
+const store = useBusinessStore()
+const loading = computed(() => false)
 
 const searchParams = reactive({
   enterpriseName: '',
@@ -159,47 +134,31 @@ const columns = [
   { colKey: 'coverageAmount', title: '投保金额', align: 'right', width: 130 },
   { colKey: 'status', title: '状态', width: 110, slot: 'status' },
   { colKey: 'createTime', title: '申请日期', width: 120 },
-  { colKey: 'operation', title: '操作', width: 180, fixed: 'right', slot: 'operation' }
+  { colKey: 'operation', title: '操作', width: 220, fixed: 'right', slot: 'operation' }
 ]
 
-const customerColumns = [
-  { label: '企业名称', value: 'enterpriseName' },
-  { label: '统一社会信用代码', value: 'unifiedSocialCreditCode' },
-  { label: '企业地址', value: 'enterpriseAddress' },
-  { label: '联系人', value: 'contactName' },
-  { label: '联系电话', value: 'contactPhone' },
-  { label: '电子邮箱', value: 'contactEmail' }
-]
+const insuranceStats = computed(() => store.insuranceStats)
 
-const buyerColumns = [
-  { label: '买方名称', value: 'buyerName' },
-  { label: '买方国别', value: 'buyerCountry' },
-  { label: '买方地址', value: 'buyerAddress' },
-  { label: '买方联系人', value: 'buyerContact' },
-  { label: '联系电话', value: 'buyerPhone' },
-  { label: '历史交易金额', value: 'historicalTransactionAmount' }
-]
+const filteredData = computed(() => {
+  const list = store.insuranceApplications || []
+  return list.filter((it) => {
+    if (searchParams.enterpriseName && !String(it.enterpriseName || '').includes(searchParams.enterpriseName)) return false
+    if (searchParams.buyerName && !String(it.buyerName || '').includes(searchParams.buyerName)) return false
+    if (searchParams.status && it.status !== searchParams.status) return false
+    return true
+  })
+})
 
-const insuranceColumns = [
-  { label: '投保方案', value: 'insuranceScheme' },
-  { label: '投保金额', value: (v) => `¥${v.coverageAmount?.toLocaleString()}` },
-  { label: '期望保险公司', value: 'expectedInsuranceCompany' },
-  { label: '保单期限', value: 'policyDuration' },
-  { label: '特殊需求', value: 'specialRequirements' }
-]
-
-const processTimeline = [
-  { time: '2026-05-01 10:30', content: '提交投保申请', color: 'success' },
-  { time: '2026-05-01 14:00', content: '资料审核通过', color: 'success' },
-  { time: '2026-05-02 09:00', content: '保险公司资信调查中', color: 'primary' },
-  { time: '2026-05-10', content: '预计完成资信调查', color: 'warning' }
-]
-
-const tableData = ref([])
 const pagination = reactive({
   total: 0,
   current: 1,
   pageSize: 20
+})
+
+const tableData = computed(() => {
+  pagination.total = filteredData.value.length
+  const start = (pagination.current - 1) * pagination.pageSize
+  return filteredData.value.slice(start, start + pagination.pageSize)
 })
 
 const paginationConfig = computed(() => ({
@@ -207,33 +166,34 @@ const paginationConfig = computed(() => ({
   ...pagination
 }))
 
-const fetchData = () => {
-  loading.value = true
-  setTimeout(() => {
-    tableData.value = [
-      { id: 'TB2026001', enterpriseName: '深圳XX国际贸易有限公司', unifiedSocialCreditCode: '91440300XXXXXXXXXX', enterpriseAddress: '深圳市南山区XX路XX号', contactName: '张经理', contactPhone: '138****8888', contactEmail: 'zhang@cayk.com', buyerName: 'ABC Corporation', buyerCountry: '美国', buyerAddress: 'New York, USA', buyerContact: 'John Smith', buyerPhone: '+1-212-555-0100', historicalTransactionAmount: '$1,200,000', insuranceScheme: '方案A-全程保障', coverageAmount: 500000, expectedInsuranceCompany: '人保财险', policyDuration: '1年', specialRequirements: '', status: 'credit_investigating', createTime: '2026-05-01' },
-      { id: 'TB2026002', enterpriseName: '上海YY进出口公司', unifiedSocialCreditCode: '91310000XXXXXXXXXX', enterpriseAddress: '上海市浦东新区XX路XX号', contactName: '李经理', contactPhone: '139****6666', contactEmail: 'li@cayk.com', buyerName: 'DEF GmbH', buyerCountry: '德国', buyerAddress: 'Hamburg, Germany', buyerContact: 'Hans Mueller', buyerPhone: '+49-40-123456', historicalTransactionAmount: '$800,000', insuranceScheme: '方案B-基本保障', coverageAmount: 300000, expectedInsuranceCompany: '平安保险', policyDuration: '1年', specialRequirements: '', status: 'pending_submit', createTime: '2026-05-02' },
-      { id: 'TB2026003', enterpriseName: '北京ZZ贸易集团', unifiedSocialCreditCode: '91110000XXXXXXXXXX', enterpriseAddress: '北京市朝阳区XX路XX号', contactName: '王经理', contactPhone: '137****5555', contactEmail: 'wang@cayk.com', buyerName: 'GHI Ltd', buyerCountry: '英国', buyerAddress: 'London, UK', buyerContact: 'James Wilson', buyerPhone: '+44-20-12345678', historicalTransactionAmount: '$600,000', insuranceScheme: '方案C-标准保障', coverageAmount: 800000, expectedInsuranceCompany: '太平洋保险', policyDuration: '2年', specialRequirements: '', status: 'completed', createTime: '2026-04-28' },
-      { id: 'TB2026004', enterpriseName: '广州AA实业公司', unifiedSocialCreditCode: '91440100XXXXXXXXXX', enterpriseAddress: '广州市天河区XX路XX号', contactName: '赵经理', contactPhone: '136****4444', contactEmail: 'zhao@cayk.com', buyerName: 'JKL Co', buyerCountry: '日本', buyerAddress: 'Tokyo, Japan', buyerContact: 'Tanaka Sato', buyerPhone: '+81-3-12345678', historicalTransactionAmount: '$400,000', insuranceScheme: '方案A-全程保障', coverageAmount: 450000, expectedInsuranceCompany: '人保财险', policyDuration: '1年', specialRequirements: '需要加急处理', status: 'pending_material', createTime: '2026-05-03' }
-    ]
-    pagination.total = 4
-    loading.value = false
-  }, 300)
-}
-
-const handleSearch = () => { fetchData() }
-const handleReset = () => { fetchData() }
-const handlePageChange = (pageInfo) => { pagination.current = pageInfo.current; pagination.pageSize = pageInfo.pageSize; fetchData() }
+const handleSearch = () => { pagination.current = 1 }
+const handleReset = () => { searchParams.enterpriseName = ''; searchParams.buyerName = ''; searchParams.status = ''; searchParams.dateRange = []; pagination.current = 1 }
+const handlePageChange = (pageInfo) => { pagination.current = pageInfo.current; pagination.pageSize = pageInfo.pageSize }
 const handleExport = () => { console.log('export') }
 
-const handleAdd = () => { currentRow.value = null; dialogTitle.value = '新增投保'; dialogVisible.value = true }
-const handleView = (row) => { currentRow.value = row; detailVisible.value = true }
-const handleEdit = (row) => { currentRow.value = row; dialogTitle.value = '编辑投保'; dialogVisible.value = true }
-const handleSubmit = (row) => { console.log('submit:', row) }
-const handleDelete = (row) => { console.log('delete:', row) }
-const handleFormSubmit = (formData) => { console.log('form submit:', formData); dialogVisible.value = false; fetchData() }
+const handleAdd = () => { router.push('/insurance/purchase/new') }
+const handleView = (row) => { router.push(`/insurance/purchase/${row.id}`) }
+const handleEdit = (row) => { router.push(`/insurance/purchase/${row.id}/edit`) }
+const handleSubmit = (row) => {
+  const res = store.submitInsuranceApplication(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '提交失败')
+    return
+  }
+  MessagePlugin.success('提交成功，已进入资信调查')
+}
+const handleApprove = (row) => {
+  const res = store.approveInsuranceApplication(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '操作失败')
+    return
+  }
+  MessagePlugin.success('已模拟通过，已生成保单与信用限额')
+  router.push('/policy/list')
+}
+const handleDelete = (row) => { store.insuranceApplications = store.insuranceApplications.filter(it => it.id !== row.id) }
 
-onMounted(() => { fetchData() })
+onMounted(() => { store.ensureSeeded() })
 </script>
 
 <style lang="scss" scoped>

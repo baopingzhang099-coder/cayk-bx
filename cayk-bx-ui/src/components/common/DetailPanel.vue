@@ -22,6 +22,7 @@ const props = defineProps({
 })
 
 const getValue = (col) => {
+  if (!props.data) return '-'
   const value = props.data[col.key]
   if (col.formatter && typeof col.formatter === 'function') {
     return col.formatter(value, props.data)

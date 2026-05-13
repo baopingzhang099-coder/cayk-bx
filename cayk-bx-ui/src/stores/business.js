@@ -104,7 +104,7 @@ export const useBusinessStore = defineStore('business', {
       const limitCount = state.creditLimits.length
       const shipmentCount = state.shipments.length
       const claimCount = state.claims.length
-      const coverageAmount = state.insuranceApplications.reduce((sum, it) => sum + (Number(it.coverageAmount) || 0), 0)
+      const coverageAmount = state.insuranceApplications.reduce((sum, it) => sum + (Number(it.insuranceAmount) || Number(it.coverageAmount) || 0), 0)
       const shipmentAmount = state.shipments.reduce((sum, it) => sum + (Number(it.shipmentAmount) || 0), 0)
       const claimAmount = state.claims.reduce((sum, it) => sum + (Number(it.claimAmount) || 0), 0)
       return { insuranceCount, limitCount, shipmentCount, claimCount, coverageAmount, shipmentAmount, claimAmount }
@@ -116,84 +116,254 @@ export const useBusinessStore = defineStore('business', {
       this.insuranceApplications = [
         {
           id: 'TB2026001',
-          enterpriseName: '深圳XX国际贸易有限公司',
+          // 客户基础信息
+          companyName: '深圳XX国际贸易有限公司',
           unifiedSocialCreditCode: '91440300XXXXXXXXXX',
-          enterpriseAddress: '深圳市南山区XX路XX号',
+          registeredAddress: '深圳市南山区科技园南区XX大厦12楼',
+          businessAddress: '深圳市南山区科技园南区XX大厦12楼',
+          organizationCode: 'G101234-8',
+          establishmentYear: '2008',
+          legalRepresentative: '张伟华',
+          enterpriseNature: '民营企业',
+          businessType: '贸易公司',
           contactName: '张经理',
+          contactPosition: '出口业务经理',
           contactPhone: '138****8888',
-          contactEmail: 'zhang@cayk.com',
+          companyEmail: 'zhang@szxx-trade.com',
+          // 业务信息
+          exportBusinessHistory: '3年以上',
+          exportMainCountries: ['美国', '加拿大', '墨西哥'],
+          mainExportIndustry: '电子',
+          expectedInsurableTurnover: 8000000,
+          turnoverCurrency: 'USD',
+          mainPaymentMethods: 'OA',
+          mostUsedPaymentTerm: 60,
+          longestPaymentTerm: 90,
+          hasLongerCreditPeriod: '否',
+          longestCreditPeriod: null,
+          // 投保核心需求
+          insuranceType: '短期出口信用保险',
+          preferredInsuranceOrgType: '政策性保险机构',
+          insuranceBusinessScope: '全部适保业务',
+          insuranceCurrency: 'USD',
+          insuranceAmount: 500000,
+          expectedInsurancePeriod: ['2026-06-01', '2027-05-31'],
+          insurancePrimaryPurpose1: '保障出口收汇安全',
+          insurancePrimaryPurpose2: '获取银行贸易融资',
+          insurancePrimaryPurpose3: '取得海外买方信息',
+          insurancePrimaryPurpose4: '提升公司内部管理',
+          // 买方信息
           buyerName: 'ABC Corporation',
           buyerCountry: '美国',
-          buyerAddress: 'New York, USA',
-          buyerContact: 'John Smith',
-          buyerPhone: '+1-212-555-0100',
-          historicalTransactionAmount: '$1,200,000',
-          insuranceScheme: '方案A-全程保障',
-          coverageAmount: 500000,
-          premium: 12500,
-          expectedInsuranceCompany: '人保财险',
-          policyDuration: '1年',
-          specialRequirements: '',
-          businessLicense: [{ name: '营业执照.jpg' }],
-          importExportQualification: [{ name: '进出口资质.jpg' }],
+          buyerAddress: '123 Broadway, New York, NY 10006, USA',
+          cooperationYearsWithBuyer: '3年以上',
+          last12MonthExportAmount: 520,
+          last12MonthCreditSalesAmount: 480,
+          expectedNext12MonthCreditSales: 600,
+          creditSalesCurrency: 'USD',
+          paymentTerms: '发送货物后60天',
+          appliedCreditLimit: 500000,
+          creditLimitCurrency: 'USD',
+          lcIssuingBank: '',
+          // 贸易基础信息
+          exportProductCategory: '消费电子产品及零部件',
+          involvesControlledGoods: '否',
+          controlledGoodsDescription: '',
+          hasTitleRetentionClause: '否',
+          // 补充资料
+          businessLicense: [{ name: '营业执照.pdf' }],
+          importExportQualification: [{ name: '进出口资质.pdf' }],
+          tradeContract: [{ name: '贸易合同_ABC2025001.pdf' }],
+          customsDeclaration: [{ name: '报关单_20260501.pdf' }],
+          exportLicense: null,
           authorizationDocument: [{ name: '授权文件.pdf' }],
+          // 投保声明
+          declarationSignature: '张伟华',
+          declarationDate: '2026-05-01',
+          companySeal: [{ name: '公章文件.pdf' }],
+          // 状态
           status: 'pending_submit',
           createTime: '2026-05-01',
           updateTime: '2026-05-01 10:30:00'
         },
         {
           id: 'TB2026002',
-          enterpriseName: '上海YY进出口公司',
+          // 客户基础信息
+          companyName: '上海YY进出口公司',
           unifiedSocialCreditCode: '91310000XXXXXXXXXX',
-          enterpriseAddress: '上海市浦东新区XX路XX号',
+          registeredAddress: '上海市浦东新区陆家嘴金融区XX号',
+          businessAddress: '上海市浦东新区陆家嘴金融区XX号',
+          organizationCode: 'G201234-5',
+          establishmentYear: '2012',
+          legalRepresentative: '李明辉',
+          enterpriseNature: '民营企业',
+          businessType: '贸易代理',
           contactName: '李经理',
+          contactPosition: '业务主管',
           contactPhone: '139****6666',
-          contactEmail: 'li@yy-trade.com',
+          companyEmail: 'li@shanghai-yy.com',
+          // 业务信息
+          exportBusinessHistory: '1-3年',
+          exportMainCountries: ['德国', '法国', '荷兰'],
+          mainExportIndustry: '机械',
+          expectedInsurableTurnover: 5000000,
+          turnoverCurrency: 'USD',
+          mainPaymentMethods: 'OA',
+          mostUsedPaymentTerm: 90,
+          longestPaymentTerm: 120,
+          hasLongerCreditPeriod: '是',
+          longestCreditPeriod: 150,
+          // 投保核心需求
+          insuranceType: '短期出口信用保险',
+          preferredInsuranceOrgType: '政策性保险机构',
+          insuranceBusinessScope: '部分适保业务-全部非信用证',
+          insuranceCurrency: 'USD',
+          insuranceAmount: 300000,
+          expectedInsurancePeriod: ['2026-05-01', '2027-04-30'],
+          insurancePrimaryPurpose1: '保障出口收汇安全',
+          insurancePrimaryPurpose2: '获取银行贸易融资',
+          insurancePrimaryPurpose3: '提升公司内部管理',
+          insurancePrimaryPurpose4: '取得海外买方信息',
+          // 买方信息
           buyerName: 'DEF GmbH',
           buyerCountry: '德国',
-          buyerAddress: 'Hamburg, Germany',
-          buyerContact: 'Hans Mueller',
-          buyerPhone: '+49-40-555-1234',
-          historicalTransactionAmount: '$800,000',
-          insuranceScheme: '方案B-基础保障',
-          coverageAmount: 300000,
-          premium: 7500,
-          expectedInsuranceCompany: '中国信保',
-          policyDuration: '1年',
-          specialRequirements: '',
+          buyerAddress: 'Industriestr. 100, 20099 Hamburg, Germany',
+          cooperationYearsWithBuyer: '1-3年',
+          last12MonthExportAmount: 380,
+          last12MonthCreditSalesAmount: 350,
+          expectedNext12MonthCreditSales: 450,
+          creditSalesCurrency: 'USD',
+          paymentTerms: '开具发票后90天',
+          appliedCreditLimit: 300000,
+          creditLimitCurrency: 'USD',
+          lcIssuingBank: '',
+          // 贸易基础信息
+          exportProductCategory: '工业机械设备及配件',
+          involvesControlledGoods: '否',
+          controlledGoodsDescription: '',
+          hasTitleRetentionClause: '是',
+          // 补充资料
           businessLicense: [{ name: '营业执照.pdf' }],
           importExportQualification: [{ name: '进出口资质.pdf' }],
+          tradeContract: [{ name: '贸易合同_DEF2025001.pdf' }],
+          customsDeclaration: [{ name: '报关单_20260428.pdf' }],
+          exportLicense: null,
           authorizationDocument: [{ name: '授权文件.pdf' }],
+          // 投保声明
+          declarationSignature: '李明辉',
+          declarationDate: '2026-04-28',
+          companySeal: [{ name: '公章文件.pdf' }],
+          // 状态
           status: 'credit_investigating',
           createTime: '2026-04-28',
           updateTime: '2026-05-05 14:20:00'
         },
         {
           id: 'TB2026003',
-          enterpriseName: '北京ZZ贸易集团',
+          // 客户基础信息
+          companyName: '北京ZZ贸易集团',
           unifiedSocialCreditCode: '91110000XXXXXXXXXX',
-          enterpriseAddress: '北京市朝阳区XX路XX号',
+          registeredAddress: '北京市朝阳区国贸CBD核心区XX座35层',
+          businessAddress: '北京市朝阳区国贸CBD核心区XX座35层',
+          organizationCode: 'G301234-2',
+          establishmentYear: '2005',
+          legalRepresentative: '王建国',
+          enterpriseNature: '民营企业',
+          businessType: '贸易公司',
           contactName: '王总监',
+          contactPosition: '业务总监',
           contactPhone: '137****9999',
-          contactEmail: 'wang@zz-trade.com',
+          companyEmail: 'wang@zz-trade.com',
+          // 业务信息
+          exportBusinessHistory: '3年以上',
+          exportMainCountries: ['英国', '德国', '法国'],
+          mainExportIndustry: '机械',
+          expectedInsurableTurnover: 6000000,
+          turnoverCurrency: 'USD',
+          mainPaymentMethods: 'OA',
+          mostUsedPaymentTerm: 60,
+          longestPaymentTerm: 120,
+          hasLongerCreditPeriod: '是',
+          longestCreditPeriod: 180,
+          // 投保核心需求
+          insuranceType: '短期出口信用保险',
+          preferredInsuranceOrgType: '商业性保险机构',
+          insuranceBusinessScope: '全部适保业务',
+          insuranceCurrency: 'USD',
+          insuranceAmount: 400000,
+          expectedInsurancePeriod: ['2026-04-01', '2027-03-31'],
+          insurancePrimaryPurpose1: '保障出口收汇安全',
+          insurancePrimaryPurpose2: '获取银行贸易融资',
+          insurancePrimaryPurpose3: '提升公司内部管理',
+          insurancePrimaryPurpose4: '取得海外买方信息',
+          // 买方信息
           buyerName: 'GHI Ltd',
           buyerCountry: '英国',
-          buyerAddress: 'London, UK',
-          buyerContact: 'Robert Brown',
-          buyerPhone: '+44-20-7123-4567',
-          historicalTransactionAmount: '$600,000',
-          insuranceScheme: '方案A-全程保障',
-          coverageAmount: 400000,
-          premium: 10000,
-          expectedInsuranceCompany: '太保产险',
-          policyDuration: '1年',
-          specialRequirements: '',
+          buyerAddress: '20 Liverpool Street, London EC2M 7PD, UK',
+          cooperationYearsWithBuyer: '3年以上',
+          last12MonthExportAmount: 300,
+          last12MonthCreditSalesAmount: 250,
+          expectedNext12MonthCreditSales: 350,
+          creditSalesCurrency: 'USD',
+          paymentTerms: '发送货物后60天',
+          appliedCreditLimit: 350000,
+          creditLimitCurrency: 'USD',
+          lcIssuingBank: '',
+          // 贸易基础信息
+          exportProductCategory: '机械设备及零部件',
+          involvesControlledGoods: '否',
+          controlledGoodsDescription: '',
+          hasTitleRetentionClause: '否',
+          // 补充资料
           businessLicense: [{ name: '营业执照.jpg' }],
           importExportQualification: [{ name: '进出口资质.jpg' }],
+          tradeContract: [{ name: '贸易合同_GHI2025001.pdf' }],
+          customsDeclaration: [{ name: '报关单_20260315.pdf' }],
+          exportLicense: null,
           authorizationDocument: [{ name: '授权文件.pdf' }],
+          // 投保声明
+          declarationSignature: '王建国',
+          declarationDate: '2026-03-15',
+          companySeal: [{ name: '公章文件.jpg' }],
+          // 状态
           status: 'completed',
           createTime: '2026-03-15',
-          updateTime: '2026-04-20 11:00:00'
+          updateTime: '2026-04-20 11:00:00',
+          // 保单数字化信息 - 基础信息
+          policyNo: 'PI2026005678',
+          insuranceCompanyName: '太保产险',
+          insurerName: '太保产险北京分公司',
+          insuredName: '北京ZZ贸易集团',
+          beneficiaryName: '北京ZZ贸易集团',
+          policyStartDate: '2026-04-01',
+          policyEndDate: '2027-03-31',
+          policyPeriod: '12个月',
+          renewalFlag: '否',
+          countryRiskVersion: '2026版',
+          clauseVersion: '短期出口信用保险条款v2025',
+          agreedCoverageScope: '全部适保业务',
+          tradeBusinessType: '货物贸易',
+          // 保单数字化信息 - 责任限额
+          maxCompensationLimit: 400000,
+          buyerCreditLimit: 300000,
+          coveredRisks: '商业风险—买方破产或无力偿付债务；商业风险—买方拖欠；政治风险',
+          limitIdlePeriod: 60,
+          selfControlledLimit: '条件：历史交易良好；限额：单笔不超过50000；赔偿比例：80%',
+          deductible: 5000,
+          // 保单数字化信息 - 申报规则
+          declarationMethod: '月度申报',
+          declarationCycle: '月度',
+          declarationDeadline: '次月15日',
+          // 保单数字化信息 - 费用管理
+          premiumRate: 2.5,
+          premiumPaymentDeadline: '保险起期前30日',
+          premiumPaymentMethod: '一次性',
+          premium: 10000,
+          surrenderFee: null,
+          recoveryPayee: '被保险人',
+          // 保单数字化信息 - 保单文件
+          policyFile: [{ name: 'PI2026005678_保单.pdf', url: '#' }],
+          endorsementFile: []
         }
       ]
       this.policies = [
@@ -465,30 +635,43 @@ export const useBusinessStore = defineStore('business', {
       const now = new Date()
       const cur = this.insuranceApplications[idx]
       if (cur.status !== 'credit_investigating') {
-        return { ok: false, message: '仅“资信调查中”状态允许模拟通过' }
+        return { ok: false, message: '仅”资信调查中”状态允许模拟通过' }
       }
-      const next = { ...cur, status: 'completed', updateTime: formatDateTime(now) }
-      this.insuranceApplications[idx] = next
       const policyNo = `PI${String(now.getFullYear())}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
-      if (!this.policies.some(p => p.policyholder === next.enterpriseName && p.insured === next.buyerName)) {
+      const next = { ...cur, status: 'completed', updateTime: formatDateTime(now),
+        policyNo,
+        insuranceCompanyName: cur.preferredInsuranceOrgType === '政策性保险机构' ? '中国信保' : '人保财险',
+        insurerName: cur.preferredInsuranceOrgType === '政策性保险机构' ? '中国信保' : '人保财险',
+        insuredName: cur.companyName,
+        policyStartDate: formatDate(now),
+        policyEndDate: addDays(formatDate(now), 365),
+        policyPeriod: '12个月',
+        tradeBusinessType: '货物贸易',
+        maxCompensationLimit: Number(cur.insuranceAmount) || 0,
+        declarationMethod: '月度申报',
+        declarationCycle: '月度',
+        declarationDeadline: '次月15日'
+      }
+      this.insuranceApplications[idx] = next
+      if (!this.policies.some(p => p.policyholder === next.companyName && p.insured === next.buyerName)) {
         this.policies.unshift({
           id: createId('P'),
           policyNo,
-          insuranceCompany: next.expectedInsuranceCompany || '人保财险',
-          policyholder: next.enterpriseName,
+          insuranceCompany: next.insuranceCompanyName || '人保财险',
+          policyholder: next.companyName,
           insured: next.buyerName,
-          coverageAmount: Number(next.coverageAmount) || 0,
+          coverageAmount: Number(next.insuranceAmount) || 0,
           premium: Number(next.premium) || 0,
           effectiveDate: formatDate(now),
           expiryDate: addDays(formatDate(now), 365),
           status: 'active',
           statusName: '有效',
           usedQuota: 0,
-          remainingQuota: Number(next.coverageAmount) || 0
+          remainingQuota: Number(next.insuranceAmount) || 0
         })
       }
       if (!this.creditLimits.some(c => c.buyerName === next.buyerName)) {
-        const applied = Number(next.coverageAmount) || 0
+        const applied = Number(next.insuranceAmount) || 0
         this.creditLimits.unshift({
           id: createId('CL'),
           buyerName: next.buyerName,

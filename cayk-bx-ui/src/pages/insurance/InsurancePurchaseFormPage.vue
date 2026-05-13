@@ -27,6 +27,14 @@
         <t-tab-panel value="trade" label="贸易基础信息">
           <detail-panel :data="detailData" :columns="tradeColumns" title="贸易基础信息" />
         </t-tab-panel>
+        <t-tab-panel value="policy" label="保单数字化信息">
+          <detail-panel v-if="detailData" :data="detailData" :columns="policyBasicColumns" title="基础信息" />
+          <detail-panel v-if="detailData" :data="detailData" :columns="policyLimitColumns" title="责任限额" />
+          <detail-panel v-if="detailData" :data="detailData" :columns="policyDeclareColumns" title="申报规则" />
+          <detail-panel v-if="detailData" :data="detailData" :columns="policyFeeColumns" title="费用管理" />
+          <detail-panel v-if="detailData" :data="detailData" :columns="policyFileColumns" title="保单文件" />
+          <empty-state v-if="!detailData" description="暂无保单数字化数据" />
+        </t-tab-panel>
         <t-tab-panel value="process" label="流程记录">
           <t-timeline mode="alternate">
             <t-timeline-item v-for="item in processTimeline" :key="item.time" :content="item.content" :time="item.time" :color="item.color" />
@@ -45,11 +53,12 @@
           <t-step title="贸易基础信息" />
           <t-step title="补充资料" />
           <t-step title="投保声明" />
+          <t-step title="保单数字化信息" />
         </t-steps>
         <div class="step-actions">
           <t-space>
             <t-button variant="outline" :disabled="activeStep === 0" @click="activeStep -= 1">上一步</t-button>
-            <t-button theme="primary" :disabled="activeStep === 6" @click="activeStep += 1">下一步</t-button>
+            <t-button theme="primary" :disabled="activeStep === 7" @click="activeStep += 1">下一步</t-button>
           </t-space>
         </div>
       </t-card>
@@ -443,6 +452,125 @@
               </t-form-item>
             </div>
           </template>
+
+          <!-- Step 7: 保单数字化信息 -->
+          <template v-else-if="activeStep === 7">
+            <div class="section-title">基础信息</div>
+            <div class="form-grid">
+              <t-form-item label="保险单号" name="policyNo">
+                <t-input v-model="formData.policyNo" placeholder="保单签发后自动生成" />
+              </t-form-item>
+              <t-form-item label="保险公司名称" name="insuranceCompanyName">
+                <t-input v-model="formData.insuranceCompanyName" placeholder="请输入保险公司名称" />
+              </t-form-item>
+              <t-form-item label="保险人名称" name="insurerName">
+                <t-input v-model="formData.insurerName" placeholder="请输入保险人名称" />
+              </t-form-item>
+              <t-form-item label="被保险人名称" name="insuredName">
+                <t-input v-model="formData.insuredName" placeholder="需与贸易项下卖方信息一致" />
+              </t-form-item>
+              <t-form-item label="受益人名称" name="beneficiaryName">
+                <t-input v-model="formData.beneficiaryName" placeholder="请输入受益人名称" />
+              </t-form-item>
+              <t-form-item label="保险起止期" name="policyPeriodRange" class="form-item-full">
+                <t-date-range-picker v-model="formData.policyPeriodRange" placeholder="请选择保险起止期" />
+              </t-form-item>
+              <t-form-item label="保险期间" name="policyPeriod">
+                <t-input v-model="formData.policyPeriod" placeholder="如12个月" />
+              </t-form-item>
+              <t-form-item label="续保标识" name="renewalFlag">
+                <t-select v-model="formData.renewalFlag" placeholder="请选择" clearable>
+                  <t-option value="是" label="是" />
+                  <t-option value="否" label="否" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="国家风险类别版本" name="countryRiskVersion">
+                <t-input v-model="formData.countryRiskVersion" placeholder="请输入国家风险类别版本" />
+              </t-form-item>
+              <t-form-item label="条款版本" name="clauseVersion">
+                <t-input v-model="formData.clauseVersion" placeholder="请输入条款版本" />
+              </t-form-item>
+              <t-form-item label="约定保险范围" name="agreedCoverageScope" class="form-item-full">
+                <t-input v-model="formData.agreedCoverageScope" placeholder="请输入约定保险范围" />
+              </t-form-item>
+              <t-form-item label="业务类型" name="tradeBusinessType">
+                <t-select v-model="formData.tradeBusinessType" placeholder="请选择业务类型" clearable>
+                  <t-option value="服务贸易" label="服务贸易" />
+                  <t-option value="货物贸易" label="货物贸易" />
+                </t-select>
+              </t-form-item>
+            </div>
+
+            <div class="section-title">责任限额</div>
+            <div class="form-grid">
+              <t-form-item label="最高赔偿限额" name="maxCompensationLimit">
+                <t-input-number v-model="formData.maxCompensationLimit" placeholder="请输入最高赔偿限额" :min="0" />
+              </t-form-item>
+              <t-form-item label="买方信用限额" name="buyerCreditLimit">
+                <t-input-number v-model="formData.buyerCreditLimit" placeholder="请输入买方信用限额" :min="0" />
+              </t-form-item>
+              <t-form-item label="承保风险及赔偿比例" name="coveredRisks" class="form-item-full">
+                <t-textarea v-model="formData.coveredRisks" placeholder="如：商业风险—买方破产或无力偿付债务；商业风险—买方拖欠；政治风险" :autosize="{ minRows: 2, maxRows: 4 }" />
+              </t-form-item>
+              <t-form-item label="限额闲置期（天）" name="limitIdlePeriod">
+                <t-input-number v-model="formData.limitIdlePeriod" placeholder="届满前30日提醒" :min="0" />
+              </t-form-item>
+              <t-form-item label="自行掌握限额" name="selfControlledLimit" class="form-item-full">
+                <t-textarea v-model="formData.selfControlledLimit" placeholder="条件、限额要求、申报方式、赔付基数、赔偿比例等" :autosize="{ minRows: 2, maxRows: 4 }" />
+              </t-form-item>
+              <t-form-item label="免赔额" name="deductible">
+                <t-input-number v-model="formData.deductible" placeholder="请输入免赔额" :min="0" />
+              </t-form-item>
+            </div>
+
+            <div class="section-title">申报规则</div>
+            <div class="form-grid">
+              <t-form-item label="申报方式" name="declarationMethod">
+                <t-input v-model="formData.declarationMethod" placeholder="请输入申报方式" />
+              </t-form-item>
+              <t-form-item label="申报周期" name="declarationCycle">
+                <t-input v-model="formData.declarationCycle" placeholder="月度/季度" />
+              </t-form-item>
+              <t-form-item label="申报截至日期" name="declarationDeadline">
+                <t-input v-model="formData.declarationDeadline" placeholder="如次月15日" />
+              </t-form-item>
+            </div>
+
+            <div class="section-title">费用管理</div>
+            <div class="form-grid">
+              <t-form-item label="保险费率（%）" name="premiumRate">
+                <t-input-number v-model="formData.premiumRate" placeholder="请输入费率" :min="0" :max="100" />
+              </t-form-item>
+              <t-form-item label="缴费期限" name="premiumPaymentDeadline">
+                <t-input v-model="formData.premiumPaymentDeadline" placeholder="如保险起期前30日" />
+              </t-form-item>
+              <t-form-item label="缴费方式" name="premiumPaymentMethod">
+                <t-select v-model="formData.premiumPaymentMethod" placeholder="请选择缴费方式" clearable>
+                  <t-option value="一次性" label="一次性" />
+                  <t-option value="分期" label="分期" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="保费" name="premium">
+                <t-input-number v-model="formData.premium" placeholder="自动计算应缴保费" :min="0" />
+              </t-form-item>
+              <t-form-item label="退保费用" name="surrenderFee">
+                <t-input-number v-model="formData.surrenderFee" placeholder="退保时按未到期天数比例计算" :min="0" />
+              </t-form-item>
+              <t-form-item label="赔款追回款项支付对象" name="recoveryPayee">
+                <t-input v-model="formData.recoveryPayee" placeholder="请输入赔款追回款项支付对象" />
+              </t-form-item>
+            </div>
+
+            <div class="section-title">保单文件</div>
+            <div class="form-grid">
+              <t-form-item label="保单文件" name="policyFile" class="form-item-full">
+                <t-upload v-model="formData.policyFile" action="https://demo.com/upload" tips="格式：PDF；大小：单文件≤10MB" accept=".pdf" />
+              </t-form-item>
+              <t-form-item label="批单文件" name="endorsementFile" class="form-item-full">
+                <t-upload v-model="formData.endorsementFile" action="https://demo.com/upload" tips="格式：PDF；大小：单文件≤10MB" accept=".pdf" />
+              </t-form-item>
+            </div>
+          </template>
         </t-form>
       </t-card>
     </div>
@@ -454,6 +582,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import DetailPanel from '@/components/common/DetailPanel.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { useBusinessStore } from '@/stores/business'
 
 const route = useRoute()
@@ -565,7 +694,41 @@ const formData = reactive({
   // 投保声明
   declarationSignature: '',
   declarationDate: '',
-  companySeal: null
+  companySeal: null,
+  // 保单数字化信息 - 基础信息
+  policyNo: '',
+  insuranceCompanyName: '',
+  insurerName: '',
+  insuredName: '',
+  beneficiaryName: '',
+  policyPeriodRange: [],
+  policyPeriod: '',
+  renewalFlag: '',
+  countryRiskVersion: '',
+  clauseVersion: '',
+  agreedCoverageScope: '',
+  tradeBusinessType: '',
+  // 保单数字化信息 - 责任限额
+  maxCompensationLimit: null,
+  buyerCreditLimit: null,
+  coveredRisks: '',
+  limitIdlePeriod: null,
+  selfControlledLimit: '',
+  deductible: null,
+  // 保单数字化信息 - 申报规则
+  declarationMethod: '',
+  declarationCycle: '',
+  declarationDeadline: '',
+  // 保单数字化信息 - 费用管理
+  premiumRate: null,
+  premiumPaymentDeadline: '',
+  premiumPaymentMethod: '',
+  premium: null,
+  surrenderFee: null,
+  recoveryPayee: '',
+  // 保单数字化信息 - 保单文件
+  policyFile: null,
+  endorsementFile: null
 })
 
 const rules = {
@@ -704,6 +867,52 @@ const tradeColumns = [
   { label: '含物权保留条款', key: 'hasTitleRetentionClause' }
 ]
 
+const policyBasicColumns = [
+  { label: '保险单号', key: 'policyNo' },
+  { label: '保险公司名称', key: 'insuranceCompanyName' },
+  { label: '保险人名称', key: 'insurerName' },
+  { label: '被保险人名称', key: 'insuredName' },
+  { label: '受益人名称', key: 'beneficiaryName' },
+  { label: '保险起期', key: 'policyStartDate' },
+  { label: '保险止期', key: 'policyEndDate' },
+  { label: '保险期间', key: 'policyPeriod' },
+  { label: '续保标识', key: 'renewalFlag' },
+  { label: '投保金额', key: 'coverageAmount', formatter: (v, row) => `${row.insuranceCurrency || 'USD'} ${Number(v || 0).toLocaleString()}` },
+  { label: '国家风险类别版本', key: 'countryRiskVersion' },
+  { label: '条款版本', key: 'clauseVersion' },
+  { label: '约定保险范围', key: 'agreedCoverageScope' },
+  { label: '业务类型', key: 'tradeBusinessType' }
+]
+
+const policyLimitColumns = [
+  { label: '最高赔偿限额', key: 'maxCompensationLimit', formatter: (v) => v ? `USD ${Number(v).toLocaleString()}` : '-' },
+  { label: '买方信用限额', key: 'buyerCreditLimit', formatter: (v) => v ? `USD ${Number(v).toLocaleString()}` : '-' },
+  { label: '承保风险及赔偿比例', key: 'coveredRisks' },
+  { label: '限额闲置期（天）', key: 'limitIdlePeriod', formatter: (v) => v ? `${v}天` : '-' },
+  { label: '自行掌握限额', key: 'selfControlledLimit' },
+  { label: '免赔额', key: 'deductible', formatter: (v) => v ? `USD ${Number(v).toLocaleString()}` : '-' }
+]
+
+const policyDeclareColumns = [
+  { label: '申报方式', key: 'declarationMethod' },
+  { label: '申报周期', key: 'declarationCycle' },
+  { label: '申报截至日期', key: 'declarationDeadline' }
+]
+
+const policyFeeColumns = [
+  { label: '保险费率', key: 'premiumRate', formatter: (v) => v ? `${v}%` : '-' },
+  { label: '缴费期限', key: 'premiumPaymentDeadline' },
+  { label: '缴费方式', key: 'premiumPaymentMethod' },
+  { label: '保费', key: 'premium', formatter: (v) => v ? `USD ${Number(v).toLocaleString()}` : '-' },
+  { label: '退保费用', key: 'surrenderFee', formatter: (v) => v ? `USD ${Number(v).toLocaleString()}` : '-' },
+  { label: '赔款追回款项支付对象', key: 'recoveryPayee' }
+]
+
+const policyFileColumns = [
+  { label: '保单文件', key: 'policyFile', formatter: (v) => Array.isArray(v) && v.length > 0 ? v.map(f => f.name).join('; ') : '-' },
+  { label: '批单文件', key: 'endorsementFile', formatter: (v) => Array.isArray(v) && v.length > 0 ? v.map(f => f.name).join('; ') : '-' }
+]
+
 const processTimeline = computed(() => {
   const base = detailData.value
   if (!base) return []
@@ -785,12 +994,47 @@ const initForm = () => {
     // 投保声明
     declarationSignature: row.declarationSignature || '',
     declarationDate: row.declarationDate || '',
-    companySeal: row.companySeal ?? null
+    companySeal: row.companySeal ?? null,
+    // 保单数字化信息
+    policyNo: row.policyNo || '',
+    insuranceCompanyName: row.insuranceCompanyName || '',
+    insurerName: row.insurerName || '',
+    insuredName: row.insuredName || '',
+    beneficiaryName: row.beneficiaryName || '',
+    policyPeriodRange: row.policyStartDate && row.policyEndDate ? [row.policyStartDate, row.policyEndDate] : [],
+    policyPeriod: row.policyPeriod || '',
+    renewalFlag: row.renewalFlag || '',
+    countryRiskVersion: row.countryRiskVersion || '',
+    clauseVersion: row.clauseVersion || '',
+    agreedCoverageScope: row.agreedCoverageScope || '',
+    tradeBusinessType: row.tradeBusinessType || '',
+    maxCompensationLimit: row.maxCompensationLimit ?? null,
+    buyerCreditLimit: row.buyerCreditLimit ?? null,
+    coveredRisks: row.coveredRisks || '',
+    limitIdlePeriod: row.limitIdlePeriod ?? null,
+    selfControlledLimit: row.selfControlledLimit || '',
+    deductible: row.deductible ?? null,
+    declarationMethod: row.declarationMethod || '',
+    declarationCycle: row.declarationCycle || '',
+    declarationDeadline: row.declarationDeadline || '',
+    premiumRate: row.premiumRate ?? null,
+    premiumPaymentDeadline: row.premiumPaymentDeadline || '',
+    premiumPaymentMethod: row.premiumPaymentMethod || '',
+    premium: row.premium ?? null,
+    surrenderFee: row.surrenderFee ?? null,
+    recoveryPayee: row.recoveryPayee || '',
+    policyFile: row.policyFile ?? null,
+    endorsementFile: row.endorsementFile ?? null
   })
 }
 
 const handleSave = () => {
-  const saved = store.createOrUpdateInsuranceApplication({ ...formData, id: formData.id || undefined })
+  const payload = { ...formData, id: formData.id || undefined }
+  if (Array.isArray(payload.policyPeriodRange) && payload.policyPeriodRange.length === 2) {
+    payload.policyStartDate = payload.policyPeriodRange[0]
+    payload.policyEndDate = payload.policyPeriodRange[1]
+  }
+  const saved = store.createOrUpdateInsuranceApplication(payload)
   router.replace(`/insurance/purchase/${saved.id}/edit`)
   MessagePlugin.success('已保存')
 }

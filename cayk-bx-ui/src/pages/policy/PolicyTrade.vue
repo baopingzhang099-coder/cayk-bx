@@ -52,7 +52,7 @@
       </t-table>
     </t-card>
 
-    <t-drawer v-model:visible="formVisible" :header="formMode === 'create' ? '新增贸易' : formMode === 'edit' ? '编辑贸易' : '贸易详情'" size="800px">
+    <t-dialog v-model:visible="formVisible" :header="formMode === 'create' ? '新增贸易' : formMode === 'edit' ? '编辑贸易' : '贸易详情'" width="700px">
       <t-form v-if="formMode !== 'detail'" ref="formRef" :data="formData" :rules="formRules" label-width="120px" @submit="handleSubmit">
         <t-divider>基本信息</t-divider>
         <t-form-item label="合同号" name="contractNo">
@@ -120,7 +120,7 @@
       </t-form>
 
       <detail-panel v-else title="贸易详情" :columns="detailColumns" :data="currentRow || {}" />
-    </t-drawer>
+    </t-dialog>
   </div>
 </template>
 

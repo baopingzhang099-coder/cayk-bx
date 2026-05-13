@@ -42,92 +42,94 @@
       </template>
     </data-table>
 
-    <t-drawer v-model:visible="detailVisible" header="限额详情" size="760px" :footer="false">
+    <t-dialog v-model:visible="detailVisible" header="限额详情" width="600px" :footer="false">
       <detail-panel title="买方与额度" :columns="detailColumns" :data="currentRow || {}" />
-    </t-drawer>
+    </t-dialog>
 
-    <t-drawer v-model:visible="formVisible" :header="formMode === 'create' ? '申请信用限额' : '编辑信用限额'" size="860px">
-      <t-form ref="formRef" :data="formData" :rules="formRules" label-width="140px" @submit="handleSubmit">
-        <t-divider>买方信息</t-divider>
-        <t-form-item label="买方名称" name="buyerName">
-          <t-input v-model="formData.buyerName" placeholder="请输入买方名称" />
-        </t-form-item>
-        <t-form-item label="买方国别" name="buyerCountry">
-          <t-input v-model="formData.buyerCountry" placeholder="请输入买方国别" />
-        </t-form-item>
-        <t-form-item label="买方注册地址" name="buyerAddress">
-          <t-input v-model="formData.buyerAddress" placeholder="请输入买方注册地址" />
-        </t-form-item>
-        <t-form-item label="买方所属行业" name="buyerIndustry">
-          <t-input v-model="formData.buyerIndustry" placeholder="请输入买方所属行业" />
-        </t-form-item>
-        <t-form-item label="付款条件（账期天数）" name="paymentTermsDays">
-          <t-input-number v-model="formData.paymentTermsDays" :min="0" placeholder="请输入账期天数" />
-        </t-form-item>
-        <t-form-item label="支付方式" name="paymentMethod">
-          <t-select v-model="formData.paymentMethod" placeholder="请选择支付方式" clearable>
-            <t-option value="OA" label="OA" />
-            <t-option value="DA" label="DA" />
-            <t-option value="DP" label="DP" />
-            <t-option value="LC" label="LC" />
-            <t-option value="预付款" label="预付款" />
-            <t-option value="其他" label="其他" />
-          </t-select>
-        </t-form-item>
+    <t-dialog v-model:visible="formVisible" :header="formMode === 'create' ? '申请信用限额' : '编辑信用限额'" width="700px">
+      <div style="max-height: 600px; overflow-y: auto;">
+        <t-form ref="formRef" :data="formData" :rules="formRules" label-width="140px" @submit="handleSubmit">
+          <t-divider>买方信息</t-divider>
+          <t-form-item label="买方名称" name="buyerName">
+            <t-input v-model="formData.buyerName" placeholder="请输入买方名称" />
+          </t-form-item>
+          <t-form-item label="买方国别" name="buyerCountry">
+            <t-input v-model="formData.buyerCountry" placeholder="请输入买方国别" />
+          </t-form-item>
+          <t-form-item label="买方注册地址" name="buyerAddress">
+            <t-input v-model="formData.buyerAddress" placeholder="请输入买方注册地址" />
+          </t-form-item>
+          <t-form-item label="买方所属行业" name="buyerIndustry">
+            <t-input v-model="formData.buyerIndustry" placeholder="请输入买方所属行业" />
+          </t-form-item>
+          <t-form-item label="付款条件（账期天数）" name="paymentTermsDays">
+            <t-input-number v-model="formData.paymentTermsDays" :min="0" placeholder="请输入账期天数" />
+          </t-form-item>
+          <t-form-item label="支付方式" name="paymentMethod">
+            <t-select v-model="formData.paymentMethod" placeholder="请选择支付方式" clearable>
+              <t-option value="OA" label="OA" />
+              <t-option value="DA" label="DA" />
+              <t-option value="DP" label="DP" />
+              <t-option value="LC" label="LC" />
+              <t-option value="预付款" label="预付款" />
+              <t-option value="其他" label="其他" />
+            </t-select>
+          </t-form-item>
 
-        <t-divider>额度申请</t-divider>
-        <t-form-item label="申请信用限额金额" name="appliedLimit">
-          <t-input-number v-model="formData.appliedLimit" :min="0" placeholder="请输入申请额度" />
-        </t-form-item>
-        <t-form-item label="申请限额币种" name="currency">
-          <t-select v-model="formData.currency" placeholder="请选择币种" clearable>
-            <t-option value="USD" label="USD" />
-            <t-option value="CNY" label="CNY" />
-            <t-option value="EUR" label="EUR" />
-            <t-option value="其他" label="其他" />
-          </t-select>
-        </t-form-item>
-        <t-form-item label="过去12个月赊销交易额" name="historicalTransactionAmount">
-          <t-input-number v-model="formData.historicalTransactionAmount" :min="0" placeholder="请输入交易额" />
-        </t-form-item>
-        <t-form-item label="预计未来12个月赊销销售总额" name="estimatedAnnualShipment">
-          <t-input-number v-model="formData.estimatedAnnualShipment" :min="0" placeholder="请输入预计总额" />
-        </t-form-item>
-        <t-form-item label="是否有担保" name="hasGuarantee">
-          <t-radio-group v-model="formData.hasGuarantee">
-            <t-radio value="no">否</t-radio>
-            <t-radio value="yes">是</t-radio>
-          </t-radio-group>
-        </t-form-item>
-        <t-form-item v-if="formData.hasGuarantee === 'yes'" label="担保方公司全称" name="guarantorName">
-          <t-input v-model="formData.guarantorName" placeholder="请输入担保方公司全称" />
-        </t-form-item>
+          <t-divider>额度申请</t-divider>
+          <t-form-item label="申请信用限额金额" name="appliedLimit">
+            <t-input-number v-model="formData.appliedLimit" :min="0" placeholder="请输入申请额度" />
+          </t-form-item>
+          <t-form-item label="申请限额币种" name="currency">
+            <t-select v-model="formData.currency" placeholder="请选择币种" clearable>
+              <t-option value="USD" label="USD" />
+              <t-option value="CNY" label="CNY" />
+              <t-option value="EUR" label="EUR" />
+              <t-option value="其他" label="其他" />
+            </t-select>
+          </t-form-item>
+          <t-form-item label="过去12个月赊销交易额" name="historicalTransactionAmount">
+            <t-input-number v-model="formData.historicalTransactionAmount" :min="0" placeholder="请输入交易额" />
+          </t-form-item>
+          <t-form-item label="预计未来12个月赊销销售总额" name="estimatedAnnualShipment">
+            <t-input-number v-model="formData.estimatedAnnualShipment" :min="0" placeholder="请输入预计总额" />
+          </t-form-item>
+          <t-form-item label="是否有担保" name="hasGuarantee">
+            <t-radio-group v-model="formData.hasGuarantee">
+              <t-radio value="no">否</t-radio>
+              <t-radio value="yes">是</t-radio>
+            </t-radio-group>
+          </t-form-item>
+          <t-form-item v-if="formData.hasGuarantee === 'yes'" label="担保方公司全称" name="guarantorName">
+            <t-input v-model="formData.guarantorName" placeholder="请输入担保方公司全称" />
+          </t-form-item>
 
-        <t-divider>附件与授权</t-divider>
-        <t-form-item label="授权文件（必传）" name="authorizationDocument">
-          <t-upload v-model="formData.authorizationDocument" action="https://demo.com/upload" tips="必传：授权保险公司联系买方的签字文件（PDF）" />
-        </t-form-item>
-        <t-form-item label="历史交易记录（附件）" name="historyFiles">
-          <t-upload v-model="formData.historyFiles" action="https://demo.com/upload" tips="可选：PDF/Excel" multiple />
-        </t-form-item>
-        <t-form-item label="买方资质证明（附件）" name="buyerQualificationFiles">
-          <t-upload v-model="formData.buyerQualificationFiles" action="https://demo.com/upload" tips="可选：PDF/JPG/PNG" multiple />
-        </t-form-item>
-        <t-form-item label="是否同意联系买方" name="allowContactBuyer">
-          <t-radio-group v-model="formData.allowContactBuyer">
-            <t-radio value="yes">是</t-radio>
-            <t-radio value="no">否</t-radio>
-          </t-radio-group>
-        </t-form-item>
+          <t-divider>附件与授权</t-divider>
+          <t-form-item label="授权文件（必传）" name="authorizationDocument">
+            <t-upload v-model="formData.authorizationDocument" action="https://demo.com/upload" tips="必传：授权保险公司联系买方的签字文件（PDF）" />
+          </t-form-item>
+          <t-form-item label="历史交易记录（附件）" name="historyFiles">
+            <t-upload v-model="formData.historyFiles" action="https://demo.com/upload" tips="可选：PDF/Excel" multiple />
+          </t-form-item>
+          <t-form-item label="买方资质证明（附件）" name="buyerQualificationFiles">
+            <t-upload v-model="formData.buyerQualificationFiles" action="https://demo.com/upload" tips="可选：PDF/JPG/PNG" multiple />
+          </t-form-item>
+          <t-form-item label="是否同意联系买方" name="allowContactBuyer">
+            <t-radio-group v-model="formData.allowContactBuyer">
+              <t-radio value="yes">是</t-radio>
+              <t-radio value="no">否</t-radio>
+            </t-radio-group>
+          </t-form-item>
 
-        <t-form-item>
-          <t-space>
-            <t-button theme="primary" type="submit">{{ formMode === 'create' ? '提交申请' : '保存' }}</t-button>
-            <t-button variant="outline" @click="formVisible = false">取消</t-button>
-          </t-space>
-        </t-form-item>
-      </t-form>
-    </t-drawer>
+          <t-form-item>
+            <t-space>
+              <t-button theme="primary" type="submit">{{ formMode === 'create' ? '提交申请' : '保存' }}</t-button>
+              <t-button variant="outline" @click="formVisible = false">取消</t-button>
+            </t-space>
+          </t-form-item>
+        </t-form>
+      </div>
+    </t-dialog>
   </div>
 </template>
 

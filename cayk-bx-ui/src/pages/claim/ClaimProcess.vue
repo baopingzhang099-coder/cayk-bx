@@ -57,32 +57,34 @@
       </t-table>
     </t-card>
 
-    <t-drawer v-model:visible="detailVisible" header="理赔案件详情" size="800px" :footer="false">
-      <div v-if="currentRow">
-        <detail-panel title="基本信息" :columns="detailColumns" :data="currentRow" />
-        <t-divider />
-        <div class="company-rules">
-          <div class="rules-title">适用保险公司规则</div>
-          <t-table :data="getCompanyRules(currentRow.insuranceCompany)" :columns="ruleColumns" row-key="company" size="small">
-            <template #reportDeadline="{ row }">
-              <t-tag :theme="getDeadlineTheme(row.reportDeadline)">{{ row.reportDeadline }}</t-tag>
-            </template>
-          </t-table>
-        </div>
-        <t-divider />
-        <div class="process-timeline">
-          <div class="timeline-title">理赔流程进度</div>
-          <t-steps :current="currentRow.currentStep || 1" layout="vertical" status="process">
-            <t-step-item title="报案提交" :content="`报案时间：${currentRow.createTime}`" />
-            <t-step-item title="资料审核" content="跟单员审核资料的完整性和规范性" />
-            <t-step-item title="保险公司调查" :content="`根据${currentRow.insuranceCompany}规则进行调查`" />
-            <t-step-item title="定损核赔" content="保险公司核定损失和赔偿比例" />
-            <t-step-item title="赔付支付" content="保险公司支付赔款" />
-            <t-step-item title="追偿（如有）" content="被保险人配合保险公司进行追偿" />
-          </t-steps>
+    <t-dialog v-model:visible="detailVisible" header="理赔案件详情" width="700px" :footer="false">
+      <div style="max-height: 600px; overflow-y: auto;">
+        <div v-if="currentRow">
+          <detail-panel title="基本信息" :columns="detailColumns" :data="currentRow" />
+          <t-divider />
+          <div class="company-rules">
+            <div class="rules-title">适用保险公司规则</div>
+            <t-table :data="getCompanyRules(currentRow.insuranceCompany)" :columns="ruleColumns" row-key="company" size="small">
+              <template #reportDeadline="{ row }">
+                <t-tag :theme="getDeadlineTheme(row.reportDeadline)">{{ row.reportDeadline }}</t-tag>
+              </template>
+            </t-table>
+          </div>
+          <t-divider />
+          <div class="process-timeline">
+            <div class="timeline-title">理赔流程进度</div>
+            <t-steps :current="currentRow.currentStep || 1" layout="vertical" status="process">
+              <t-step-item title="报案提交" :content="`报案时间：${currentRow.createTime}`" />
+              <t-step-item title="资料审核" content="跟单员审核资料的完整性和规范性" />
+              <t-step-item title="保险公司调查" :content="`根据${currentRow.insuranceCompany}规则进行调查`" />
+              <t-step-item title="定损核赔" content="保险公司核定损失和赔偿比例" />
+              <t-step-item title="赔付支付" content="保险公司支付赔款" />
+              <t-step-item title="追偿（如有）" content="被保险人配合保险公司进行追偿" />
+            </t-steps>
+          </div>
         </div>
       </div>
-    </t-drawer>
+    </t-dialog>
   </div>
 </template>
 

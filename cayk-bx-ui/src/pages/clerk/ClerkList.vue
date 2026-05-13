@@ -43,7 +43,7 @@
       </template>
     </data-table>
 
-    <t-drawer v-model:visible="formVisible" :header="formMode === 'create' ? '新增跟单员' : formMode === 'edit' ? '编辑跟单员' : '跟单员详情'" size="700px">
+    <t-dialog v-model:visible="formVisible" :header="formMode === 'create' ? '新增跟单员' : formMode === 'edit' ? '编辑跟单员' : '跟单员详情'" width="550px">
       <t-form v-if="formMode !== 'detail'" ref="formRef" :data="formData" :rules="formRules" label-width="100px" @submit="handleSubmit">
         <t-form-item label="工号" name="workNo">
           <t-input v-model="formData.workNo" placeholder="请输入工号" :disabled="formMode === 'edit'" />
@@ -84,9 +84,9 @@
       </t-form>
 
       <detail-panel v-else title="跟单员详情" :columns="detailColumns" :data="currentRow || {}" />
-    </t-drawer>
+    </t-dialog>
 
-    <t-drawer v-model:visible="permissionVisible" header="权限配置" size="600px">
+    <t-dialog v-model:visible="permissionVisible" header="权限配置" width="500px">
       <div v-if="currentRow">
         <div class="permission-header">
           <t-avatar size="large">{{ currentRow.name?.charAt(0) }}</t-avatar>
@@ -112,7 +112,7 @@
           </t-form-item>
         </t-form>
       </div>
-    </t-drawer>
+    </t-dialog>
   </div>
 </template>
 

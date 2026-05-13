@@ -45,11 +45,11 @@
       </template>
     </data-table>
 
-    <t-drawer v-model:visible="detailVisible" header="保单详情" size="760px" :footer="false">
+    <t-dialog v-model:visible="detailVisible" header="保单详情" width="600px" :footer="false">
       <detail-panel title="基础信息" :columns="detailColumns" :data="currentRow || {}" />
-    </t-drawer>
+    </t-dialog>
 
-    <t-drawer v-model:visible="editVisible" :header="editMode === 'create' ? '新增保单' : '编辑保单'" size="760px">
+    <t-dialog v-model:visible="editVisible" :header="editMode === 'create' ? '新增保单' : '编辑保单'" width="600px">
       <t-form ref="editFormRef" :data="editForm" :rules="editRules" label-width="120px" @submit="handleEditSubmit">
         <t-form-item label="保单号" name="policyNo">
           <t-input v-model="editForm.policyNo" placeholder="请输入保单号" :disabled="editMode !== 'create'" />
@@ -92,9 +92,9 @@
           </t-space>
         </t-form-item>
       </t-form>
-    </t-drawer>
+    </t-dialog>
 
-    <t-drawer v-model:visible="changeVisible" header="发起保单变更" size="800px">
+    <t-dialog v-model:visible="changeVisible" header="发起保单变更" width="700px">
       <t-form ref="changeFormRef" :data="changeForm" :rules="changeRules" label-width="140px" @submit="handleChangeSubmit">
         <t-form-item label="关联保单号">
           <t-input :value="currentRow?.policyNo" disabled />
@@ -136,123 +136,125 @@
           </t-space>
         </t-form-item>
       </t-form>
-    </t-drawer>
+    </t-dialog>
 
-    <t-drawer v-model:visible="digitizeVisible" header="保单数字化（模拟OCR校对）" size="900px">
-      <t-form ref="digitizeFormRef" :data="digitizeForm" label-width="150px" @submit="handleDigitizeSubmit">
-        <t-divider>上传保单文件</t-divider>
-        <t-form-item label="保单文件" name="policyFile">
-          <t-upload v-model="digitizeForm.policyFile" action="https://demo.com/upload" tips="上传后将模拟OCR自动填充字段" @success="handlePolicyFileUploaded" />
-        </t-form-item>
-        <t-form-item label="批单文件（可选）" name="endorsementFile">
-          <t-upload v-model="digitizeForm.endorsementFile" action="https://demo.com/upload" />
-        </t-form-item>
+    <t-dialog v-model:visible="digitizeVisible" header="保单数字化（模拟OCR校对）" width="800px">
+      <div style="max-height: 600px; overflow-y: auto;">
+        <t-form ref="digitizeFormRef" :data="digitizeForm" label-width="150px" @submit="handleDigitizeSubmit">
+          <t-divider>上传保单文件</t-divider>
+          <t-form-item label="保单文件" name="policyFile">
+            <t-upload v-model="digitizeForm.policyFile" action="https://demo.com/upload" tips="上传后将模拟OCR自动填充字段" @success="handlePolicyFileUploaded" />
+          </t-form-item>
+          <t-form-item label="批单文件（可选）" name="endorsementFile">
+            <t-upload v-model="digitizeForm.endorsementFile" action="https://demo.com/upload" />
+          </t-form-item>
 
-        <t-divider>基础信息</t-divider>
-        <t-form-item label="保险单号" name="policyNo">
-          <t-input v-model="digitizeForm.policyNo" placeholder="OCR识别/手工录入" />
-        </t-form-item>
-        <t-form-item label="保险公司名称" name="insuranceCompany">
-          <t-input v-model="digitizeForm.insuranceCompany" placeholder="OCR识别/手工录入" />
-        </t-form-item>
-        <t-form-item label="保险人名称" name="insurerName">
-          <t-input v-model="digitizeForm.insurerName" placeholder="OCR识别/手工录入" />
-        </t-form-item>
-        <t-form-item label="被保险人名称" name="policyholder">
-          <t-input v-model="digitizeForm.policyholder" placeholder="OCR识别/手工校对" />
-        </t-form-item>
-        <t-form-item label="受益人名称" name="beneficiary">
-          <t-input v-model="digitizeForm.beneficiary" placeholder="可选" />
-        </t-form-item>
-        <t-form-item label="保险起期" name="startDate">
-          <t-date-picker v-model="digitizeForm.startDate" placeholder="请选择" clearable />
-        </t-form-item>
-        <t-form-item label="保险止期" name="endDate">
-          <t-date-picker v-model="digitizeForm.endDate" placeholder="请选择" clearable />
-        </t-form-item>
-        <t-form-item label="保险期间" name="duration">
-          <t-input v-model="digitizeForm.duration" placeholder="如 12个月" />
-        </t-form-item>
-        <t-form-item label="续保标识" name="renewalFlag">
-          <t-radio-group v-model="digitizeForm.renewalFlag">
-            <t-radio value="yes">是</t-radio>
-            <t-radio value="no">否</t-radio>
-          </t-radio-group>
-        </t-form-item>
-        <t-form-item label="投保金额" name="insuredAmount">
-          <t-input-number v-model="digitizeForm.insuredAmount" :min="0" placeholder="请输入投保金额" />
-        </t-form-item>
-        <t-form-item label="业务类型" name="businessType">
-          <t-select v-model="digitizeForm.businessType" placeholder="请选择业务类型" clearable>
-            <t-option value="货物贸易" label="货物贸易" />
-            <t-option value="服务贸易" label="服务贸易" />
-          </t-select>
-        </t-form-item>
+          <t-divider>基础信息</t-divider>
+          <t-form-item label="保险单号" name="policyNo">
+            <t-input v-model="digitizeForm.policyNo" placeholder="OCR识别/手工录入" />
+          </t-form-item>
+          <t-form-item label="保险公司名称" name="insuranceCompany">
+            <t-input v-model="digitizeForm.insuranceCompany" placeholder="OCR识别/手工录入" />
+          </t-form-item>
+          <t-form-item label="保险人名称" name="insurerName">
+            <t-input v-model="digitizeForm.insurerName" placeholder="OCR识别/手工录入" />
+          </t-form-item>
+          <t-form-item label="被保险人名称" name="policyholder">
+            <t-input v-model="digitizeForm.policyholder" placeholder="OCR识别/手工校对" />
+          </t-form-item>
+          <t-form-item label="受益人名称" name="beneficiary">
+            <t-input v-model="digitizeForm.beneficiary" placeholder="可选" />
+          </t-form-item>
+          <t-form-item label="保险起期" name="startDate">
+            <t-date-picker v-model="digitizeForm.startDate" placeholder="请选择" clearable />
+          </t-form-item>
+          <t-form-item label="保险止期" name="endDate">
+            <t-date-picker v-model="digitizeForm.endDate" placeholder="请选择" clearable />
+          </t-form-item>
+          <t-form-item label="保险期间" name="duration">
+            <t-input v-model="digitizeForm.duration" placeholder="如 12个月" />
+          </t-form-item>
+          <t-form-item label="续保标识" name="renewalFlag">
+            <t-radio-group v-model="digitizeForm.renewalFlag">
+              <t-radio value="yes">是</t-radio>
+              <t-radio value="no">否</t-radio>
+            </t-radio-group>
+          </t-form-item>
+          <t-form-item label="投保金额" name="insuredAmount">
+            <t-input-number v-model="digitizeForm.insuredAmount" :min="0" placeholder="请输入投保金额" />
+          </t-form-item>
+          <t-form-item label="业务类型" name="businessType">
+            <t-select v-model="digitizeForm.businessType" placeholder="请选择业务类型" clearable>
+              <t-option value="货物贸易" label="货物贸易" />
+              <t-option value="服务贸易" label="服务贸易" />
+            </t-select>
+          </t-form-item>
 
-        <t-divider>责任限额与条款</t-divider>
-        <t-form-item label="最高赔偿限额" name="maxIndemnity">
-          <t-input-number v-model="digitizeForm.maxIndemnity" :min="0" placeholder="请输入最高赔偿限额" />
-        </t-form-item>
-        <t-form-item label="免赔额" name="deductible">
-          <t-input-number v-model="digitizeForm.deductible" :min="0" placeholder="请输入免赔额" />
-        </t-form-item>
-        <t-form-item label="国家风险类别版本" name="riskCategoryVersion">
-          <t-input v-model="digitizeForm.riskCategoryVersion" placeholder="可选" />
-        </t-form-item>
-        <t-form-item label="条款版本" name="clauseVersion">
-          <t-input v-model="digitizeForm.clauseVersion" placeholder="可选" />
-        </t-form-item>
-        <t-form-item label="约定保险范围" name="insuranceScope">
-          <t-textarea v-model="digitizeForm.insuranceScope" placeholder="可选" :autosize="{ minRows: 2, maxRows: 4 }" />
-        </t-form-item>
+          <t-divider>责任限额与条款</t-divider>
+          <t-form-item label="最高赔偿限额" name="maxIndemnity">
+            <t-input-number v-model="digitizeForm.maxIndemnity" :min="0" placeholder="请输入最高赔偿限额" />
+          </t-form-item>
+          <t-form-item label="免赔额" name="deductible">
+            <t-input-number v-model="digitizeForm.deductible" :min="0" placeholder="请输入免赔额" />
+          </t-form-item>
+          <t-form-item label="国家风险类别版本" name="riskCategoryVersion">
+            <t-input v-model="digitizeForm.riskCategoryVersion" placeholder="可选" />
+          </t-form-item>
+          <t-form-item label="条款版本" name="clauseVersion">
+            <t-input v-model="digitizeForm.clauseVersion" placeholder="可选" />
+          </t-form-item>
+          <t-form-item label="约定保险范围" name="insuranceScope">
+            <t-textarea v-model="digitizeForm.insuranceScope" placeholder="可选" :autosize="{ minRows: 2, maxRows: 4 }" />
+          </t-form-item>
 
-        <t-divider>申报规则与费用管理</t-divider>
-        <t-form-item label="申报方式" name="reportMethod">
-          <t-select v-model="digitizeForm.reportMethod" placeholder="请选择" clearable>
-            <t-option value="逐笔" label="逐笔" />
-            <t-option value="月度" label="月度" />
-            <t-option value="季度" label="季度" />
-          </t-select>
-        </t-form-item>
-        <t-form-item label="申报周期" name="reportCycle">
-          <t-select v-model="digitizeForm.reportCycle" placeholder="请选择" clearable>
-            <t-option value="月度" label="月度" />
-            <t-option value="季度" label="季度" />
-          </t-select>
-        </t-form-item>
-        <t-form-item label="申报截至日期" name="reportDeadline">
-          <t-input v-model="digitizeForm.reportDeadline" placeholder="如 次月15日" />
-        </t-form-item>
-        <t-form-item label="申报币种" name="reportCurrency">
-          <t-select v-model="digitizeForm.reportCurrency" placeholder="请选择" clearable>
-            <t-option value="人民币" label="人民币" />
-            <t-option value="美元" label="美元" />
-          </t-select>
-        </t-form-item>
-        <t-form-item label="保险费率" name="rate">
-          <t-input v-model="digitizeForm.rate" placeholder="如 0.8% 或区间" />
-        </t-form-item>
-        <t-form-item label="缴费期限" name="paymentDeadline">
-          <t-input v-model="digitizeForm.paymentDeadline" placeholder="如 起期前30日/单笔申报后3日内" />
-        </t-form-item>
-        <t-form-item label="缴费方式" name="paymentMethod">
-          <t-select v-model="digitizeForm.paymentMethod" placeholder="请选择" clearable>
-            <t-option value="一次性" label="一次性" />
-            <t-option value="分期" label="分期" />
-          </t-select>
-        </t-form-item>
-        <t-form-item label="保费" name="premiumAmount">
-          <t-input-number v-model="digitizeForm.premiumAmount" :min="0" placeholder="请输入保费金额" />
-        </t-form-item>
+          <t-divider>申报规则与费用管理</t-divider>
+          <t-form-item label="申报方式" name="reportMethod">
+            <t-select v-model="digitizeForm.reportMethod" placeholder="请选择" clearable>
+              <t-option value="逐笔" label="逐笔" />
+              <t-option value="月度" label="月度" />
+              <t-option value="季度" label="季度" />
+            </t-select>
+          </t-form-item>
+          <t-form-item label="申报周期" name="reportCycle">
+            <t-select v-model="digitizeForm.reportCycle" placeholder="请选择" clearable>
+              <t-option value="月度" label="月度" />
+              <t-option value="季度" label="季度" />
+            </t-select>
+          </t-form-item>
+          <t-form-item label="申报截至日期" name="reportDeadline">
+            <t-input v-model="digitizeForm.reportDeadline" placeholder="如 次月15日" />
+          </t-form-item>
+          <t-form-item label="申报币种" name="reportCurrency">
+            <t-select v-model="digitizeForm.reportCurrency" placeholder="请选择" clearable>
+              <t-option value="人民币" label="人民币" />
+              <t-option value="美元" label="美元" />
+            </t-select>
+          </t-form-item>
+          <t-form-item label="保险费率" name="rate">
+            <t-input v-model="digitizeForm.rate" placeholder="如 0.8% 或区间" />
+          </t-form-item>
+          <t-form-item label="缴费期限" name="paymentDeadline">
+            <t-input v-model="digitizeForm.paymentDeadline" placeholder="如 起期前30日/单笔申报后3日内" />
+          </t-form-item>
+          <t-form-item label="缴费方式" name="paymentMethod">
+            <t-select v-model="digitizeForm.paymentMethod" placeholder="请选择" clearable>
+              <t-option value="一次性" label="一次性" />
+              <t-option value="分期" label="分期" />
+            </t-select>
+          </t-form-item>
+          <t-form-item label="保费" name="premiumAmount">
+            <t-input-number v-model="digitizeForm.premiumAmount" :min="0" placeholder="请输入保费金额" />
+          </t-form-item>
 
-        <t-form-item>
-          <t-space>
-            <t-button theme="primary" type="submit">保存结构化结果</t-button>
-            <t-button variant="outline" @click="digitizeVisible = false">关闭</t-button>
-          </t-space>
-        </t-form-item>
-      </t-form>
-    </t-drawer>
+          <t-form-item>
+            <t-space>
+              <t-button theme="primary" type="submit">保存结构化结果</t-button>
+              <t-button variant="outline" @click="digitizeVisible = false">关闭</t-button>
+            </t-space>
+          </t-form-item>
+        </t-form>
+      </div>
+    </t-dialog>
   </div>
 </template>
 

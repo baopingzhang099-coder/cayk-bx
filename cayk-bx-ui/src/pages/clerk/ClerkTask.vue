@@ -60,7 +60,7 @@
       </t-table>
     </t-card>
 
-    <t-drawer v-model:visible="assignVisible" header="任务分配" size="700px">
+    <t-dialog v-model:visible="assignVisible" header="任务分配" width="550px">
       <t-form ref="assignFormRef" :data="assignForm" :rules="assignRules" label-width="100px" @submit="handleAssignSubmit">
         <t-form-item label="任务编号">
           <t-input :value="currentRow?.taskNo" disabled />
@@ -106,11 +106,11 @@
           </t-space>
         </t-form-item>
       </t-form>
-    </t-drawer>
+    </t-dialog>
 
-    <t-drawer v-model:visible="viewVisible" header="任务详情" size="700px" :footer="false">
+    <t-dialog v-model:visible="viewVisible" header="任务详情" width="550px" :footer="false">
       <detail-panel v-if="currentRow" title="任务详情" :columns="taskDetailColumns" :data="currentRow" />
-    </t-drawer>
+    </t-dialog>
   </div>
 </template>
 

@@ -149,11 +149,11 @@
       </t-form>
     </t-dialog>
 
-    <t-drawer v-model:visible="detailVisible" header="理赔详情" size="800px" :footer="false">
+    <t-dialog v-model:visible="detailVisible" header="理赔详情" width="650px" :footer="false">
       <detail-panel v-if="currentRow" title="理赔详情" :columns="detailColumns" :data="currentRow" />
-    </t-drawer>
+    </t-dialog>
 
-    <t-drawer v-model:visible="editVisible" header="编辑理赔" size="800px">
+    <t-dialog v-model:visible="editVisible" header="编辑理赔" width="650px">
       <t-form ref="editFormRef" :data="editForm" :rules="editRules" label-align="top">
         <div class="form-grid">
           <t-form-item label="理赔单号">
@@ -202,7 +202,7 @@
           </t-space>
         </div>
       </t-form>
-    </t-drawer>
+    </t-dialog>
   </div>
 </template>
 

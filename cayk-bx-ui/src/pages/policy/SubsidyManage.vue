@@ -60,11 +60,11 @@
       </t-table>
     </t-card>
 
-    <t-drawer v-model:visible="viewVisible" header="补贴详情" size="700px" :footer="false">
+    <t-dialog v-model:visible="viewVisible" header="补贴详情" width="550px" :footer="false">
       <detail-panel v-if="currentRow" title="补贴详情" :columns="detailColumns" :data="currentRow" />
-    </t-drawer>
+    </t-dialog>
 
-    <t-drawer v-model:visible="processVisible" header="补贴审批" size="700px">
+    <t-dialog v-model:visible="processVisible" header="补贴审批" width="550px">
       <t-form ref="processFormRef" :data="processForm" :rules="processRules" label-width="120px" @submit="handleProcessSubmit">
         <t-form-item label="申请编号">
           <t-input :value="currentRow?.applicationNo" disabled />
@@ -104,7 +104,7 @@
           </t-space>
         </t-form-item>
       </t-form>
-    </t-drawer>
+    </t-dialog>
   </div>
 </template>
 

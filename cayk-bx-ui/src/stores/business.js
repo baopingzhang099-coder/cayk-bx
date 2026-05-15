@@ -411,6 +411,51 @@ export const useBusinessStore = defineStore('business', {
           statusName: '即将到期',
           usedQuota: 180000,
           remainingQuota: 20000
+        },
+        {
+          id: 'P2026004',
+          policyNo: 'PI2026004567',
+          insuranceCompany: '中国信保',
+          policyholder: '上海YY进出口公司',
+          insured: 'DEF GmbH',
+          coverageAmount: 300000,
+          premium: 7500,
+          effectiveDate: '2026-06-01',
+          expiryDate: '2027-06-01',
+          status: 'applying',
+          statusName: '申请中',
+          usedQuota: 0,
+          remainingQuota: 300000
+        },
+        {
+          id: 'P2026005',
+          policyNo: 'PI2026005678',
+          insuranceCompany: '人保财险',
+          policyholder: '杭州CC贸易有限公司',
+          insured: 'MNO Inc',
+          coverageAmount: 250000,
+          premium: 6250,
+          effectiveDate: '2026-05-15',
+          expiryDate: '2027-05-15',
+          status: 'pending_review',
+          statusName: '待审核',
+          usedQuota: 0,
+          remainingQuota: 250000
+        },
+        {
+          id: 'P2026006',
+          policyNo: 'PI2026006789',
+          insuranceCompany: '太保产险',
+          policyholder: '成都DD商贸有限公司',
+          insured: 'PQR Ltd',
+          coverageAmount: 450000,
+          premium: 11250,
+          effectiveDate: '2026-05-20',
+          expiryDate: '2027-05-20',
+          status: 'approved',
+          statusName: '审核通过',
+          usedQuota: 0,
+          remainingQuota: 450000
         }
       ]
       this.creditLimits = [

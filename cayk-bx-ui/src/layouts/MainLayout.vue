@@ -113,11 +113,11 @@ const notificationCount = ref(5)
 const currentRole = ref(userStore.role)
 
 const allMenuItems = [
-  { 
-    key: 'insurance', 
+  { key: 'insurance', 
     title: '保险购买', 
     icon: 'document-popular', 
     children: [
+      { key: 'insurance-questionnaire', title: '客户投保问卷', path: '/insurance/questionnaire', roles: ['customer', 'inkasso', 'clerk'], icon: 'edit' },
       { key: 'insurance-purchase', title: '投保信息管理', path: '/insurance/purchase', roles: ['customer', 'inkasso', 'clerk'], icon: 'clipboard' },
       { key: 'insurance-apply', title: '投保流程管理', path: '/insurance/apply', roles: ['inkasso', 'clerk'], icon: 'switch' },
       { key: 'insurance-report', title: '投保数据报表', path: '/insurance/report', roles: ['inkasso'], icon: 'chart' }
@@ -184,6 +184,7 @@ const filteredMenuItems = computed(() => {
 })
 
 const menuConfig = {
+  'insurance-questionnaire': { parent: '保险购买', current: '客户投保问卷' },
   'insurance-purchase': { parent: '保险购买', current: '投保信息管理' },
   'insurance-apply': { parent: '保险购买', current: '投保流程管理' },
   'insurance-report': { parent: '保险购买', current: '投保数据报表' },

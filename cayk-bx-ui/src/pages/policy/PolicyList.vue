@@ -3,7 +3,6 @@
     <div class="page-header">
       <div class="page-title">保单信息管理</div>
       <div class="page-actions">
-        <t-button theme="primary" @click="handleAdd">新增保单</t-button>
         <t-button variant="outline" @click="handleDigitize">保单数字化</t-button>
       </div>
     </div>
@@ -260,6 +259,7 @@
 
 <script setup>
 import { computed, reactive, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import SearchFilter from '@/components/common/SearchFilter.vue'
 import DataTable from '@/components/common/DataTable.vue'
@@ -268,6 +268,7 @@ import StatCard from '@/components/common/StatCard.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 import { useBusinessStore } from '@/stores/business'
 
+const router = useRouter()
 const store = useBusinessStore()
 const loading = computed(() => false)
 const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRange: [] })
@@ -279,7 +280,10 @@ const statusOptions = [
   { value: 'expired', label: '已到期' },
   { value: 'suspended', label: '中止' },
   { value: 'cancelled', label: '退保' },
-  { value: 'terminated', label: '终止' }
+  { value: 'terminated', label: '终止' },
+  { value: 'applying', label: '申请中' },
+  { value: 'pending_review', label: '待审核' },
+  { value: 'approved', label: '审核通过' }
 ]
 
 const statusMap = {
@@ -289,7 +293,10 @@ const statusMap = {
   expired: '已到期',
   suspended: '中止',
   cancelled: '退保',
-  terminated: '终止'
+  terminated: '终止',
+  applying: '申请中',
+  pending_review: '待审核',
+  approved: '审核通过'
 }
 
 const columns = [
@@ -434,20 +441,7 @@ const handlePageChange = (pageInfo) => {
 }
 
 const handleAdd = () => {
-  editMode.value = 'create'
-  currentRow.value = null
-  Object.assign(editForm, {
-    policyNo: `PI${new Date().getFullYear()}${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`,
-    insuranceCompany: '',
-    policyholder: '',
-    insured: '',
-    coverageAmount: 0,
-    effectiveDate: '',
-    expiryDate: '',
-    status: 'pending_effect',
-    usedQuota: 0
-  })
-  editVisible.value = true
+  router.push('/insurance/purchase/new')
 }
 
 const handleView = (row) => {

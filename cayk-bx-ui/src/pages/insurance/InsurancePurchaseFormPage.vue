@@ -4,6 +4,7 @@
       <div class="page-title">{{ pageTitle }}</div>
       <div class="page-actions" v-if="mode !== 'detail'">
         <t-space>
+          <t-button variant="outline" @click="handleBack">返回</t-button>
           <t-button variant="outline" @click="handleSave">保存</t-button>
           <t-button theme="primary" @click="handleSubmit">提交</t-button>
         </t-space>
@@ -43,31 +44,32 @@
       </t-tabs>
     </t-card>
 
-    <div v-if="mode !== 'detail'" class="form-layout">
-      <t-card class="step-card">
-        <t-steps layout="vertical" :current="activeStep">
-          <t-step title="客户基础信息" />
-          <t-step title="业务信息" />
-          <t-step title="投保核心需求" />
-          <t-step title="买方信息" />
-          <t-step title="贸易基础信息" />
-          <t-step title="补充资料" />
-          <t-step title="投保声明" />
-          <t-step title="保单数字化信息" />
-        </t-steps>
-        <div class="step-actions">
-          <t-space>
-            <t-button variant="outline" :disabled="activeStep === 0" @click="activeStep -= 1">上一步</t-button>
-            <t-button theme="primary" :disabled="activeStep === 7" @click="activeStep += 1">下一步</t-button>
-          </t-space>
+    <div v-if="mode !== 'detail'" class="form-layout-scroll">
+      <div class="scroll-sidebar">
+        <div class="sidebar-title">目录</div>
+        <div class="sidebar-links">
+          <div 
+            v-for="(item, index) in formSections" 
+            :key="index"
+            class="sidebar-link"
+            :class="{ active: activeSection === index }"
+            @click="scrollToSection(index)"
+          >
+            <span class="section-num">{{ index + 1 }}</span>
+            <span class="section-name">{{ item }}</span>
+          </div>
         </div>
-      </t-card>
+      </div>
 
-      <t-card class="form-card">
-        <t-form ref="formRef" :data="formData" :rules="rules" label-align="top">
-          <!-- Step 0: 客户基础信息 -->
-          <template v-if="activeStep === 0">
-            <div class="section-title">主体信息</div>
+      <div class="scroll-content">
+        <t-card class="form-card">
+          <t-form ref="formRef" :data="formData" :rules="rules" label-align="top">
+            <div id="section-0" class="form-section">
+              <div class="section-header">
+                <span class="section-num">1</span>
+                <span class="section-title">客户基础信息</span>
+              </div>
+              <div class="section-title-sub">主体信息</div>
             <div class="form-grid">
               <t-form-item label="公司中文全称" name="companyName">
                 <t-input v-model="formData.companyName" placeholder="准确填写，需与工商注册信息一致" />
@@ -107,7 +109,7 @@
               </t-form-item>
             </div>
 
-            <div class="section-title">联系信息</div>
+            <div class="section-title-sub">联系信息</div>
             <div class="form-grid">
               <t-form-item label="联系人姓名" name="contactName">
                 <t-input v-model="formData.contactName" placeholder="请输入联系人姓名" />
@@ -122,13 +124,16 @@
                 <t-input v-model="formData.companyEmail" placeholder="请输入企业邮箱" />
               </t-form-item>
             </div>
-          </template>
+            </div>
 
-          <!-- Step 1: 业务信息 -->
-          <template v-else-if="activeStep === 1">
-            <div class="section-title">出口业务经营</div>
-            <div class="form-grid">
-              <t-form-item label="出口业务经营历史" name="exportBusinessHistory">
+            <div id="section-1" class="form-section">
+              <div class="section-header">
+                <span class="section-num">2</span>
+                <span class="section-title">业务信息</span>
+              </div>
+              <div class="section-title-sub">出口业务经营</div>
+              <div class="form-grid">
+                <t-form-item label="出口业务经营历史" name="exportBusinessHistory">
                 <t-select v-model="formData.exportBusinessHistory" placeholder="请选择出口业务经营历史" clearable>
                   <t-option value="1年以内" label="1年以内" />
                   <t-option value="1-3年" label="1-3年" />
@@ -200,13 +205,16 @@
                 <t-input-number v-model="formData.longestCreditPeriod" placeholder="请输入天数" :min="0" />
               </t-form-item>
             </div>
-          </template>
+            </div>
 
-          <!-- Step 2: 投保核心需求 -->
-          <template v-else-if="activeStep === 2">
-            <div class="section-title">投保意向</div>
-            <div class="form-grid">
-              <t-form-item label="投保类型" name="insuranceType">
+            <div id="section-2" class="form-section">
+              <div class="section-header">
+                <span class="section-num">3</span>
+                <span class="section-title">投保核心需求</span>
+              </div>
+              <div class="section-title-sub">投保意向</div>
+              <div class="form-grid">
+                <t-form-item label="投保类型" name="insuranceType">
                 <t-select v-model="formData.insuranceType" placeholder="请选择投保类型" clearable>
                   <t-option value="短期出口信用保险" label="短期出口信用保险" />
                 </t-select>
@@ -276,28 +284,134 @@
                 </t-select>
               </t-form-item>
             </div>
-          </template>
 
-          <!-- Step 3: 买方信息 -->
-          <template v-else-if="activeStep === 3">
-            <div class="section-title">买方基础信息</div>
+            <div class="section-title">客户投保需求问卷</div>
             <div class="form-grid">
-              <t-form-item label="买方全称（中文/英文）" name="buyerName" class="form-item-full">
-                <t-input v-model="formData.buyerName" placeholder="境内买方填中文，境外买方填英文全称" />
+              <t-form-item label="客户类型" name="customerType">
+                <t-radio-group v-model="formData.customerType">
+                  <t-radio value="new">新客户（首次使用）</t-radio>
+                  <t-radio value="existing">老客户（已有贸易数据）</t-radio>
+                </t-radio-group>
               </t-form-item>
-              <t-form-item label="买方所在国别/地区" name="buyerCountry">
-                <t-select v-model="formData.buyerCountry" placeholder="请选择买方所在国家/地区" clearable filterable>
-                  <t-option v-for="item in countryOptions" :key="item.value" :value="item.value" :label="item.label" />
+              <t-form-item label="服务类型" name="serviceType">
+                <t-checkbox-group v-model="formData.serviceType">
+                  <t-checkbox value="buy">买保险</t-checkbox>
+                  <t-checkbox value="manage">管保单</t-checkbox>
+                  <t-checkbox value="claim">办理赔</t-checkbox>
+                </t-checkbox-group>
+              </t-form-item>
+              <t-form-item label="产品类型" name="productType" class="form-item-full">
+                <t-input v-model="formData.productType" placeholder="请输入主要出口产品类型" />
+              </t-form-item>
+              <t-form-item label="结算方式及账期占比" name="paymentMethods" class="form-item-full">
+                <div class="payment-methods">
+                  <div v-for="(method, index) in formData.paymentMethods" :key="index" class="payment-row">
+                    <t-checkbox v-model="method.selected">{{ method.name }}</t-checkbox>
+                    <t-select v-if="method.selected && method.hasTerm" v-model="method.term" placeholder="账期" style="width: 120px">
+                      <t-option value="immediate" label="即期" />
+                      <t-option value="≤30" label="≤30天" />
+                      <t-option value="31-60" label="31-60天" />
+                      <t-option value="61-90" label="61-90天" />
+                      <t-option value="91-120" label="91-120天" />
+                      <t-option value="121-180" label="121-180天" />
+                      <t-option value=">180" label=">180天" />
+                    </t-select>
+                    <t-select v-if="method.selected" v-model="method.ratio" placeholder="占比" style="width: 120px">
+                      <t-option value="≤10" label="10%及以下" />
+                      <t-option value="11-30" label="11%-30%" />
+                      <t-option value="31-50" label="31%-50%" />
+                      <t-option value="51-70" label="51%-70%" />
+                      <t-option value="71-90" label="71%-90%" />
+                      <t-option value=">91" label="91%及以上" />
+                    </t-select>
+                  </div>
+                </div>
+                <div class="ratio-summary" :class="{ error: ratioError }">
+                  <span>已分配占比：{{ totalRatio }}%</span>
+                  <span v-if="ratioError" class="error-text">⚠️ 占比总和必须等于100%</span>
+                </div>
+              </t-form-item>
+              <t-form-item label="买方国家/地区分布" name="countries" class="form-item-full">
+                <t-select v-model="tempCountry" placeholder="搜索并添加国家" filterable style="width: 100%" @change="addCountry">
+                  <t-option v-for="item in availableCountries" :key="item" :value="item" :label="item" />
                 </t-select>
+                <div class="country-list" v-if="formData.countries.length > 0">
+                  <div v-for="(item, index) in formData.countries" :key="index" class="country-row">
+                    <span>{{ item.country }}</span>
+                    <t-select v-model="item.ratio" placeholder="占比" style="width: 120px">
+                      <t-option value="≤10" label="10%及以下" />
+                      <t-option value="11-30" label="11%-30%" />
+                      <t-option value="31-50" label="31%-50%" />
+                      <t-option value="51-70" label="51%-70%" />
+                      <t-option value="71-90" label="71%-90%" />
+                      <t-option value=">91" label="91%及以上" />
+                    </t-select>
+                    <t-button size="small" variant="text" @click="removeCountry(index)">删除</t-button>
+                  </div>
+                </div>
+                <div class="ratio-summary" :class="{ error: countryRatioError }">
+                  <span>已分配占比：{{ countryTotalRatio }}%</span>
+                  <span v-if="countryRatioError" class="error-text">⚠️ 占比总和必须等于100%</span>
+                </div>
               </t-form-item>
-              <t-form-item label="买方注册地址" name="buyerAddress" class="form-item-full">
-                <t-input v-model="formData.buyerAddress" placeholder="详细填写买方注册地址" />
+              <t-form-item label="买家集中度" name="buyerConcentration" class="form-item-full">
+                <t-radio-group v-model="formData.buyerConcentration">
+                  <t-radio value="≤30">≤30%</t-radio>
+                  <t-radio value="31-50">31%-50%</t-radio>
+                  <t-radio value="51-70">51%-70%</t-radio>
+                  <t-radio value="71-85">71%-85%</t-radio>
+                  <t-radio value=">85">>85%</t-radio>
+                </t-radio-group>
               </t-form-item>
+              <t-form-item label="历史投保情况" name="insuranceHistory" class="form-item-full">
+                <t-radio-group v-model="formData.insuranceHistory">
+                  <t-radio value="none">未购买过</t-radio>
+                  <t-radio value="purchased">购买过且未赔付</t-radio>
+                  <t-radio value="claimed">购买过曾赔付</t-radio>
+                </t-radio-group>
+                <t-input v-if="formData.insuranceHistory === 'claimed'" v-model="formData.claimAmount" placeholder="请输入赔付金额（万元）" style="width: 200px; margin-top: 10px" />
+              </t-form-item>
+              <t-form-item label="需求描述" name="requirements" class="form-item-full">
+                <t-textarea v-model="formData.requirements" placeholder="请描述您的需求，如：保费优惠、额度提升、服务质量等" :autosize="{ minRows: 3, maxRows: 5 }" />
+              </t-form-item>
+              <div v-if="aiKeywords.length > 0" class="ai-analysis">
+                <div class="ai-title">
+                  <span class="ai-icon">🤖</span>
+                  <span>AI需求分析识别</span>
+                </div>
+                <div class="keyword-tags">
+                  <t-tag v-for="keyword in aiKeywords" :key="keyword" theme="primary" variant="light">{{ keyword }}</t-tag>
+                </div>
+                <div class="ai-suggestion">
+                  根据您的需求，我们推荐：<t-tag theme="success" variant="light">{{ aiSuggestion }}</t-tag>
+                </div>
+              </div>
+            </div>
             </div>
 
-            <div class="section-title">买方业务信息</div>
-            <div class="form-grid">
-              <t-form-item label="与该买方合作年限" name="cooperationYearsWithBuyer">
+            <div id="section-3" class="form-section">
+              <div class="section-header">
+                <span class="section-num">4</span>
+                <span class="section-title">买方信息</span>
+              </div>
+              <div class="section-title-sub">买方基础信息</div>
+              <div class="form-grid">
+                <t-form-item label="买方全称（中文/英文）" name="buyerName" class="form-item-full">
+                  <t-input v-model="formData.buyerName" placeholder="境内买方填中文，境外买方填英文全称" />
+                </t-form-item>
+                <t-form-item label="买方所在国别/地区" name="buyerCountry">
+                  <t-select v-model="formData.buyerCountry" placeholder="请选择买方所在国家/地区" clearable filterable>
+                    <t-option v-for="item in countryOptions" :key="item.value" :value="item.value" :label="item.label" />
+                  </t-select>
+                </t-form-item>
+                <t-form-item label="买方注册地址" name="buyerAddress" class="form-item-full">
+                  <t-input v-model="formData.buyerAddress" placeholder="详细填写买方注册地址" />
+                </t-form-item>
+              </div>
+
+              <div class="section-title-sub">买方业务信息</div>
+              <div class="form-grid">
+                <t-form-item label="与该买方合作年限" name="cooperationYearsWithBuyer">
                 <t-select v-model="formData.cooperationYearsWithBuyer" placeholder="请选择合作年限" clearable>
                   <t-option value="1年以内" label="1年以内" />
                   <t-option value="1-3年" label="1-3年" />
@@ -339,38 +453,43 @@
                 <t-input v-model="formData.lcIssuingBank" placeholder="仅信用证支付方式需填写" />
               </t-form-item>
             </div>
-          </template>
-
-          <!-- Step 4: 贸易基础信息 -->
-          <template v-else-if="activeStep === 4">
-            <div class="section-title">贸易基础信息</div>
-            <div class="form-grid">
-              <t-form-item label="出口商品/服务品类" name="exportProductCategory" class="form-item-full">
-                <t-input v-model="formData.exportProductCategory" placeholder="详细填写具体商品名称" />
-              </t-form-item>
-              <t-form-item label="是否涉及管制商品" name="involvesControlledGoods">
-                <t-select v-model="formData.involvesControlledGoods" placeholder="请选择" clearable>
-                  <t-option value="是" label="是" />
-                  <t-option value="否" label="否" />
-                </t-select>
-              </t-form-item>
-              <t-form-item v-if="formData.involvesControlledGoods === '是'" label="管制商品名称" name="controlledGoodsDescription">
-                <t-input v-model="formData.controlledGoodsDescription" placeholder="请注明具体商品名称" />
-              </t-form-item>
-              <t-form-item label="贸易合同是否含物权保留条款" name="hasTitleRetentionClause">
-                <t-select v-model="formData.hasTitleRetentionClause" placeholder="请选择" clearable>
-                  <t-option value="是" label="是" />
-                  <t-option value="否" label="否" />
-                </t-select>
-              </t-form-item>
             </div>
-          </template>
 
-          <!-- Step 5: 补充资料上传 -->
-          <template v-else-if="activeStep === 5">
-            <div class="section-title">必传资料</div>
-            <div class="form-grid">
-              <t-form-item label="企业法人营业执照扫描件" name="businessLicense" class="form-item-full">
+            <div id="section-4" class="form-section">
+              <div class="section-header">
+                <span class="section-num">5</span>
+                <span class="section-title">贸易基础信息</span>
+              </div>
+              <div class="form-grid">
+                <t-form-item label="出口商品/服务品类" name="exportProductCategory" class="form-item-full">
+                  <t-input v-model="formData.exportProductCategory" placeholder="详细填写具体商品名称" />
+                </t-form-item>
+                <t-form-item label="是否涉及管制商品" name="involvesControlledGoods">
+                  <t-select v-model="formData.involvesControlledGoods" placeholder="请选择" clearable>
+                    <t-option value="是" label="是" />
+                    <t-option value="否" label="否" />
+                  </t-select>
+                </t-form-item>
+                <t-form-item v-if="formData.involvesControlledGoods === '是'" label="管制商品名称" name="controlledGoodsDescription">
+                  <t-input v-model="formData.controlledGoodsDescription" placeholder="请注明具体商品名称" />
+                </t-form-item>
+                <t-form-item label="贸易合同是否含物权保留条款" name="hasTitleRetentionClause">
+                  <t-select v-model="formData.hasTitleRetentionClause" placeholder="请选择" clearable>
+                    <t-option value="是" label="是" />
+                    <t-option value="否" label="否" />
+                  </t-select>
+                </t-form-item>
+              </div>
+            </div>
+
+            <div id="section-5" class="form-section">
+              <div class="section-header">
+                <span class="section-num">6</span>
+                <span class="section-title">补充资料</span>
+              </div>
+              <div class="section-title-sub">必传资料</div>
+              <div class="form-grid">
+                <t-form-item label="企业法人营业执照扫描件" name="businessLicense" class="form-item-full">
                 <t-upload
                   v-model="formData.businessLicense"
                   action="https://demo.com/upload"
@@ -421,43 +540,49 @@
                 />
               </t-form-item>
             </div>
-          </template>
-
-          <!-- Step 6: 投保声明 -->
-          <template v-else-if="activeStep === 6">
-            <div class="section-title">投保人声明签署</div>
-            <div class="form-grid">
-              <t-form-item label="投保人声明" name="applicantDeclaration" class="form-item-full">
-                <div class="declaration-text">
-                  <p>本人/本公司作为投保人，郑重声明：</p>
-                  <p>1. 所填写的各项内容均真实、准确、完整，如有虚假，愿承担相应法律责任；</p>
-                  <p>2. 已充分了解所投保的保险条款、保险责任、责任免除等内容；</p>
-                  <p>3. 授权保险公司或其委托的第三方进行必要的调查和核实；</p>
-                  <p>4. 同意投保单作为保险合同的组成部分。</p>
-                </div>
-              </t-form-item>
-              <t-form-item label="投保人授权人签字" name="declarationSignature">
-                <t-input v-model="formData.declarationSignature" placeholder="请输入授权人签字" />
-              </t-form-item>
-              <t-form-item label="声明日期" name="declarationDate">
-                <t-date-picker v-model="formData.declarationDate" placeholder="请选择日期" />
-              </t-form-item>
-              <t-form-item label="加盖公司公章" name="companySeal" class="form-item-full">
-                <t-upload
-                  v-model="formData.companySeal"
-                  action="https://demo.com/upload"
-                  tips="请上传加盖公司公章的声明文件"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                />
-              </t-form-item>
             </div>
-          </template>
 
-          <!-- Step 7: 保单数字化信息 -->
-          <template v-else-if="activeStep === 7">
-            <div class="section-title">基础信息</div>
-            <div class="form-grid">
-              <t-form-item label="保险单号" name="policyNo">
+            <div id="section-6" class="form-section">
+              <div class="section-header">
+                <span class="section-num">7</span>
+                <span class="section-title">投保声明</span>
+              </div>
+              <div class="section-title-sub">投保人声明签署</div>
+              <div class="form-grid">
+                <t-form-item label="投保人声明" name="applicantDeclaration" class="form-item-full">
+                  <div class="declaration-text">
+                    <p>本人/本公司作为投保人，郑重声明：</p>
+                    <p>1. 所填写的各项内容均真实、准确、完整，如有虚假，愿承担相应法律责任；</p>
+                    <p>2. 已充分了解所投保的保险条款、保险责任、责任免除等内容；</p>
+                    <p>3. 授权保险公司或其委托的第三方进行必要的调查和核实；</p>
+                    <p>4. 同意投保单作为保险合同的组成部分。</p>
+                  </div>
+                </t-form-item>
+                <t-form-item label="投保人授权人签字" name="declarationSignature">
+                  <t-input v-model="formData.declarationSignature" placeholder="请输入授权人签字" />
+                </t-form-item>
+                <t-form-item label="声明日期" name="declarationDate">
+                  <t-date-picker v-model="formData.declarationDate" placeholder="请选择日期" />
+                </t-form-item>
+                <t-form-item label="加盖公司公章" name="companySeal" class="form-item-full">
+                  <t-upload
+                    v-model="formData.companySeal"
+                    action="https://demo.com/upload"
+                    tips="请上传加盖公司公章的声明文件"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                  />
+                </t-form-item>
+              </div>
+            </div>
+
+            <div id="section-7" class="form-section">
+              <div class="section-header">
+                <span class="section-num">8</span>
+                <span class="section-title">保单数字化信息</span>
+              </div>
+              <div class="section-title-sub">基础信息</div>
+              <div class="form-grid">
+                <t-form-item label="保险单号" name="policyNo">
                 <t-input v-model="formData.policyNo" placeholder="保单签发后自动生成" />
               </t-form-item>
               <t-form-item label="保险公司名称" name="insuranceCompanyName">
@@ -570,9 +695,10 @@
                 <t-upload v-model="formData.endorsementFile" action="https://demo.com/upload" tips="格式：PDF；大小：单文件≤10MB" accept=".pdf" />
               </t-form-item>
             </div>
-          </template>
-        </t-form>
-      </t-card>
+            </div>
+          </t-form>
+        </t-card>
+      </div>
     </div>
   </div>
 </template>
@@ -591,6 +717,44 @@ const store = useBusinessStore()
 
 const formRef = ref(null)
 const activeStep = ref(0)
+const activeSection = ref(0)
+
+const formSections = [
+  '客户基础信息',
+  '业务信息',
+  '投保核心需求',
+  '买方信息',
+  '贸易基础信息',
+  '补充资料',
+  '投保声明',
+  '保单数字化信息'
+]
+
+const scrollToSection = (index) => {
+  activeSection.value = index
+  const element = document.getElementById(`section-${index}`)
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
+onMounted(() => {
+  const content = document.querySelector('.scroll-content')
+  if (content) {
+    content.addEventListener('scroll', () => {
+      for (let i = 0; i < 8; i++) {
+        const section = document.getElementById(`section-${i}`)
+        if (section) {
+          const rect = section.getBoundingClientRect()
+          if (rect.top <= 150 && rect.bottom >= 150) {
+            activeSection.value = i
+            break
+          }
+        }
+      }
+    })
+  }
+})
 
 const countryOptions = [
   { value: '美国', label: '美国' },
@@ -665,6 +829,23 @@ const formData = reactive({
   insurancePrimaryPurpose2: '',
   insurancePrimaryPurpose3: '',
   insurancePrimaryPurpose4: '',
+  // 问卷调查字段
+  customerType: '',
+  serviceType: [],
+  productType: '',
+  paymentMethods: [
+    { name: 'OA赊销', value: 'oa', selected: false, hasTerm: true, term: '', ratio: '' },
+    { name: 'DA承兑交单', value: 'da', selected: false, hasTerm: true, term: '', ratio: '' },
+    { name: 'DP付款交单', value: 'dp', selected: false, hasTerm: true, term: '', ratio: '' },
+    { name: 'LC信用证', value: 'lc', selected: false, hasTerm: false, term: '', ratio: '' },
+    { name: 'TT预付', value: 'tt', selected: false, hasTerm: false, term: '', ratio: '' },
+    { name: '其他', value: 'other', selected: false, hasTerm: false, term: '', ratio: '' }
+  ],
+  countries: [],
+  buyerConcentration: '',
+  insuranceHistory: '',
+  claimAmount: '',
+  requirements: '',
   // 买方基础信息
   buyerName: '',
   buyerCountry: '',
@@ -730,6 +911,84 @@ const formData = reactive({
   policyFile: null,
   endorsementFile: null
 })
+
+const tempCountry = ref('')
+const ratioMap = { '≤10': 5, '11-30': 20, '31-50': 40, '51-70': 60, '71-90': 80, '>91': 95 }
+
+const totalRatio = computed(() => {
+  return formData.paymentMethods.reduce((sum, item) => {
+    if (item.selected && item.ratio) {
+      return sum + (ratioMap[item.ratio] || 0)
+    }
+    return sum
+  }, 0)
+})
+
+const ratioError = computed(() => {
+  const selected = formData.paymentMethods.filter(item => item.selected && item.ratio)
+  return selected.length > 0 && totalRatio.value !== 100
+})
+
+const countryTotalRatio = computed(() => {
+  return formData.countries.reduce((sum, item) => {
+    if (item.ratio) {
+      return sum + (ratioMap[item.ratio] || 0)
+    }
+    return sum
+  }, 0)
+})
+
+const countryRatioError = computed(() => {
+  return formData.countries.length > 0 && countryTotalRatio.value !== 100
+})
+
+const availableCountries = computed(() => {
+  const selectedCountries = formData.countries.map(c => c.country)
+  return countryOptions.filter(c => !selectedCountries.includes(c.value)).map(c => c.value)
+})
+
+const aiKeywords = computed(() => {
+  const text = formData.requirements
+  const keywords = []
+  const keywordPatterns = {
+    '保费': ['保费', '价格', '费用', '优惠', '便宜'],
+    '额度': ['额度', '限额', '配额', '保额', '金额'],
+    '服务': ['服务', '质量', '响应', '理赔', '售后'],
+    '融资': ['融资', '贷款', '资金', '周转'],
+    '期限': ['期限', '账期', '周期', '时间']
+  }
+  for (const [keyword, patterns] of Object.entries(keywordPatterns)) {
+    if (patterns.some(p => text.includes(p))) {
+      keywords.push(keyword)
+    }
+  }
+  return keywords
+})
+
+const aiSuggestion = computed(() => {
+  const keywords = aiKeywords.value
+  if (keywords.includes('保费') && keywords.includes('额度')) {
+    return '建议选择性价比高的综合型保险方案'
+  }
+  if (keywords.includes('服务')) {
+    return '建议选择服务质量优的保险机构'
+  }
+  if (keywords.includes('融资')) {
+    return '建议选择支持保单融资的保险方案'
+  }
+  return '根据您的需求推荐标准保险方案'
+})
+
+const addCountry = (value) => {
+  if (value && !formData.countries.some(c => c.country === value)) {
+    formData.countries.push({ country: value, ratio: '' })
+  }
+  tempCountry.value = ''
+}
+
+const removeCountry = (index) => {
+  formData.countries.splice(index, 1)
+}
 
 const rules = {
   // 主体信息
@@ -1028,6 +1287,10 @@ const initForm = () => {
   })
 }
 
+const handleBack = () => {
+  router.push('/insurance/purchase')
+}
+
 const handleSave = () => {
   const payload = { ...formData, id: formData.id || undefined }
   if (Array.isArray(payload.policyPeriodRange) && payload.policyPeriodRange.length === 2) {
@@ -1059,11 +1322,156 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.form-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr;
+.form-layout-scroll {
+  display: flex;
   gap: 16px;
-  align-items: start;
+  height: calc(100vh - 180px);
+  overflow: hidden;
+}
+
+.scroll-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  position: sticky;
+  top: 0;
+  height: fit-content;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.sidebar-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e7e7e7;
+}
+
+.sidebar-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #555;
+
+  &:hover {
+    background: #f0f5ff;
+    color: #1d39c4;
+  }
+
+  &.active {
+    background: #1d39c4;
+    color: #fff;
+
+    .section-num {
+      background: #fff;
+      color: #1d39c4;
+    }
+  }
+}
+
+.section-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #e6efff;
+  color: #1d39c4;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.section-name {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+  height: calc(100vh - 200px);
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+
+    &:hover {
+      background: #a1a1a1;
+    }
+  }
+}
+
+.form-card {
+  margin-bottom: 16px;
+}
+
+.form-section {
+  padding: 24px 0;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #1d39c4;
+}
+
+.section-header .section-num {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  background: #1d39c4;
+  color: #fff;
+}
+
+.section-header .section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.section-title-sub {
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+  margin: 20px 0 16px;
+  padding-left: 12px;
+  border-left: 3px solid #1d39c4;
 }
 
 .step-card {
@@ -1102,5 +1510,87 @@ onMounted(() => {
 
 .declaration-text p:last-child {
   margin-bottom: 0;
+}
+
+.payment-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.payment-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+}
+
+.ratio-summary {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #059669;
+  display: flex;
+  gap: 16px;
+}
+
+.ratio-summary.error {
+  color: #dc2626;
+}
+
+.country-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.country-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+}
+
+.country-row span:first-child {
+  min-width: 100px;
+}
+
+.ai-analysis {
+  background: #f0f9ff;
+  border: 1px solid #e0f2fe;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.ai-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e40af;
+  margin-bottom: 12px;
+}
+
+.ai-icon {
+  font-size: 18px;
+}
+
+.keyword-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ai-suggestion {
+  font-size: 14px;
+  color: #475569;
 }
 </style>

@@ -85,18 +85,93 @@
           <t-space>
             <t-link @click="handleView(row)">查看</t-link>
             <t-link @click="handleEdit(row)">编辑</t-link>
-            <t-link v-if="row.status === 'pending_submit' || row.status === 'draft'" theme="warning" @click="handleSubmit(row)">提交</t-link>
+            <t-link v-if="row.status === 'pending_submit' || row.status === 'draft'" theme="warning" @click="handleShowSubmitModal(row)">提交</t-link>
             <t-link v-if="row.status === 'credit_investigating'" theme="success" @click="handleApprove(row)">模拟通过</t-link>
             <t-link v-if="row.status === 'draft'" theme="danger" @click="handleDelete(row)">删除</t-link>
           </t-space>
         </template>
       </t-table>
     </t-card>
+
+    <t-dialog v-model:visible="submitVisible" header="提交申请" width="700px" :footer="false">
+      <div class="submit-modal">
+        <div class="modal-info">
+          <div class="info-icon">
+            <t-icon name="clock" :size="48" />
+          </div>
+          <div class="info-text">
+            <h3>等待平台审核</h3>
+            <p>您的投保申请将提交至平台进行审核，请耐心等待审核结果。</p>
+          </div>
+        </div>
+        
+        <div class="modal-divider"></div>
+        
+        <div class="form-preview">
+          <h4 class="preview-title">申请信息摘要</h4>
+          <div class="preview-grid">
+            <div class="preview-item">
+              <span class="preview-label">投保编号</span>
+              <span class="preview-value">{{ currentSubmitData?.id || '-' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">企业名称</span>
+              <span class="preview-value">{{ currentSubmitData?.companyName || currentSubmitData?.enterpriseName || '-' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">买方名称</span>
+              <span class="preview-value">{{ currentSubmitData?.buyerName || '-' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">买方国别</span>
+              <span class="preview-value">{{ currentSubmitData?.buyerCountry || '-' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">投保类型</span>
+              <span class="preview-value">{{ currentSubmitData?.insuranceType || '-' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">投保金额</span>
+              <span class="preview-value">{{ currentSubmitData?.insuranceCurrency || 'USD' }}{{ Number(currentSubmitData?.insuranceAmount || 0).toLocaleString() }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">投保期限</span>
+              <span class="preview-value">{{ currentSubmitData?.expectedInsurancePeriod?.join(' 至 ') || '-' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">机构类型</span>
+              <span class="preview-value">{{ currentSubmitData?.preferredInsuranceOrgType || '-' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">投保目的</span>
+              <span class="preview-value">{{ [currentSubmitData?.insurancePrimaryPurpose1, currentSubmitData?.insurancePrimaryPurpose2].filter(Boolean).join('、') || '-' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">预计年销售额</span>
+              <span class="preview-value">{{ currentSubmitData?.turnoverCurrency || 'USD' }}{{ Number(currentSubmitData?.expectedInsurableTurnover || 0).toLocaleString() }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">申请日期</span>
+              <span class="preview-value">{{ currentSubmitData?.createTime || '-' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">联系人</span>
+              <span class="preview-value">{{ currentSubmitData?.contactName || '-' }} {{ currentSubmitData?.contactPhone || '' }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <t-button variant="outline" @click="submitVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handleConfirmSubmit">确认提交</t-button>
+        </div>
+      </div>
+    </t-dialog>
   </div>
 </template>
 
 <script setup>
-import { reactive, computed, onMounted } from 'vue'
+import { reactive, computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import StatusTag from '@/components/common/StatusTag.vue'
@@ -106,6 +181,9 @@ import { useBusinessStore } from '@/stores/business'
 const router = useRouter()
 const store = useBusinessStore()
 const loading = computed(() => false)
+
+const submitVisible = ref(false)
+const currentSubmitData = ref(null)
 
 const searchParams = reactive({
   enterpriseName: '',
@@ -215,13 +293,18 @@ const handleExport = () => { console.log('export') }
 const handleAdd = () => { router.push('/insurance/purchase/new') }
 const handleView = (row) => { router.push(`/insurance/purchase/${row.id}`) }
 const handleEdit = (row) => { router.push(`/insurance/purchase/${row.id}/edit`) }
-const handleSubmit = (row) => {
-  const res = store.submitInsuranceApplication(row.id)
+const handleShowSubmitModal = (row) => {
+  currentSubmitData.value = row
+  submitVisible.value = true
+}
+const handleConfirmSubmit = () => {
+  const res = store.submitInsuranceApplication(currentSubmitData.value.id)
   if (!res?.ok) {
     MessagePlugin.error(res?.message || '提交失败')
     return
   }
-  MessagePlugin.success('提交成功，已进入资信调查')
+  submitVisible.value = false
+  MessagePlugin.success('提交成功，等待平台审核')
 }
 const handleApprove = (row) => {
   const res = store.approveInsuranceApplication(row.id)
@@ -249,4 +332,98 @@ onMounted(() => { store.ensureSeeded() })
 .table-count { font-size: 14px; color: #999; }
 .mb-16 { margin-bottom: 16px; }
 .detail-container { padding: 0 16px; }
+
+.submit-modal {
+  padding: 16px 0;
+  
+  .modal-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    
+    .info-icon {
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e0f2fe;
+      border-radius: 50%;
+      color: #0ea5e9;
+    }
+    
+    .info-text {
+      h3 {
+        margin: 0 0 8px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #1a1a1a;
+      }
+      
+      p {
+        margin: 0;
+        font-size: 14px;
+        color: #666;
+        line-height: 1.6;
+      }
+    }
+  }
+  
+  .modal-divider {
+    height: 1px;
+    background: #e7e7e7;
+    margin: 16px 0;
+  }
+  
+  .form-preview {
+    .preview-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+      margin: 0 0 16px 0;
+      padding-left: 12px;
+      border-left: 3px solid #1d39c4;
+    }
+    
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    
+    .preview-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 12px;
+      background: #fafafa;
+      border-radius: 6px;
+      
+      .preview-label {
+        font-size: 13px;
+        color: #999;
+      }
+      
+      .preview-value {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+        word-break: break-all;
+      }
+    }
+  }
+  
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #e7e7e7;
+  }
+}
 </style>

@@ -3,7 +3,7 @@
     <div class="page-header">
       <div class="page-title">保单信息管理</div>
       <div class="page-actions">
-        <t-button variant="outline" @click="handleDigitize">保单数字化</t-button>
+        <t-button variant="outline" @click="handleDigitize">新增投保</t-button>
       </div>
     </div>
 
@@ -245,12 +245,6 @@
             <t-input-number v-model="digitizeForm.premiumAmount" :min="0" placeholder="请输入保费金额" />
           </t-form-item>
 
-          <t-form-item>
-            <t-space>
-              <t-button theme="primary" type="submit">保存结构化结果</t-button>
-              <t-button variant="outline" @click="digitizeVisible = false">关闭</t-button>
-            </t-space>
-          </t-form-item>
         </t-form>
       </div>
     </t-dialog>

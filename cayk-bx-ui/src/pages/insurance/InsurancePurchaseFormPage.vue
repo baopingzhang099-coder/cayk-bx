@@ -6,7 +6,7 @@
         <t-space>
           <t-button variant="outline" @click="handleBack">返回</t-button>
           <t-button variant="outline" @click="handleSave">保存</t-button>
-          <t-button theme="primary" @click="handleSubmit">提交</t-button>
+          <t-button theme="primary" @click="handleSubmit">申请投保</t-button>
         </t-space>
       </div>
     </div>
@@ -35,11 +35,6 @@
           <detail-panel v-if="detailData" :data="detailData" :columns="policyFeeColumns" title="费用管理" />
           <detail-panel v-if="detailData" :data="detailData" :columns="policyFileColumns" title="保单文件" />
           <empty-state v-if="!detailData" description="暂无保单数字化数据" />
-        </t-tab-panel>
-        <t-tab-panel value="process" label="流程记录">
-          <t-timeline mode="alternate">
-            <t-timeline-item v-for="item in processTimeline" :key="item.time" :content="item.content" :time="item.time" :color="item.color" />
-          </t-timeline>
         </t-tab-panel>
       </t-tabs>
     </t-card>
@@ -122,6 +117,26 @@
               </t-form-item>
               <t-form-item label="企业邮箱" name="companyEmail">
                 <t-input v-model="formData.companyEmail" placeholder="请输入企业邮箱" />
+              </t-form-item>
+            </div>
+
+            <div class="section-title-sub">资质文件</div>
+            <div class="form-grid">
+              <t-form-item label="企业法人营业执照扫描件" name="businessLicense" class="form-item-full">
+                <t-upload
+                  v-model="formData.businessLicense"
+                  action="https://demo.com/upload"
+                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
+              </t-form-item>
+              <t-form-item label="对外贸易经营者备案登记表" name="importExportQualification" class="form-item-full">
+                <t-upload
+                  v-model="formData.importExportQualification"
+                  action="https://demo.com/upload"
+                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
               </t-form-item>
             </div>
             </div>
@@ -249,111 +264,8 @@
               </t-form-item>
             </div>
 
-            <div class="section-title">投保主要目的（按重要性填写1-4）</div>
+            <div class="section-title-sub">风险信息</div>
             <div class="form-grid">
-              <t-form-item label="最重要的目的" name="insurancePrimaryPurpose1">
-                <t-select v-model="formData.insurancePrimaryPurpose1" placeholder="1=最重要" clearable>
-                  <t-option value="保障出口收汇安全" label="保障出口收汇安全" />
-                  <t-option value="获取银行贸易融资" label="获取银行贸易融资" />
-                  <t-option value="提升公司内部管理" label="提升公司内部管理" />
-                  <t-option value="取得海外买方信息" label="取得海外买方信息" />
-                </t-select>
-              </t-form-item>
-              <t-form-item label="次重要的目的" name="insurancePrimaryPurpose2">
-                <t-select v-model="formData.insurancePrimaryPurpose2" placeholder="请选择" clearable>
-                  <t-option value="保障出口收汇安全" label="保障出口收汇安全" />
-                  <t-option value="获取银行贸易融资" label="获取银行贸易融资" />
-                  <t-option value="提升公司内部管理" label="提升公司内部管理" />
-                  <t-option value="取得海外买方信息" label="取得海外买方信息" />
-                </t-select>
-              </t-form-item>
-              <t-form-item label="第三重要的目的" name="insurancePrimaryPurpose3">
-                <t-select v-model="formData.insurancePrimaryPurpose3" placeholder="请选择" clearable>
-                  <t-option value="保障出口收汇安全" label="保障出口收汇安全" />
-                  <t-option value="获取银行贸易融资" label="获取银行贸易融资" />
-                  <t-option value="提升公司内部管理" label="提升公司内部管理" />
-                  <t-option value="取得海外买方信息" label="取得海外买方信息" />
-                </t-select>
-              </t-form-item>
-              <t-form-item label="最次要的目的" name="insurancePrimaryPurpose4">
-                <t-select v-model="formData.insurancePrimaryPurpose4" placeholder="请选择" clearable>
-                  <t-option value="保障出口收汇安全" label="保障出口收汇安全" />
-                  <t-option value="获取银行贸易融资" label="获取银行贸易融资" />
-                  <t-option value="提升公司内部管理" label="提升公司内部管理" />
-                  <t-option value="取得海外买方信息" label="取得海外买方信息" />
-                </t-select>
-              </t-form-item>
-            </div>
-
-            <div class="section-title">客户投保需求问卷</div>
-            <div class="form-grid">
-              <t-form-item label="客户类型" name="customerType">
-                <t-radio-group v-model="formData.customerType">
-                  <t-radio value="new">新客户（首次使用）</t-radio>
-                  <t-radio value="existing">老客户（已有贸易数据）</t-radio>
-                </t-radio-group>
-              </t-form-item>
-              <t-form-item label="服务类型" name="serviceType">
-                <t-checkbox-group v-model="formData.serviceType">
-                  <t-checkbox value="buy">买保险</t-checkbox>
-                  <t-checkbox value="manage">管保单</t-checkbox>
-                  <t-checkbox value="claim">办理赔</t-checkbox>
-                </t-checkbox-group>
-              </t-form-item>
-              <t-form-item label="产品类型" name="productType" class="form-item-full">
-                <t-input v-model="formData.productType" placeholder="请输入主要出口产品类型" />
-              </t-form-item>
-              <t-form-item label="结算方式及账期占比" name="paymentMethods" class="form-item-full">
-                <div class="payment-methods">
-                  <div v-for="(method, index) in formData.paymentMethods" :key="index" class="payment-row">
-                    <t-checkbox v-model="method.selected">{{ method.name }}</t-checkbox>
-                    <t-select v-if="method.selected && method.hasTerm" v-model="method.term" placeholder="账期" style="width: 120px">
-                      <t-option value="immediate" label="即期" />
-                      <t-option value="≤30" label="≤30天" />
-                      <t-option value="31-60" label="31-60天" />
-                      <t-option value="61-90" label="61-90天" />
-                      <t-option value="91-120" label="91-120天" />
-                      <t-option value="121-180" label="121-180天" />
-                      <t-option value=">180" label=">180天" />
-                    </t-select>
-                    <t-select v-if="method.selected" v-model="method.ratio" placeholder="占比" style="width: 120px">
-                      <t-option value="≤10" label="10%及以下" />
-                      <t-option value="11-30" label="11%-30%" />
-                      <t-option value="31-50" label="31%-50%" />
-                      <t-option value="51-70" label="51%-70%" />
-                      <t-option value="71-90" label="71%-90%" />
-                      <t-option value=">91" label="91%及以上" />
-                    </t-select>
-                  </div>
-                </div>
-                <div class="ratio-summary" :class="{ error: ratioError }">
-                  <span>已分配占比：{{ totalRatio }}%</span>
-                  <span v-if="ratioError" class="error-text">⚠️ 占比总和必须等于100%</span>
-                </div>
-              </t-form-item>
-              <t-form-item label="买方国家/地区分布" name="countries" class="form-item-full">
-                <t-select v-model="tempCountry" placeholder="搜索并添加国家" filterable style="width: 100%" @change="addCountry">
-                  <t-option v-for="item in availableCountries" :key="item" :value="item" :label="item" />
-                </t-select>
-                <div class="country-list" v-if="formData.countries.length > 0">
-                  <div v-for="(item, index) in formData.countries" :key="index" class="country-row">
-                    <span>{{ item.country }}</span>
-                    <t-select v-model="item.ratio" placeholder="占比" style="width: 120px">
-                      <t-option value="≤10" label="10%及以下" />
-                      <t-option value="11-30" label="11%-30%" />
-                      <t-option value="31-50" label="31%-50%" />
-                      <t-option value="51-70" label="51%-70%" />
-                      <t-option value="71-90" label="71%-90%" />
-                      <t-option value=">91" label="91%及以上" />
-                    </t-select>
-                    <t-button size="small" variant="text" @click="removeCountry(index)">删除</t-button>
-                  </div>
-                </div>
-                <div class="ratio-summary" :class="{ error: countryRatioError }">
-                  <span>已分配占比：{{ countryTotalRatio }}%</span>
-                  <span v-if="countryRatioError" class="error-text">⚠️ 占比总和必须等于100%</span>
-                </div>
-              </t-form-item>
               <t-form-item label="买家集中度" name="buyerConcentration" class="form-item-full">
                 <t-radio-group v-model="formData.buyerConcentration">
                   <t-radio value="≤30">≤30%</t-radio>
@@ -452,6 +364,14 @@
               <t-form-item v-if="formData.mainPaymentMethods === 'LC'" label="信用证开证行名称、SWIFT CODE" name="lcIssuingBank" class="form-item-full">
                 <t-input v-model="formData.lcIssuingBank" placeholder="仅信用证支付方式需填写" />
               </t-form-item>
+              <t-form-item label="授权保险公司联系买方的签字文件" name="authorizationDocument" class="form-item-full">
+                <t-upload
+                  v-model="formData.authorizationDocument"
+                  action="https://demo.com/upload"
+                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
+              </t-form-item>
             </div>
             </div>
 
@@ -474,36 +394,10 @@
                   <t-input v-model="formData.controlledGoodsDescription" placeholder="请注明具体商品名称" />
                 </t-form-item>
                 <t-form-item label="贸易合同是否含物权保留条款" name="hasTitleRetentionClause">
-                  <t-select v-model="formData.hasTitleRetentionClause" placeholder="请选择" clearable>
-                    <t-option value="是" label="是" />
-                    <t-option value="否" label="否" />
-                  </t-select>
-                </t-form-item>
-              </div>
-            </div>
-
-            <div id="section-5" class="form-section">
-              <div class="section-header">
-                <span class="section-num">6</span>
-                <span class="section-title">补充资料</span>
-              </div>
-              <div class="section-title-sub">必传资料</div>
-              <div class="form-grid">
-                <t-form-item label="企业法人营业执照扫描件" name="businessLicense" class="form-item-full">
-                <t-upload
-                  v-model="formData.businessLicense"
-                  action="https://demo.com/upload"
-                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                />
-              </t-form-item>
-              <t-form-item label="对外贸易经营者备案登记表" name="importExportQualification" class="form-item-full">
-                <t-upload
-                  v-model="formData.importExportQualification"
-                  action="https://demo.com/upload"
-                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                />
+                <t-select v-model="formData.hasTitleRetentionClause" placeholder="请选择" clearable>
+                  <t-option value="是" label="是" />
+                  <t-option value="否" label="否" />
+                </t-select>
               </t-form-item>
               <t-form-item label="近期贸易合同扫描件（样本）" name="tradeContract" class="form-item-full">
                 <t-upload
@@ -531,20 +425,12 @@
                   accept=".pdf,.jpg,.jpeg,.png"
                 />
               </t-form-item>
-              <t-form-item label="授权保险公司联系买方的签字文件" name="authorizationDocument" class="form-item-full">
-                <t-upload
-                  v-model="formData.authorizationDocument"
-                  action="https://demo.com/upload"
-                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                />
-              </t-form-item>
             </div>
             </div>
 
-            <div id="section-6" class="form-section">
+            <div id="section-5" class="form-section">
               <div class="section-header">
-                <span class="section-num">7</span>
+                <span class="section-num">6</span>
                 <span class="section-title">投保声明</span>
               </div>
               <div class="section-title-sub">投保人声明签署</div>
@@ -725,7 +611,6 @@ const formSections = [
   '投保核心需求',
   '买方信息',
   '贸易基础信息',
-  '补充资料',
   '投保声明',
   '保单数字化信息'
 ]
@@ -742,7 +627,7 @@ onMounted(() => {
   const content = document.querySelector('.scroll-content')
   if (content) {
     content.addEventListener('scroll', () => {
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 7; i++) {
         const section = document.getElementById(`section-${i}`)
         if (section) {
           const rect = section.getBoundingClientRect()

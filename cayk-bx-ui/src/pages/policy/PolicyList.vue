@@ -4,6 +4,17 @@
       <div class="page-title">投保信息管理</div>
     </div>
 
+    <div class="status-tabs">
+      <t-tabs v-model="currentStatusTab" theme="card">
+        <t-tab-panel
+          v-for="tab in statusTabs"
+          :key="tab.value"
+          :value="tab.value"
+          :label="tab.label"
+        />
+      </t-tabs>
+    </div>
+
     <search-filter
       :status-options="statusOptions"
       @search="handleSearch"
@@ -178,6 +189,13 @@ const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRa
 
 const isInkasso = computed(() => userStore.role === 'inkasso')
 
+const currentStatusTab = ref('all')
+
+const statusTabs = [
+  { value: 'all', label: '全部' },
+  { value: 'pending_review', label: '待处理' }
+]
+
 const statusOptions = [
   { value: 'draft', label: '草稿' },
   { value: 'pending_review', label: '待审核' },
@@ -214,6 +232,7 @@ const filteredData = computed(() => {
   const list = store.insuranceApplications || []
   const p = searchParams.value
   return list.filter((it) => {
+    if (currentStatusTab.value !== 'all' && it.status !== currentStatusTab.value) return false
     if (p.enterpriseName && !String(it.companyName || '').includes(p.enterpriseName)) return false
     if (p.buyerName && !String(it.buyerName || '').includes(p.buyerName)) return false
     if (p.status && it.status !== p.status) return false
@@ -402,6 +421,10 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+.status-tabs {
+  margin-bottom: 16px;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

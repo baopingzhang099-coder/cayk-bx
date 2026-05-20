@@ -1,5 +1,12 @@
 <template>
   <div class="page-container">
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item>首页</t-breadcrumb-item>
+        <t-breadcrumb-item>投保管理</t-breadcrumb-item>
+        <t-breadcrumb-item>投保信息管理</t-breadcrumb-item>
+      </t-breadcrumb>
+    </div>
     <div class="page-header">
       <div class="page-title">投保信息管理</div>
       <div class="page-actions">
@@ -890,5 +897,11 @@ onMounted(() => { store.ensureSeeded() })
     width: 100%;
     box-sizing: border-box;
   }
+}
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
 }
 </style>

@@ -11,325 +11,393 @@
     <div class="page-header">
       <div class="page-title-wp">
         <div class="page-title">投保流程管理</div>
-        <t-tag theme="primary" variant="light" size="small">进行中</t-tag>
+        <t-tag v-if="activeTab === 'process'" theme="primary" variant="light" size="small">进行中</t-tag>
       </div>
       <div class="policy-info">
         保单号：<span class="policy-no">PI2026001234</span>
       </div>
     </div>
 
-    <div class="flow-progress">
-      <div class="flow-steps">
-        <template v-for="(step, index) in stepOptions" :key="step.value">
-          <div class="flow-step-col">
-            <div
-              class="flow-step-dot"
-              :class="{ completed: index + 1 < currentStep, active: index + 1 === currentStep }"
-              @click="setStep(index + 1)"
-            >
-              <span v-if="index + 1 < currentStep" class="flow-step-check">✓</span>
-              <span v-else class="flow-step-num">{{ index + 1 }}</span>
-            </div>
-            <div class="flow-step-label" :class="{ active: index + 1 === currentStep, completed: index + 1 < currentStep }">
-              {{ step.label }}
-            </div>
-            <div class="flow-step-status">
-              <t-tag
-                v-if="index + 1 < currentStep"
-                theme="success"
-                variant="light"
-                size="small"
-              >
-                已完成
-              </t-tag>
-              <t-tag
-                v-else-if="index + 1 === currentStep"
-                theme="primary"
-                variant="light"
-                size="small"
-              >
-                进行中
-              </t-tag>
-              <t-tag
-                v-else
-                theme="default"
-                variant="light"
-                size="small"
-              >
-                待处理
-              </t-tag>
-            </div>
-          </div>
-          <div v-if="index < stepOptions.length - 1" class="flow-arrow" :class="{ completed: index + 1 < currentStep }">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-        </template>
-      </div>
-    </div>
-
-    <div class="flow-timeline">
-      <div class="timeline-title-bar">
-        <span class="timeline-title">流程详情</span>
-        <span class="timeline-hint">点击步骤标题可展开/收起详情</span>
-      </div>
-
-      <div
-        v-for="(step, index) in stepOptions"
-        :key="step.value"
-        class="timeline-node"
-        :class="{
-          'node-completed': index + 1 < currentStep,
-          'node-active': index + 1 === currentStep,
-          'node-pending': index + 1 > currentStep
-        }"
-      >
-        <div class="node-header" @click="toggleCollapse(index)">
-          <div class="node-marker">
-            <span v-if="index + 1 < currentStep" class="node-check">✓</span>
-            <span v-else-if="index + 1 === currentStep" class="node-dot"></span>
-            <span v-else class="node-pending-dot"></span>
-          </div>
-          <div class="node-info">
-            <div class="node-title">
-              <span class="node-step-num">Step {{ index + 1 }}</span>
-              <span class="node-step-name">{{ step.label }}</span>
-              <span v-if="stepInfo[index].handler" class="node-handler">处理人：{{ stepInfo[index].handler }}</span>
-            </div>
-            <div class="node-meta">
-              <span class="meta-status" :class="'status-' + getStepStatusText(index + 1)">
-                {{ getStepStatusText(index + 1) }}
-              </span>
-              <span v-if="stepInfo[index].startTime" class="meta-time">开始：{{ stepInfo[index].startTime }}</span>
-              <span v-if="stepInfo[index].endTime" class="meta-time">完成：{{ stepInfo[index].endTime }}</span>
-            </div>
-          </div>
-          <div class="node-toggle">
-            <t-icon
-              :name="expandedSteps[index] ? 'chevron-up' : 'chevron-down'"
-              class="toggle-icon"
-            />
+    <t-tabs v-model="activeTab" size="large">
+      <t-tab-panel value="process" label="投保流程管理">
+        <div class="flow-progress">
+          <div class="flow-steps">
+            <template v-for="(step, index) in stepOptions" :key="step.value">
+              <div class="flow-step-col">
+                <div
+                  class="flow-step-dot"
+                  :class="{ completed: index + 1 < currentStep, active: index + 1 === currentStep }"
+                  @click="setStep(index + 1)"
+                >
+                  <span v-if="index + 1 < currentStep" class="flow-step-check">✓</span>
+                  <span v-else class="flow-step-num">{{ index + 1 }}</span>
+                </div>
+                <div class="flow-step-label" :class="{ active: index + 1 === currentStep, completed: index + 1 < currentStep }">
+                  {{ step.label }}
+                </div>
+                <div class="flow-step-status">
+                  <t-tag
+                    v-if="index + 1 < currentStep"
+                    theme="success"
+                    variant="light"
+                    size="small"
+                  >
+                    已完成
+                  </t-tag>
+                  <t-tag
+                    v-else-if="index + 1 === currentStep"
+                    theme="primary"
+                    variant="light"
+                    size="small"
+                  >
+                    进行中
+                  </t-tag>
+                  <t-tag
+                    v-else
+                    theme="default"
+                    variant="light"
+                    size="small"
+                  >
+                    待处理
+                  </t-tag>
+                </div>
+              </div>
+              <div v-if="index < stepOptions.length - 1" class="flow-arrow" :class="{ completed: index + 1 < currentStep }">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </template>
           </div>
         </div>
 
-        <div v-show="expandedSteps[index]" class="node-body">
-          <div class="node-content">
-            <div v-if="index === 0" class="content-inner">
-              <div class="content-section">
-                <div class="content-section-title">投保方案确认</div>
-                <div class="plan-grid">
-                  <div class="plan-item">
-                    <span class="plan-item-label">投保方案</span>
-                    <span class="plan-item-value">{{ planLabels[formData.step1.insurancePlan] }}</span>
-                  </div>
-                  <div class="plan-item">
-                    <span class="plan-item-label">保险公司</span>
-                    <span class="plan-item-value">{{ companyLabels[formData.step1.insuranceCompany] }}</span>
-                  </div>
-                  <div class="plan-item plan-item-full">
-                    <span class="plan-item-label">匹配规则说明</span>
-                    <span class="plan-item-value">{{ formData.step1.matchRule }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="index === 1" class="content-inner">
-              <div class="content-section">
-                <div class="content-section-title">申请投保资料</div>
-                <div class="doc-checklist">
-                  <div class="doc-check-item">
-                    <t-checkbox v-model="step2Docs.applicationForm">投保申请书</t-checkbox>
-                  </div>
-                  <div class="doc-check-item">
-                    <t-checkbox v-model="step2Docs.buyerInfoForm">买方信息采集表</t-checkbox>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="index === 2" class="content-inner">
-              <div class="content-section">
-                <div class="content-section-title">提交投保申请</div>
-                <div class="doc-attach-list">
-                  <div class="attach-item">
-                    <t-icon name="file-text" class="attach-icon" />
-                    <span>投保申请书</span>
-                    <t-tag v-if="step2Docs.applicationForm" theme="success" variant="light" size="small">已附</t-tag>
-                    <t-tag v-else theme="default" variant="light" size="small">未附</t-tag>
-                  </div>
-                  <div class="attach-item">
-                    <t-icon name="file-text" class="attach-icon" />
-                    <span>买方信息采集表</span>
-                    <t-tag v-if="step2Docs.buyerInfoForm" theme="success" variant="light" size="small">已附</t-tag>
-                    <t-tag v-else theme="default" variant="light" size="small">未附</t-tag>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="index === 3" class="content-inner">
-              <div class="content-section">
-                <div class="content-section-title">审核流转</div>
-                <div class="checklist-group">
-                  <div class="checklist-row">
-                    <t-checkbox v-model="formData.step4.checkedItems" value="basicInfo">基本信息校验</t-checkbox>
-                    <t-tag theme="success" variant="light" size="small">已完成</t-tag>
-                  </div>
-                  <div class="checklist-row">
-                    <t-checkbox v-model="formData.step4.checkedItems" value="documentCheck">资料完整性检查</t-checkbox>
-                    <t-tag theme="success" variant="light" size="small">已完成</t-tag>
-                  </div>
-                  <div class="checklist-row">
-                    <t-checkbox v-model="formData.step4.checkedItems" value="riskAssessment">风险评估</t-checkbox>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="index === 4" class="content-inner">
-              <div class="content-section">
-                <div class="content-section-title">核保信息确认</div>
-                <t-form :data="formData.step5" label-width="120">
-                  <t-form-item label="核保信息确认">
-                    <t-checkbox-group v-model="formData.step5.checkedItems">
-                      <t-checkbox value="policyInfo">保单信息无误</t-checkbox>
-                      <t-checkbox value="premiumInfo">保费信息无误</t-checkbox>
-                      <t-checkbox value="coverageInfo">保障范围无误</t-checkbox>
-                    </t-checkbox-group>
-                  </t-form-item>
-                  <t-form-item label="核保结论">
-                    <t-radio-group v-model="formData.step5.underwritingResult">
-                      <t-radio value="approved">承保</t-radio>
-                      <t-radio value="conditional">有条件承保</t-radio>
-                      <t-radio value="rejected">拒保</t-radio>
-                    </t-radio-group>
-                  </t-form-item>
-                  <t-form-item label="核保意见">
-                    <t-textarea v-model="formData.step5.underwritingOpinion" placeholder="请输入核保意见" :autosize="{ minRows: 2, maxRows: 4 }" />
-                  </t-form-item>
-                </t-form>
-              </div>
-            </div>
-
-            <div v-else-if="index === 5" class="content-inner">
-              <div class="content-section">
-                <div class="content-section-title">保单签发</div>
-                <t-form :data="formData.step6" label-width="100">
-                  <t-form-item label="保单编号">
-                    <t-input v-model="formData.step6.policyNo" readonly placeholder="系统自动生成" />
-                  </t-form-item>
-                  <t-form-item label="保单状态">
-                    <t-tag theme="success" variant="light">已签发</t-tag>
-                  </t-form-item>
-                  <t-form-item label="签发日期">
-                    <t-date-picker v-model="formData.step6.issueDate" />
-                  </t-form-item>
-                  <t-form-item label="保单文件">
-                    <t-upload v-model="formData.step6.policyFile" :files="[]" placeholder="上传保单文件" />
-                  </t-form-item>
-                </t-form>
-              </div>
-            </div>
-
-            <div v-else-if="index === 6" class="content-inner">
-              <div class="content-section">
-                <div class="content-section-title">支付管理</div>
-                <t-form :data="formData.step7" label-width="100">
-                  <t-form-item label="保费金额">
-                    <t-input v-model="formData.step7.premiumAmount" readonly placeholder="¥12,500.00" />
-                  </t-form-item>
-                  <t-form-item label="支付状态">
-                    <t-select v-model="formData.step7.paymentStatus" placeholder="请选择支付状态">
-                      <t-option value="unpaid" label="未支付" />
-                      <t-option value="partial" label="部分支付" />
-                      <t-option value="paid" label="已支付" />
-                    </t-select>
-                  </t-form-item>
-                  <t-form-item label="支付凭证">
-                    <t-upload v-model="formData.step7.paymentReceipt" :files="[]" placeholder="上传支付凭证" />
-                  </t-form-item>
-                  <t-form-item label="保单明细表">
-                    <t-upload v-model="formData.step7.policyDetailFile" :files="[]" placeholder="上传保单明细表" />
-                  </t-form-item>
-                  <t-form-item label="费率表">
-                    <t-upload v-model="formData.step7.rateFile" :files="[]" placeholder="上传费率表" />
-                  </t-form-item>
-                </t-form>
-              </div>
-            </div>
+        <div class="flow-timeline">
+          <div class="timeline-title-bar">
+            <span class="timeline-title">流程详情</span>
+            <span class="timeline-hint">点击步骤标题可展开/收起详情</span>
           </div>
 
-          <t-divider />
-
-          <div class="node-approval">
-            <div class="approval-row">
-              <div class="approval-field">
-                <span class="approval-label">审批结论</span>
-                <t-radio-group
-                  :value="formData['step' + (index + 1)].approvalResult"
-                  @change="(v) => { formData['step' + (index + 1)].approvalResult = v }"
-                  class="approval-radio-group"
-                >
-                  <t-radio value="approved">通过</t-radio>
-                  <t-radio value="rejected">退回修改</t-radio>
-                </t-radio-group>
+          <div
+            v-for="(step, index) in stepOptions"
+            :key="step.value"
+            class="timeline-node"
+            :class="{
+              'node-completed': index + 1 < currentStep,
+              'node-active': index + 1 === currentStep,
+              'node-pending': index + 1 > currentStep
+            }"
+          >
+            <div class="node-header" @click="toggleCollapse(index)">
+              <div class="node-marker">
+                <span v-if="index + 1 < currentStep" class="node-check">✓</span>
+                <span v-else-if="index + 1 === currentStep" class="node-dot"></span>
+                <span v-else class="node-pending-dot"></span>
               </div>
-            </div>
-            <div class="approval-row">
-              <div class="approval-field approval-field-full">
-                <span class="approval-label">审批意见</span>
-                <t-textarea
-                  :value="formData['step' + (index + 1)].auditOpinion"
-                  @update:model-value="(v) => { formData['step' + (index + 1)].auditOpinion = v }"
-                  placeholder="请输入审批意见"
-                  :autosize="{ minRows: 2, maxRows: 4 }"
-                  class="approval-textarea"
+              <div class="node-info">
+                <div class="node-title">
+                  <span class="node-step-num">Step {{ index + 1 }}</span>
+                  <span class="node-step-name">{{ step.label }}</span>
+                  <span v-if="stepInfo[index].handler" class="node-handler">处理人：{{ stepInfo[index].handler }}</span>
+                </div>
+                <div class="node-meta">
+                  <span class="meta-status" :class="'status-' + getStepStatusText(index + 1)">
+                    {{ getStepStatusText(index + 1) }}
+                  </span>
+                  <span v-if="stepInfo[index].startTime" class="meta-time">开始：{{ stepInfo[index].startTime }}</span>
+                  <span v-if="stepInfo[index].endTime" class="meta-time">完成：{{ stepInfo[index].endTime }}</span>
+                </div>
+              </div>
+              <div class="node-toggle">
+                <t-icon
+                  :name="expandedSteps[index] ? 'chevron-up' : 'chevron-down'"
+                  class="toggle-icon"
                 />
               </div>
             </div>
+
+            <div v-show="expandedSteps[index]" class="node-body">
+              <div v-if="index >= 5" class="node-content">
+                <div v-if="index === 5" class="content-inner">
+                  <div class="content-section">
+                    <div class="content-section-title">保单签发</div>
+                    <t-form :data="formData.step6" label-width="100">
+                      <t-form-item label="保单编号">
+                        <t-input v-model="formData.step6.policyNo" readonly placeholder="系统自动生成" />
+                      </t-form-item>
+                      <t-form-item label="保单状态">
+                        <t-tag theme="success" variant="light">已签发</t-tag>
+                      </t-form-item>
+                      <t-form-item label="签发日期">
+                        <t-date-picker v-model="formData.step6.issueDate" />
+                      </t-form-item>
+                      <t-form-item label="保单文件">
+                        <t-upload v-model="formData.step6.policyFile" :files="[]" placeholder="上传保单文件" />
+                      </t-form-item>
+                    </t-form>
+                  </div>
+                </div>
+
+                <div v-else-if="index === 6" class="content-inner">
+                  <div class="content-section">
+                    <div class="content-section-title">支付管理</div>
+                    <t-form :data="formData.step7" label-width="100">
+                      <t-form-item label="保费金额">
+                        <t-input v-model="formData.step7.premiumAmount" readonly placeholder="¥12,500.00" />
+                      </t-form-item>
+                      <t-form-item label="支付状态">
+                        <t-select v-model="formData.step7.paymentStatus" placeholder="请选择支付状态">
+                          <t-option value="unpaid" label="未支付" />
+                          <t-option value="partial" label="部分支付" />
+                          <t-option value="paid" label="已支付" />
+                        </t-select>
+                      </t-form-item>
+                      <t-form-item label="支付凭证">
+                        <t-upload v-model="formData.step7.paymentReceipt" :files="[]" placeholder="上传支付凭证" />
+                      </t-form-item>
+                      <t-form-item label="保单明细表">
+                        <t-upload v-model="formData.step7.policyDetailFile" :files="[]" placeholder="上传保单明细表" />
+                      </t-form-item>
+                      <t-form-item label="费率表">
+                        <t-upload v-model="formData.step7.rateFile" :files="[]" placeholder="上传费率表" />
+                      </t-form-item>
+                    </t-form>
+                  </div>
+                </div>
+              </div>
+
+              <t-divider v-if="index >= 5" />
+
+              <div class="node-approval">
+                <div class="approval-row">
+                  <div class="approval-field">
+                    <span class="approval-label">审批结论</span>
+                    <t-radio-group
+                      :value="formData['step' + (index + 1)].approvalResult"
+                      @change="(v) => { formData['step' + (index + 1)].approvalResult = v }"
+                      class="approval-radio-group"
+                    >
+                      <t-radio value="approved">通过</t-radio>
+                      <t-radio value="rejected">退回修改</t-radio>
+                    </t-radio-group>
+                  </div>
+                </div>
+                <div class="approval-row">
+                  <div class="approval-field approval-field-full">
+                    <span class="approval-label">审批意见</span>
+                    <t-textarea
+                      :value="formData['step' + (index + 1)].auditOpinion"
+                      @update:model-value="(v) => { formData['step' + (index + 1)].auditOpinion = v }"
+                      placeholder="请输入审批意见"
+                      :autosize="{ minRows: 2, maxRows: 4 }"
+                      class="approval-textarea"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-actions">
+          <t-button
+            variant="outline"
+            :disabled="currentStep === 1"
+            @click="prevStep"
+          >
+            上一步
+          </t-button>
+          <t-button
+            v-if="currentStep < 7"
+            theme="primary"
+            @click="nextStep"
+          >
+            下一步
+          </t-button>
+          <t-button
+            v-else
+            theme="primary"
+            @click="completeProcess"
+          >
+            完成
+          </t-button>
+        </div>
+      </t-tab-panel>
+
+      <t-tab-panel value="task-list" label="流程任务列表">
+        <t-card>
+          <t-table
+            :data="processTasks"
+            :columns="taskColumns"
+            row-key="id"
+            hover
+            stripe
+            :pagination="pagination"
+            @page-change="onPageChange"
+          >
+            <template #status="{ row }">
+              <t-tag theme="success" variant="light">{{ row.statusName }}</t-tag>
+            </template>
+            <template #operation="{ row }">
+              <t-link theme="primary" @click="handleView(row)">查看详情</t-link>
+            </template>
+          </t-table>
+        </t-card>
+      </t-tab-panel>
+    </t-tabs>
+
+    <t-dialog v-model:visible="detailVisible" header="流程任务详情" width="800px" :footer="false">
+      <div v-if="currentTask" class="detail-body">
+        <div class="detail-summary">
+          <div class="summary-item">
+            <span class="summary-label">任务编号</span>
+            <span class="summary-value">{{ currentTask.id }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">保单号</span>
+            <span class="summary-value">{{ currentTask.policyNo }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">客户名称</span>
+            <span class="summary-value">{{ currentTask.companyName }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">完成时间</span>
+            <span class="summary-value">{{ currentTask.endTime }}</span>
+          </div>
+        </div>
+        <t-divider />
+        <div
+          v-for="(step, idx) in currentTask.stepOptions"
+          :key="idx"
+          class="detail-step"
+        >
+          <div class="detail-step-header">
+            <span class="detail-step-num">Step {{ idx + 1 }}</span>
+            <span class="detail-step-name">{{ step.label }}</span>
+            <span v-if="currentTask.stepInfo[idx]?.handler" class="detail-step-handler">处理人：{{ currentTask.stepInfo[idx].handler }}</span>
+            <span class="detail-step-time" v-if="currentTask.stepInfo[idx]?.startTime">开始：{{ currentTask.stepInfo[idx].startTime }}</span>
+            <span class="detail-step-time" v-if="currentTask.stepInfo[idx]?.endTime">完成：{{ currentTask.stepInfo[idx].endTime }}</span>
+          </div>
+          <div class="detail-step-content">
+            <!-- Step 1: 投保方案确认 -->
+            <template v-if="idx === 0">
+              <div class="detail-field-row">
+                <span class="detail-field-label">投保方案</span>
+                <span class="detail-field-value">{{ currentTask.planLabels[currentTask.formData.step1?.insurancePlan] || currentTask.formData.step1?.insurancePlan }}</span>
+              </div>
+              <div class="detail-field-row">
+                <span class="detail-field-label">保险公司</span>
+                <span class="detail-field-value">{{ currentTask.companyLabels[currentTask.formData.step1?.insuranceCompany] || currentTask.formData.step1?.insuranceCompany }}</span>
+              </div>
+              <div class="detail-field-row detail-field-row-full">
+                <span class="detail-field-label">匹配规则说明</span>
+                <span class="detail-field-value">{{ currentTask.formData.step1?.matchRule }}</span>
+              </div>
+            </template>
+            <!-- Step 2: 申请投保 -->
+            <template v-if="idx === 1">
+              <div class="detail-field-row">
+                <span class="detail-field-label">投保申请书</span>
+                <span class="detail-field-value">{{ currentTask.step2Docs?.applicationForm ? '已勾选' : '未勾选' }}</span>
+              </div>
+              <div class="detail-field-row">
+                <span class="detail-field-label">买方信息采集表</span>
+                <span class="detail-field-value">{{ currentTask.step2Docs?.buyerInfoForm ? '已勾选' : '未勾选' }}</span>
+              </div>
+            </template>
+            <!-- Step 3: 提交投保申请 -->
+            <template v-if="idx === 2">
+              <div class="detail-field-row">
+                <span class="detail-field-label">投保申请书</span>
+                <span class="detail-field-value">{{ currentTask.step2Docs?.applicationForm ? '已附' : '未附' }}</span>
+              </div>
+              <div class="detail-field-row">
+                <span class="detail-field-label">买方信息采集表</span>
+                <span class="detail-field-value">{{ currentTask.step2Docs?.buyerInfoForm ? '已附' : '未附' }}</span>
+              </div>
+            </template>
+            <!-- Step 4: 审核流转 -->
+            <template v-if="idx === 3">
+              <div class="detail-field-row">
+                <span class="detail-field-label">基本信息校验</span>
+                <span class="detail-field-value">{{ currentTask.formData.step4?.checkedItems?.includes('basicInfo') ? '已完成' : '未完成' }}</span>
+              </div>
+              <div class="detail-field-row">
+                <span class="detail-field-label">资料完整性检查</span>
+                <span class="detail-field-value">{{ currentTask.formData.step4?.checkedItems?.includes('documentCheck') ? '已完成' : '未完成' }}</span>
+              </div>
+              <div class="detail-field-row">
+                <span class="detail-field-label">风险评估</span>
+                <span class="detail-field-value">{{ currentTask.formData.step4?.checkedItems?.includes('riskAssessment') ? '已完成' : '未完成' }}</span>
+              </div>
+            </template>
+            <!-- Step 5: 核保 -->
+            <template v-if="idx === 4">
+              <div class="detail-field-row">
+                <span class="detail-field-label">核保信息确认</span>
+                <span class="detail-field-value">{{ (currentTask.formData.step5?.checkedItems || []).join('、') || '无' }}</span>
+              </div>
+              <div class="detail-field-row">
+                <span class="detail-field-label">核保结论</span>
+                <span class="detail-field-value">{{ { approved: '承保', conditional: '有条件承保', rejected: '拒保' }[currentTask.formData.step5?.underwritingResult] || currentTask.formData.step5?.underwritingResult || '无' }}</span>
+              </div>
+              <div class="detail-field-row detail-field-row-full">
+                <span class="detail-field-label">核保意见</span>
+                <span class="detail-field-value">{{ currentTask.formData.step5?.underwritingOpinion || '无' }}</span>
+              </div>
+            </template>
+            <!-- Step 6: 保单签发 -->
+            <template v-if="idx === 5">
+              <div class="detail-field-row">
+                <span class="detail-field-label">保单编号</span>
+                <span class="detail-field-value">{{ currentTask.formData.step6?.policyNo || '无' }}</span>
+              </div>
+              <div class="detail-field-row">
+                <span class="detail-field-label">保单状态</span>
+                <span class="detail-field-value">已签发</span>
+              </div>
+              <div class="detail-field-row">
+                <span class="detail-field-label">签发日期</span>
+                <span class="detail-field-value">{{ currentTask.formData.step6?.issueDate || '无' }}</span>
+              </div>
+            </template>
+            <!-- Step 7: 支付管理 -->
+            <template v-if="idx === 6">
+              <div class="detail-field-row">
+                <span class="detail-field-label">保费金额</span>
+                <span class="detail-field-value">{{ currentTask.formData.step7?.premiumAmount || '无' }}</span>
+              </div>
+              <div class="detail-field-row">
+                <span class="detail-field-label">支付状态</span>
+                <span class="detail-field-value">{{ { unpaid: '未支付', partial: '部分支付', paid: '已支付' }[currentTask.formData.step7?.paymentStatus] || currentTask.formData.step7?.paymentStatus || '无' }}</span>
+              </div>
+            </template>
+            <!-- Approval fields for every step -->
+            <t-divider />
+            <div class="detail-field-row">
+              <span class="detail-field-label">审批结论</span>
+              <span class="detail-field-value">{{ { approved: '通过', rejected: '退回修改' }[currentTask.formData['step' + (idx + 1)]?.approvalResult] || '无' }}</span>
+            </div>
+            <div class="detail-field-row detail-field-row-full">
+              <span class="detail-field-label">审批意见</span>
+              <span class="detail-field-value">{{ currentTask.formData['step' + (idx + 1)]?.auditOpinion || '无' }}</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="flow-actions">
-      <t-button
-        variant="outline"
-        :disabled="currentStep === 1"
-        @click="prevStep"
-      >
-        上一步
-      </t-button>
-      <t-button
-        v-if="currentStep < 7"
-        theme="primary"
-        @click="nextStep"
-      >
-        下一步
-      </t-button>
-      <t-button
-        v-else
-        theme="primary"
-        @click="completeProcess"
-      >
-        完成
-      </t-button>
-    </div>
+    </t-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useBusinessStore } from '@/stores/business'
 import { MessagePlugin } from 'tdesign-vue-next'
 
-const currentStep = ref(3)
-
-const router = useRouter()
 const businessStore = useBusinessStore()
+
+const activeTab = ref('process')
+const currentStep = ref(3)
 
 const stepOptions = [
   { label: '投保方案确认', value: 1 },
@@ -474,15 +542,58 @@ const completeProcess = () => {
     companyName: '深圳XX国际贸易有限公司',
     startTime: stepInfo[0].startTime,
     endTime: stepInfo[6].endTime,
-    stepsCompleted: 7
+    stepsCompleted: 7,
+    stepOptions: [...stepOptions],
+    stepInfo: stepInfo.map(s => ({ ...s })),
+    formData: Object.fromEntries(
+      Object.entries(formData).map(([k, v]) => [k, { ...v }])
+    ),
+    step2Docs: { ...step2Docs },
+    planLabels: { ...planLabels },
+    companyLabels: { ...companyLabels }
   })
   MessagePlugin.success('投保流程已完成，保单已生效！')
-  router.push('/insurance/task-list')
+  activeTab.value = 'task-list'
 }
 
 onMounted(() => {
+  businessStore.ensureSeeded()
   setStepStartTime(currentStep.value)
 })
+
+// Task list
+const detailVisible = ref(false)
+const currentTask = ref(null)
+
+const taskColumns = [
+  { colKey: 'id', title: '任务编号', width: 160 },
+  { colKey: 'policyNo', title: '保单号', width: 150 },
+  { colKey: 'companyName', title: '客户名称', minWidth: 200 },
+  { colKey: 'taskType', title: '任务类型', width: 100 },
+  { colKey: 'startTime', title: '开始时间', width: 170 },
+  { colKey: 'endTime', title: '完成时间', width: 170 },
+  { colKey: 'stepsCompleted', title: '完成步骤', width: 100 },
+  { colKey: 'status', title: '状态', width: 100, slot: 'status' },
+  { colKey: 'operation', title: '操作', width: 120, slot: 'operation' }
+]
+
+const pagination = ref({
+  defaultPageSize: 10,
+  total: 0,
+  defaultCurrent: 1
+})
+
+const processTasks = computed(() => businessStore.processTasks)
+
+const onPageChange = (pageInfo) => {
+  pagination.value.defaultCurrent = pageInfo.current
+  pagination.value.defaultPageSize = pageInfo.pageSize
+}
+
+const handleView = (row) => {
+  currentTask.value = row
+  detailVisible.value = true
+}
 </script>
 
 <style lang="scss" scoped>
@@ -843,75 +954,6 @@ $gray-800: #1f2937;
   }
 }
 
-.plan-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.plan-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  &.plan-item-full {
-    grid-column: 1 / -1;
-  }
-}
-
-.plan-item-label {
-  font-size: 12px;
-  color: $gray-500;
-}
-
-.plan-item-value {
-  font-size: 14px;
-  color: $gray-800;
-  font-weight: 500;
-}
-
-.doc-checklist {
-  display: flex;
-  gap: 32px;
-  padding: 8px 0;
-}
-
-.doc-check-item {
-  font-size: 14px;
-}
-
-.doc-attach-list {
-  display: flex;
-  gap: 24px;
-  padding: 8px 0 16px;
-}
-
-.attach-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: $gray-700;
-}
-
-.attach-icon {
-  color: $primary;
-  font-size: 16px;
-}
-
-.checklist-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 4px 0;
-}
-
-.checklist-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .node-approval {
   padding: 8px 0 0;
 }
@@ -962,5 +1004,105 @@ $gray-800: #1f2937;
 
 :deep(.t-divider) {
   margin: 16px 0;
+}
+
+.detail-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.detail-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summary-label {
+  font-size: 12px;
+  color: $gray-500;
+}
+
+.summary-value {
+  font-size: 14px;
+  color: $gray-800;
+  font-weight: 500;
+}
+
+.detail-step {
+  border: 1px solid $gray-200;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.detail-step-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-bottom: 1px solid $gray-200;
+  flex-wrap: wrap;
+}
+
+.detail-step-num {
+  font-size: 11px;
+  font-weight: 600;
+  color: $primary;
+  background: rgba($primary, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.detail-step-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: $gray-800;
+}
+
+.detail-step-handler {
+  font-size: 12px;
+  color: $gray-500;
+  margin-left: auto;
+}
+
+.detail-step-time {
+  font-size: 12px;
+  color: $gray-400;
+}
+
+.detail-step-content {
+  padding: 12px 16px;
+}
+
+.detail-field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.detail-field-row-full {
+  align-items: flex-start;
+}
+
+.detail-field-label {
+  font-size: 13px;
+  color: $gray-500;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.detail-field-value {
+  font-size: 13px;
+  color: $gray-800;
 }
 </style>

@@ -44,12 +44,6 @@ const routes = [
         meta: { title: '投保流程管理', menuKey: 'insurance-apply', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
-        path: '/insurance/task-list',
-        name: 'InsuranceTaskList',
-        component: () => import('@/pages/insurance/InsuranceTaskList.vue'),
-        meta: { title: '流程任务列表', menuKey: 'insurance-task-list', roles: ['customer', 'inkasso', 'clerk'] }
-      },
-      {
         path: '/insurance/report',
         name: 'InsuranceReport',
         component: () => import('@/pages/insurance/InsuranceReport.vue'),

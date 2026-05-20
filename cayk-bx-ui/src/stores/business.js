@@ -769,6 +769,184 @@ export const useBusinessStore = defineStore('business', {
           bankAccount: '中国农业银行 6228****24680135'
         }
       ]
+      this.processTasks = [
+        {
+          id: 'PT20260520001',
+          policyNo: 'PI2026001234',
+          companyName: '深圳XX国际贸易有限公司',
+          taskType: '投保流程',
+          startTime: '2026-05-18 09:00:00',
+          endTime: '2026-05-20 15:30:00',
+          stepsCompleted: 7,
+          status: 'completed',
+          statusName: '已完成',
+          stepOptions: [
+            { label: '投保方案确认', value: 1 },
+            { label: '申请投保', value: 2 },
+            { label: '提交投保申请', value: 3 },
+            { label: '审核流转', value: 4 },
+            { label: '核保', value: 5 },
+            { label: '保单签发', value: 6 },
+            { label: '支付管理', value: 7 }
+          ],
+          stepInfo: [
+            { handler: '张三', startTime: '2026-05-18 09:00:00', endTime: '2026-05-18 10:30:00' },
+            { handler: '李四', startTime: '2026-05-18 10:30:00', endTime: '2026-05-18 14:00:00' },
+            { handler: '王五', startTime: '2026-05-19 09:00:00', endTime: '2026-05-19 11:00:00' },
+            { handler: '赵六', startTime: '2026-05-19 11:00:00', endTime: '2026-05-19 16:00:00' },
+            { handler: '钱七', startTime: '2026-05-20 09:00:00', endTime: '2026-05-20 11:30:00' },
+            { handler: '孙八', startTime: '2026-05-20 13:00:00', endTime: '2026-05-20 14:30:00' },
+            { handler: '周九', startTime: '2026-05-20 14:30:00', endTime: '2026-05-20 15:30:00' }
+          ],
+          formData: {
+            step1: {
+              insurancePlan: 'planA',
+              insuranceCompany: 'company1',
+              matchRule: '根据各保险公司行业风险清单、国家（地区）分类表设定匹配规则，结合买方资质、贸易背景等因素综合评估后推荐此方案。',
+              approvalResult: 'approved',
+              auditOpinion: '方案符合客户需求，风险等级可控，同意通过。'
+            },
+            step2: {
+              approvalResult: 'approved',
+              auditOpinion: '申请资料齐全，同意提交。'
+            },
+            step3: {
+              approvalResult: 'approved',
+              auditOpinion: '投保申请材料完整，同意提交审核。'
+            },
+            step4: {
+              checkedItems: ['basicInfo', 'documentCheck', 'riskAssessment'],
+              approvalResult: 'approved',
+              auditOpinion: '基本信息校验通过，资料完整，风险评估为低风险，同意流转。'
+            },
+            step5: {
+              checkedItems: ['policyInfo', 'premiumInfo', 'coverageInfo'],
+              underwritingResult: 'approved',
+              underwritingOpinion: '保单信息、保费信息、保障范围均核对无误，同意承保。',
+              approvalResult: 'approved',
+              auditOpinion: '核保通过。'
+            },
+            step6: {
+              policyNo: 'POL20260602001',
+              issueDate: '2026-05-20',
+              policyFile: [{ name: '保单文件.pdf' }],
+              approvalResult: 'approved',
+              auditOpinion: '保单已签发，信息无误。'
+            },
+            step7: {
+              premiumAmount: '¥12,500.00',
+              paymentStatus: 'paid',
+              paymentReceipt: [{ name: '支付凭证.pdf' }],
+              policyDetailFile: [{ name: '保单明细表.pdf' }],
+              rateFile: [{ name: '费率表.pdf' }],
+              approvalResult: 'approved',
+              auditOpinion: '保费已支付，流程完成。'
+            }
+          },
+          step2Docs: {
+            applicationForm: true,
+            buyerInfoForm: true
+          },
+          planLabels: {
+            planA: '方案A - 短期出口信用保险',
+            planB: '方案B - 中长期出口信用保险',
+            planC: '方案C - 国内贸易信用保险'
+          },
+          companyLabels: {
+            company1: '中国出口信用保险公司',
+            company2: '平安财产保险',
+            company3: '太平洋财产保险'
+          }
+        },
+        {
+          id: 'PT20260519002',
+          policyNo: 'PI2026005678',
+          companyName: '北京ZZ贸易集团',
+          taskType: '投保流程',
+          startTime: '2026-05-10 09:00:00',
+          endTime: '2026-05-19 17:00:00',
+          stepsCompleted: 7,
+          status: 'completed',
+          statusName: '已完成',
+          stepOptions: [
+            { label: '投保方案确认', value: 1 },
+            { label: '申请投保', value: 2 },
+            { label: '提交投保申请', value: 3 },
+            { label: '审核流转', value: 4 },
+            { label: '核保', value: 5 },
+            { label: '保单签发', value: 6 },
+            { label: '支付管理', value: 7 }
+          ],
+          stepInfo: [
+            { handler: '陈经理', startTime: '2026-05-10 09:00:00', endTime: '2026-05-10 11:00:00' },
+            { handler: '刘主管', startTime: '2026-05-11 10:00:00', endTime: '2026-05-11 15:00:00' },
+            { handler: '王五', startTime: '2026-05-12 09:00:00', endTime: '2026-05-12 12:00:00' },
+            { handler: '赵六', startTime: '2026-05-13 09:00:00', endTime: '2026-05-14 11:00:00' },
+            { handler: '钱七', startTime: '2026-05-15 09:00:00', endTime: '2026-05-15 16:30:00' },
+            { handler: '孙八', startTime: '2026-05-18 09:00:00', endTime: '2026-05-18 15:00:00' },
+            { handler: '周九', startTime: '2026-05-19 09:00:00', endTime: '2026-05-19 17:00:00' }
+          ],
+          formData: {
+            step1: {
+              insurancePlan: 'planB',
+              insuranceCompany: 'company2',
+              matchRule: '根据买方资信评估结果，推荐中长期出口信用保险方案。',
+              approvalResult: 'approved',
+              auditOpinion: '方案合理，同意。'
+            },
+            step2: {
+              approvalResult: 'approved',
+              auditOpinion: '资料已审核，无误。'
+            },
+            step3: {
+              approvalResult: 'approved',
+              auditOpinion: '申请已提交。'
+            },
+            step4: {
+              checkedItems: ['basicInfo', 'documentCheck'],
+              approvalResult: 'approved',
+              auditOpinion: '校验通过。'
+            },
+            step5: {
+              checkedItems: ['policyInfo', 'premiumInfo'],
+              underwritingResult: 'conditional',
+              underwritingOpinion: '有条件承保，需客户补充部分资料。',
+              approvalResult: 'approved',
+              auditOpinion: '有条件通过。'
+            },
+            step6: {
+              policyNo: 'POL20260602002',
+              issueDate: '2026-05-18',
+              policyFile: [{ name: '保单文件.pdf' }],
+              approvalResult: 'approved',
+              auditOpinion: '保单已签发。'
+            },
+            step7: {
+              premiumAmount: '¥10,000.00',
+              paymentStatus: 'paid',
+              paymentReceipt: [{ name: '支付凭证.pdf' }],
+              policyDetailFile: [],
+              rateFile: [],
+              approvalResult: 'approved',
+              auditOpinion: '已支付。'
+            }
+          },
+          step2Docs: {
+            applicationForm: true,
+            buyerInfoForm: true
+          },
+          planLabels: {
+            planA: '方案A - 短期出口信用保险',
+            planB: '方案B - 中长期出口信用保险',
+            planC: '方案C - 国内贸易信用保险'
+          },
+          companyLabels: {
+            company1: '中国出口信用保险公司',
+            company2: '平安财产保险',
+            company3: '太平洋财产保险'
+          }
+        }
+      ]
     },
     createOrUpdateInsuranceApplication(payload) {
       const now = new Date()
@@ -939,7 +1117,13 @@ export const useBusinessStore = defineStore('business', {
         endTime: task.endTime || '',
         stepsCompleted: task.stepsCompleted || 7,
         status: 'completed',
-        statusName: '已完成'
+        statusName: '已完成',
+        stepOptions: task.stepOptions || [],
+        stepInfo: task.stepInfo || [],
+        formData: task.formData || {},
+        step2Docs: task.step2Docs || {},
+        planLabels: task.planLabels || {},
+        companyLabels: task.companyLabels || {}
       })
     },
     createClaim(payload) {

@@ -41,7 +41,9 @@
       <template #operation="{ row }">
         <t-space>
           <t-link @click="handleView(row)">查看</t-link>
-          <t-link v-if="row.status === 'rejected'" theme="primary" @click="handleSubmit(row)">重新提交</t-link>
+          <t-link v-if="isInkasso && row.status === 'pending_review'" theme="primary" @click="handleApprove(row)">审核</t-link>
+          <t-link v-if="isInkasso && row.status === 'pending_review'" theme="danger" @click="handleReject(row)">驳回</t-link>
+          <t-link v-if="!isInkasso && row.status === 'rejected'" theme="primary" @click="handleSubmit(row)">重新提交</t-link>
         </t-space>
       </template>
     </data-table>
@@ -121,53 +123,37 @@
       </div>
     </t-dialog>
 
-    <t-dialog v-model:visible="confirmVisible" :header="confirmTitle" width="480px">
+    <t-dialog v-model:visible="confirmVisible" :header="confirmTitle" width="800px">
       <div class="confirm-content">
-        <div v-if="confirmRow" class="confirm-info">
-          <div class="info-row">
-            <span class="info-label">投保编号</span>
-            <span class="info-value">{{ confirmRow.id }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">企业名称</span>
-            <span class="info-value">{{ confirmRow.companyName }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">买方名称</span>
-            <span class="info-value">{{ confirmRow.buyerName }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">买方国别</span>
-            <span class="info-value">{{ confirmRow.buyerCountry }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">投保类型</span>
-            <span class="info-value">{{ confirmRow.insuranceType }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">投保金额</span>
-            <span class="info-value">${{ Number(confirmRow.insuranceAmount || 0).toLocaleString() }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">申请日期</span>
-            <span class="info-value">{{ confirmRow.createTime }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">当前状态</span>
-            <span class="info-value status-tag" :class="confirmRow.status">
-              {{ statusMap[confirmRow.status] || confirmRow.status }}
-            </span>
-          </div>
-        </div>
-        <div class="confirm-tip">
+        <detail-panel v-if="confirmRow" title="基础信息" :columns="detailColumns" :data="confirmRow || {}" />
+        <detail-panel v-if="confirmRow" title="业务信息" :columns="businessColumns" :data="confirmRow || {}" />
+        <detail-panel v-if="confirmRow" title="投保需求" :columns="insuranceColumns" :data="confirmRow || {}" />
+        
+        <t-form v-if="confirmAction === 'reject'" label-width="100px">
+          <t-form-item label="驳回原因">
+            <t-textarea v-model="rejectReason" placeholder="请输入驳回原因" :autosize="{ minRows: 3, maxRows: 6 }" />
+          </t-form-item>
+        </t-form>
+        
+        <div class="confirm-tip" v-if="confirmAction === 'submit'">
           <t-icon name="warning-circle" size="16px" class="tip-icon" />
           <span class="tip-text">提交后状态将变为待审核，请确认信息无误</span>
+        </div>
+        <div class="confirm-tip" v-else-if="confirmAction === 'approve'">
+          <t-icon name="check-circle" size="16px" class="tip-icon success" />
+          <span class="tip-text">确认审核通过此投保申请？</span>
+        </div>
+        <div class="confirm-tip" v-else-if="confirmAction === 'reject'">
+          <t-icon name="close-circle" size="16px" class="tip-icon danger" />
+          <span class="tip-text">请确认是否驳回此申请，驳回后客户可重新编辑提交。</span>
         </div>
       </div>
       <template #footer>
         <t-space>
           <t-button variant="outline" @click="confirmVisible = false">取消</t-button>
-          <t-button theme="primary" @click="handleConfirm">确认</t-button>
+          <t-button v-if="confirmAction === 'approve'" theme="primary" @click="handleConfirm">通过</t-button>
+          <t-button v-else-if="confirmAction === 'reject'" theme="danger" @click="handleConfirm">驳回</t-button>
+          <t-button v-else-if="confirmAction === 'submit'" theme="primary" @click="handleConfirm">确认</t-button>
         </t-space>
       </template>
     </t-dialog>
@@ -183,10 +169,14 @@ import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 import { useBusinessStore } from '@/stores/business'
+import { useUserStore } from '@/stores/user'
 
 const store = useBusinessStore()
+const userStore = useUserStore()
 const loading = computed(() => false)
 const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRange: [] })
+
+const isInkasso = computed(() => userStore.role === 'inkasso')
 
 const statusOptions = [
   { value: 'draft', label: '草稿' },
@@ -250,6 +240,7 @@ const confirmContent = ref('')
 const confirmButtonText = ref('')
 const confirmRow = ref(null)
 const confirmAction = ref('')
+const rejectReason = ref('')
 
 const detailColumns = [
   { label: '投保编号', key: 'id' },
@@ -302,19 +293,17 @@ const handleView = (row) => {
 
 const handleApprove = (row) => {
   confirmTitle.value = '审核通过'
-  confirmContent.value = '确认审核通过此投保申请？'
-  confirmButtonText.value = '通过'
   confirmRow.value = row
   confirmAction.value = 'approve'
+  rejectReason.value = ''
   confirmVisible.value = true
 }
 
 const handleReject = (row) => {
   confirmTitle.value = '确认驳回'
-  confirmContent.value = '请确认是否驳回此申请，驳回后客户可重新编辑提交。'
-  confirmButtonText.value = '驳回'
   confirmRow.value = row
   confirmAction.value = 'reject'
+  rejectReason.value = ''
   confirmVisible.value = true
 }
 
@@ -336,8 +325,11 @@ const handleConfirm = () => {
       MessagePlugin.error(res?.message || '审核失败')
     }
   } else if (confirmAction.value === 'reject' && confirmRow.value) {
-    const rejectReason = '投保资料不符合要求，请客户核实后重新提交。'
-    const res = store.rejectInsuranceApplication(confirmRow.value.id, rejectReason)
+    if (!rejectReason.value.trim()) {
+      MessagePlugin.warning('请输入驳回原因')
+      return
+    }
+    const res = store.rejectInsuranceApplication(confirmRow.value.id, rejectReason.value)
     if (res?.ok) {
       MessagePlugin.success('驳回成功')
     } else {
@@ -620,10 +612,28 @@ onMounted(() => {
 
 .tip-icon {
   color: #f59e0b;
+  
+  &.success {
+    color: #16a34a;
+  }
+  
+  &.danger {
+    color: #dc2626;
+  }
 }
 
 .tip-text {
   font-size: 13px;
   color: #92400e;
+}
+
+.confirm-tip {
+  &:has(.tip-icon.success) .tip-text {
+    color: #166534;
+  }
+  
+  &:has(.tip-icon.danger) .tip-text {
+    color: #991b1b;
+  }
 }
 </style>

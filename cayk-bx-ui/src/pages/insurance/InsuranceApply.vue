@@ -322,9 +322,14 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useBusinessStore } from '@/stores/business'
 import { MessagePlugin } from 'tdesign-vue-next'
 
 const currentStep = ref(3)
+
+const router = useRouter()
+const businessStore = useBusinessStore()
 
 const stepOptions = [
   { label: '投保方案确认', value: 1 },
@@ -464,7 +469,15 @@ const nextStep = () => {
 
 const completeProcess = () => {
   setStepEndTime(currentStep.value)
+  businessStore.addCompletedProcessTask({
+    policyNo: 'PI2026001234',
+    companyName: '深圳XX国际贸易有限公司',
+    startTime: stepInfo[0].startTime,
+    endTime: stepInfo[6].endTime,
+    stepsCompleted: 7
+  })
   MessagePlugin.success('投保流程已完成，保单已生效！')
+  router.push('/insurance/task-list')
 }
 
 onMounted(() => {

@@ -79,7 +79,8 @@ export const useBusinessStore = defineStore('business', {
     policies: [],
     creditLimits: [],
     shipments: [],
-    claims: []
+    claims: [],
+    processTasks: []
   }),
   getters: {
     insuranceStats(state) {
@@ -927,6 +928,19 @@ export const useBusinessStore = defineStore('business', {
       const normalized = normalizeShipment(item)
       this.shipments.unshift(normalized)
       return normalized
+    },
+    addCompletedProcessTask(task) {
+      this.processTasks.unshift({
+        id: task.id || createId('PT'),
+        policyNo: task.policyNo || '',
+        companyName: task.companyName || '',
+        taskType: '投保流程',
+        startTime: task.startTime || '',
+        endTime: task.endTime || '',
+        stepsCompleted: task.stepsCompleted || 7,
+        status: 'completed',
+        statusName: '已完成'
+      })
     },
     createClaim(payload) {
       const now = new Date()

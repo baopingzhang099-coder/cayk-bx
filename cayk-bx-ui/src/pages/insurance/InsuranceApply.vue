@@ -1,20 +1,13 @@
 <template>
   <div class="page-container">
     <div class="breadcrumbs">
-      <t-button text @click="goBack">
-        <template #icon>
-          <t-icon name="chevron-left" />
-        </template>
-        返回
-      </t-button>
-      <span class="breadcrumb-separator">/</span>
       <t-breadcrumb>
         <t-breadcrumb-item>首页</t-breadcrumb-item>
         <t-breadcrumb-item>投保管理</t-breadcrumb-item>
         <t-breadcrumb-item>投保流程管理</t-breadcrumb-item>
       </t-breadcrumb>
     </div>
-    
+
     <div class="page-header">
       <div class="page-title">投保流程管理</div>
       <div class="policy-info">
@@ -23,85 +16,104 @@
     </div>
 
     <div class="steps-progress">
-      <div 
-        v-for="(step, index) in stepOptions" 
-        :key="step.value"
-        class="step-item"
-        :class="{ active: index + 1 === currentStep, completed: index + 1 < currentStep }"
-        @click="setStep(index + 1)"
-      >
-        <div class="step-dot">
-          <span class="step-number">{{ index + 1 }}</span>
+      <template v-for="(step, index) in stepOptions" :key="step.value">
+        <div class="step-col">
+          <div
+            class="step-item"
+            :class="{ active: index + 1 === currentStep, completed: index + 1 < currentStep }"
+            @click="setStep(index + 1)"
+          >
+            <div class="step-dot">
+              <span class="step-number">{{ index + 1 }}</span>
+            </div>
+          </div>
+          <div class="step-label" :class="{ active: index + 1 === currentStep }">{{ step.label }}</div>
         </div>
-        <div class="step-label">{{ step.label }}</div>
-        <div v-if="index < stepOptions.length - 1" class="step-line"></div>
-      </div>
+        <div v-if="index < stepOptions.length - 1" class="step-connector" :class="{ completed: index + 1 < currentStep }"></div>
+      </template>
     </div>
 
     <div class="timeline-container">
-      <div 
-        v-for="(step, index) in stepOptions" 
+      <div
+        v-for="(step, index) in stepOptions"
         :key="step.value"
         class="timeline-item"
       >
-        <div class="step-header">
+        <div class="step-header" @click="toggleCollapse(index)">
           <span class="step-number">{{ index + 1 }}、</span>
           <span class="step-name">{{ step.label }}</span>
           <span v-if="stepInfo[index].handler" class="step-handler">处理人：{{ stepInfo[index].handler }}</span>
           <span class="step-status">状态：{{ getStepStatusText(index + 1) }}</span>
           <span v-if="stepInfo[index].startTime" class="step-time">开始时间：{{ stepInfo[index].startTime }}</span>
           <span v-if="stepInfo[index].endTime" class="step-time">完成时间：{{ stepInfo[index].endTime }}</span>
+          <t-icon :name="expandedSteps[index] ? 'chevron-up-circle' : 'chevron-down-circle'" class="collapse-icon" />
         </div>
 
-        <div v-if="index + 1 === currentStep" class="step-detail">
+        <div v-show="expandedSteps[index]" class="step-detail">
           <div v-if="currentStep === 1" class="detail-section">
             <div class="section-title">投保方案确认</div>
             <div class="section-subtitle">数据来源：推荐方案（匹配结果）</div>
-            <t-form :data="formData.step1" label-width="120">
-              <t-form-item label="投保方案" name="insurancePlan">
-                <t-select v-model="formData.step1.insurancePlan" placeholder="请选择投保方案">
-                  <t-option value="planA" label="方案A - 短期出口信用保险" />
-                  <t-option value="planB" label="方案B - 中长期出口信用保险" />
-                  <t-option value="planC" label="方案C - 国内贸易信用保险" />
-                </t-select>
+            <div class="plan-display">
+              <div class="plan-row">
+                <span class="plan-label">投保方案</span>
+                <span class="plan-value">{{ planLabels[formData.step1.insurancePlan] }}</span>
+              </div>
+              <div class="plan-row">
+                <span class="plan-label">匹配规则说明</span>
+                <span class="plan-value">{{ formData.step1.matchRule }}</span>
+              </div>
+              <div class="plan-row">
+                <span class="plan-label">保险公司</span>
+                <span class="plan-value">{{ companyLabels[formData.step1.insuranceCompany] }}</span>
+              </div>
+            </div>
+            <div class="section-title mt-16">审批结论</div>
+            <div class="approval-section">
+              <t-radio-group v-model="formData.step1.approvalResult">
+                <t-radio value="approved">通过</t-radio>
+                <t-radio value="rejected">退回修改</t-radio>
+              </t-radio-group>
+              <t-form-item label="审批意见" class="mt-12">
+                <t-textarea v-model="formData.step1.auditOpinion" placeholder="请输入审批意见" :autosize="{ minRows: 3, maxRows: 5 }" />
               </t-form-item>
-              <t-form-item label="匹配规则说明" name="matchRule">
-                <t-textarea readonly :value="formData.step1.matchRule" :autosize="{ minRows: 3, maxRows: 5 }" />
-              </t-form-item>
-              <t-form-item label="保险公司" name="insuranceCompany">
-                <t-select v-model="formData.step1.insuranceCompany" placeholder="请选择保险公司">
-                  <t-option value="company1" label="中国出口信用保险公司" />
-                  <t-option value="company2" label="平安财产保险" />
-                  <t-option value="company3" label="太平洋财产保险" />
-                </t-select>
-              </t-form-item>
-            </t-form>
+            </div>
           </div>
 
           <div v-else-if="currentStep === 2" class="detail-section">
             <div class="section-title">申请投保</div>
             <div class="section-subtitle">数据来源：平台提取 | 应用文件：投保申请书、买方信息采集表</div>
-            <t-form :data="formData.step2" label-width="120">
-              <t-form-item label="企业名称" name="enterpriseName">
-                <t-input v-model="formData.step2.enterpriseName" placeholder="请输入企业名称" />
+            <div class="doc-checkboxes">
+              <t-checkbox v-model="step2Docs.applicationForm" class="doc-checkbox">投保申请书</t-checkbox>
+              <t-checkbox v-model="step2Docs.buyerInfoForm" class="doc-checkbox">买方信息采集表</t-checkbox>
+            </div>
+            <div class="section-title mt-16">审批结论</div>
+            <div class="approval-section">
+              <t-radio-group v-model="formData.step2.approvalResult">
+                <t-radio value="approved">通过</t-radio>
+                <t-radio value="rejected">退回修改</t-radio>
+              </t-radio-group>
+              <t-form-item label="审批意见" class="mt-12">
+                <t-textarea v-model="formData.step2.auditOpinion" placeholder="请输入审批意见" :autosize="{ minRows: 3, maxRows: 5 }" />
               </t-form-item>
-              <t-form-item label="统一社会信用代码" name="unifiedSocialCreditCode">
-                <t-input v-model="formData.step2.unifiedSocialCreditCode" placeholder="请输入统一社会信用代码" />
-              </t-form-item>
-              <t-form-item label="买方名称" name="buyerName">
-                <t-input v-model="formData.step2.buyerName" placeholder="请输入买方名称" />
-              </t-form-item>
-              <t-form-item label="投保申请书" name="applicationForm">
-                <t-upload v-model="formData.step2.applicationForm" :files="[]" placeholder="点击上传" />
-              </t-form-item>
-              <t-form-item label="买方信息采集表" name="buyerInfoForm">
-                <t-upload v-model="formData.step2.buyerInfoForm" :files="[]" placeholder="点击上传" />
-              </t-form-item>
-            </t-form>
+            </div>
           </div>
 
           <div v-else-if="currentStep === 3" class="detail-section">
             <div class="section-title">提交投保申请</div>
+            <div class="doc-summary">
+              <div class="doc-summary-item">
+                <t-icon name="file-text" />
+                <span>投保申请书</span>
+                <t-tag v-if="step2Docs.applicationForm" theme="success" variant="light" size="small">已附</t-tag>
+                <t-tag v-else theme="default" variant="light" size="small">未附</t-tag>
+              </div>
+              <div class="doc-summary-item">
+                <t-icon name="file-text" />
+                <span>买方信息采集表</span>
+                <t-tag v-if="step2Docs.buyerInfoForm" theme="success" variant="light" size="small">已附</t-tag>
+                <t-tag v-else theme="default" variant="light" size="small">未附</t-tag>
+              </div>
+            </div>
             <t-form :data="formData.step3" label-width="120">
               <t-form-item label="投保金额" name="insuranceAmount">
                 <t-input v-model="formData.step3.insuranceAmount" placeholder="请输入投保金额" />
@@ -119,6 +131,16 @@
                 <t-textarea v-model="formData.step3.remarks" placeholder="请输入备注说明" :autosize="{ minRows: 3, maxRows: 5 }" />
               </t-form-item>
             </t-form>
+            <div class="section-title mt-16">审批结论</div>
+            <div class="approval-section">
+              <t-radio-group v-model="formData.step3.approvalResult">
+                <t-radio value="approved">通过</t-radio>
+                <t-radio value="rejected">退回修改</t-radio>
+              </t-radio-group>
+              <t-form-item label="审批意见" class="mt-12">
+                <t-textarea v-model="formData.step3.auditOpinion" placeholder="请输入审批意见" :autosize="{ minRows: 3, maxRows: 5 }" />
+              </t-form-item>
+            </div>
           </div>
 
           <div v-else-if="currentStep === 4" class="detail-section">
@@ -170,6 +192,16 @@
                 <t-textarea v-model="formData.step5.underwritingOpinion" placeholder="请输入核保意见" :autosize="{ minRows: 3, maxRows: 5 }" />
               </t-form-item>
             </t-form>
+            <div class="section-title mt-16">审批结论</div>
+            <div class="approval-section">
+              <t-radio-group v-model="formData.step5.approvalResult">
+                <t-radio value="approved">通过</t-radio>
+                <t-radio value="rejected">退回修改</t-radio>
+              </t-radio-group>
+              <t-form-item label="审批意见" class="mt-12">
+                <t-textarea v-model="formData.step5.auditOpinion" placeholder="请输入审批意见" :autosize="{ minRows: 3, maxRows: 5 }" />
+              </t-form-item>
+            </div>
           </div>
 
           <div v-else-if="currentStep === 6" class="detail-section">
@@ -189,6 +221,16 @@
                 <t-upload v-model="formData.step6.policyFile" :files="[]" placeholder="上传保单文件" />
               </t-form-item>
             </t-form>
+            <div class="section-title mt-16">审批结论</div>
+            <div class="approval-section">
+              <t-radio-group v-model="formData.step6.approvalResult">
+                <t-radio value="approved">通过</t-radio>
+                <t-radio value="rejected">退回修改</t-radio>
+              </t-radio-group>
+              <t-form-item label="审批意见" class="mt-12">
+                <t-textarea v-model="formData.step6.auditOpinion" placeholder="请输入审批意见" :autosize="{ minRows: 3, maxRows: 5 }" />
+              </t-form-item>
+            </div>
           </div>
 
           <div v-else-if="currentStep === 7" class="detail-section">
@@ -215,6 +257,16 @@
                 <t-upload v-model="formData.step7.rateFile" :files="[]" placeholder="上传费率表" />
               </t-form-item>
             </t-form>
+            <div class="section-title mt-16">审批结论</div>
+            <div class="approval-section">
+              <t-radio-group v-model="formData.step7.approvalResult">
+                <t-radio value="approved">通过</t-radio>
+                <t-radio value="rejected">退回修改</t-radio>
+              </t-radio-group>
+              <t-form-item label="审批意见" class="mt-12">
+                <t-textarea v-model="formData.step7.auditOpinion" placeholder="请输入审批意见" :autosize="{ minRows: 3, maxRows: 5 }" />
+              </t-form-item>
+            </div>
           </div>
         </div>
 
@@ -277,20 +329,26 @@ const formData = reactive({
   step1: {
     insurancePlan: 'planA',
     matchRule: '根据各保险公司行业风险清单、国家（地区）分类表设定匹配规则，结合买方资质、贸易背景等因素综合评估后推荐此方案。',
-    insuranceCompany: 'company1'
+    insuranceCompany: 'company1',
+    approvalResult: '',
+    auditOpinion: ''
   },
   step2: {
     enterpriseName: '深圳XX国际贸易有限公司',
     unifiedSocialCreditCode: '91440300MA5D8X1234',
     buyerName: 'ABC Corporation',
     applicationForm: [],
-    buyerInfoForm: []
+    buyerInfoForm: [],
+    approvalResult: '',
+    auditOpinion: ''
   },
   step3: {
     insuranceAmount: '5000000',
     insurancePeriod: '12',
     paymentMethod: 'lumpSum',
-    remarks: ''
+    remarks: '',
+    approvalResult: '',
+    auditOpinion: ''
   },
   step4: {
     checkedItems: ['basicInfo', 'documentCheck'],
@@ -300,21 +358,46 @@ const formData = reactive({
   step5: {
     checkedItems: [],
     underwritingResult: '',
-    underwritingOpinion: ''
+    underwritingOpinion: '',
+    approvalResult: '',
+    auditOpinion: ''
   },
   step6: {
     policyNo: 'POL20260602001',
     issueDate: '',
-    policyFile: []
+    policyFile: [],
+    approvalResult: '',
+    auditOpinion: ''
   },
   step7: {
     premiumAmount: '¥12,500.00',
     paymentStatus: 'unpaid',
     paymentReceipt: [],
     policyDetailFile: [],
-    rateFile: []
+    rateFile: [],
+    approvalResult: '',
+    auditOpinion: ''
   }
 })
+
+const step2Docs = reactive({
+  applicationForm: false,
+  buyerInfoForm: false
+})
+
+const planLabels = {
+  planA: '方案A - 短期出口信用保险',
+  planB: '方案B - 中长期出口信用保险',
+  planC: '方案C - 国内贸易信用保险'
+}
+
+const companyLabels = {
+  company1: '中国出口信用保险公司',
+  company2: '平安财产保险',
+  company3: '太平洋财产保险'
+}
+
+const expandedSteps = reactive(stepOptions.map((_, i) => i + 1 <= currentStep.value))
 
 const getStepStatusText = (stepNum) => {
   if (stepNum < currentStep.value) return '已完成'
@@ -322,14 +405,14 @@ const getStepStatusText = (stepNum) => {
   return '待处理'
 }
 
+const toggleCollapse = (index) => {
+  expandedSteps[index] = !expandedSteps[index]
+}
+
 const setStep = (step) => {
   if (step <= currentStep.value) {
     currentStep.value = step
   }
-}
-
-const goBack = () => {
-  window.history.back()
 }
 
 const prevStep = () => {
@@ -356,11 +439,6 @@ const completeProcess = () => {
   align-items: center;
   margin-bottom: 16px;
   font-size: 14px;
-  
-  .breadcrumb-separator {
-    margin: 0 8px;
-    color: #999;
-  }
 }
 
 .page-header {
@@ -389,21 +467,27 @@ const completeProcess = () => {
 .steps-progress {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 20px 0;
+  justify-content: center;
+  padding: 20px 40px;
   margin-bottom: 24px;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.step-item {
+.step-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex: 1;
-  position: relative;
-  
+  gap: 8px;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
   .step-dot {
     width: 36px;
     height: 36px;
@@ -412,33 +496,15 @@ const completeProcess = () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 8px;
     transition: all 0.3s ease;
-    
+
     .step-number {
       font-size: 14px;
       font-weight: 600;
       color: #999;
     }
   }
-  
-  .step-label {
-    font-size: 13px;
-    color: #666;
-    text-align: center;
-  }
-  
-  .step-line {
-    position: absolute;
-    top: 18px;
-    left: 50%;
-    width: calc(100% - 18px);
-    height: 2px;
-    background: #e0e0e0;
-    transform: translateX(50%);
-    z-index: -1;
-  }
-  
+
   &.completed {
     .step-dot {
       background: #10b981;
@@ -446,14 +512,11 @@ const completeProcess = () => {
         color: #fff;
       }
     }
-    .step-line {
-      background: #10b981;
-    }
     .step-label {
       color: #333;
     }
   }
-  
+
   &.active {
     .step-dot {
       background: #0052d9;
@@ -462,10 +525,84 @@ const completeProcess = () => {
         color: #fff;
       }
     }
-    .step-label {
-      color: #0052d9;
-      font-weight: 500;
-    }
+  }
+}
+
+.step-label {
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+  white-space: nowrap;
+
+  &.active {
+    color: #0052d9;
+    font-weight: 500;
+  }
+}
+
+.plan-display {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.plan-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  .plan-label {
+    font-size: 14px;
+    color: #666;
+    min-width: 100px;
+    flex-shrink: 0;
+  }
+
+  .plan-value {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+    line-height: 1.6;
+  }
+}
+
+.doc-checkboxes {
+  display: flex;
+  gap: 32px;
+  padding: 8px 0;
+}
+
+.doc-checkbox {
+  font-size: 14px;
+}
+
+.doc-summary {
+  display: flex;
+  gap: 24px;
+  padding: 8px 0 16px;
+}
+
+.doc-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #333;
+}
+
+.step-connector {
+  flex: 1;
+  min-width: 40px;
+  height: 2px;
+  background: #e0e0e0;
+  margin: 0 4px;
+  align-self: flex-start;
+  margin-top: 17px;
+  transition: background 0.3s ease;
+
+  &.completed {
+    background: #10b981;
   }
 }
 
@@ -486,6 +623,21 @@ const completeProcess = () => {
   align-items: center;
   gap: 12px;
   padding: 8px 0;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+  border-radius: 4px;
+
+  &:hover {
+    background: #f5f7fa;
+  }
+}
+
+.collapse-icon {
+  font-size: 16px;
+  color: #999;
+  margin-left: auto;
+  transition: transform 0.2s;
 }
 
 .step-number {
@@ -529,7 +681,7 @@ const completeProcess = () => {
     padding-bottom: 8px;
     border-bottom: 1px solid #e0e0e0;
   }
-  
+
   .section-subtitle {
     font-size: 12px;
     color: #999;

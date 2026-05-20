@@ -40,7 +40,9 @@
       </template>
       <template #status="{ row }">
         <t-space>
-          <t-tag v-if="row._idleStatus?.level === 'danger'" theme="danger">闲置待撤销</t-tag>
+          <t-tag v-if="row.status === 'frozen'" theme="danger">已冻结</t-tag>
+          <t-tag v-else-if="row._frozenStatus?.autoDetected" theme="warning">冻结预警</t-tag>
+          <t-tag v-else-if="row._idleStatus?.level === 'danger'" theme="danger">闲置待撤销</t-tag>
           <t-tag v-else-if="row._idleStatus?.level === 'warning'" theme="warning">闲置预警</t-tag>
           <status-tag v-else :status="row.status" :status-map="statusMap" />
         </t-space>
@@ -54,7 +56,19 @@
     </data-table>
 
     <t-dialog v-model:visible="detailVisible" header="限额详情" width="600px" :footer="false">
+      <t-alert v-if="currentRow?.status === 'frozen'" theme="danger" class="mb-16">
+        <template #message>
+          <strong>该限额已被冻结</strong>：{{ currentRow?.freezeReason || '保险公司通知冻结' }}<br>
+          <span v-if="currentRow?.freezeDate">冻结日期：{{ currentRow.freezeDate }}</span><br>
+          <span>已出运未收汇部分仍受保障，新出运不可使用原限额</span>
+        </template>
+      </t-alert>
       <detail-panel title="买方与额度" :columns="detailColumns" :data="currentRow || {}" />
+      <t-alert v-if="currentRow?._frozenStatus?.autoDetected" theme="warning" class="mt-16">
+        <template #message>
+          {{ currentRow._frozenStatus.message }}
+        </template>
+      </t-alert>
     </t-dialog>
 
     <t-dialog v-model:visible="formVisible" :header="formMode === 'create' ? '申请信用限额' : '编辑信用限额'" width="700px">
@@ -151,14 +165,14 @@
             <t-alert :theme="w.level" :message="w.message" />
           </t-form-item>
 
-          <t-form-item>
-            <t-space>
-              <t-button theme="primary" type="submit">{{ formMode === 'create' ? '提交申请' : '保存' }}</t-button>
-              <t-button variant="outline" @click="formVisible = false">取消</t-button>
-            </t-space>
-          </t-form-item>
         </t-form>
       </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="formVisible = false">取消</t-button>
+          <t-button theme="primary" @click="formRef?.submit()">{{ formMode === 'create' ? '提交申请' : '保存' }}</t-button>
+        </t-space>
+      </template>
     </t-dialog>
   </div>
 </template>
@@ -172,7 +186,7 @@ import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 import { useBusinessStore } from '@/stores/business'
-import { checkIdleStatus, checkConcentration, getStatusTag } from '@/utils/rules/creditLimitRules'
+import { checkIdleStatus, checkConcentration, checkFrozenStatus, getStatusTag } from '@/utils/rules/creditLimitRules'
 
 const store = useBusinessStore()
 const loading = computed(() => false)
@@ -181,6 +195,7 @@ const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRa
 const statusOptions = [
   { value: 'active', label: '有效' },
   { value: 'pending', label: '审批中' },
+  { value: 'frozen', label: '已冻结' },
   { value: 'expired', label: '已到期' },
   { value: 'exhausted', label: '额度用尽' }
 ]
@@ -188,6 +203,7 @@ const statusOptions = [
 const statusMap = {
   active: '有效',
   pending: '审批中',
+  frozen: '已冻结',
   expired: '已到期',
   exhausted: '额度用尽'
 }
@@ -222,14 +238,17 @@ const filteredData = computed(() => {
 
 const enrichedData = computed(() => {
   const shipments = store.shipments || []
+  const claims = store.claims || []
   return filteredData.value.map(it => {
     const idleStatus = checkIdleStatus(it, shipments)
     const concentration = checkConcentration(it, store.creditLimits || [])
+    const freezeCheck = checkFrozenStatus(it, claims)
     return {
       ...it,
       _idleStatus: idleStatus,
       _concentrationWarnings: concentration.warnings,
-      _statusTag: getStatusTag(it, shipments)
+      _frozenStatus: freezeCheck,
+      _statusTag: getStatusTag(it, shipments, claims)
     }
   })
 })
@@ -452,4 +471,6 @@ onMounted(() => {
   margin-bottom: 16px;
   font-size: 14px;
 }
+.mt-16 { margin-top: 16px; }
+.mb-16 { margin-bottom: 16px; }
 </style>

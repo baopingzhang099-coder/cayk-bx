@@ -71,6 +71,20 @@
               </template>
             </t-alert>
           </t-form-item>
+          <t-form-item v-if="frozenLimitCheck?.isFrozen" label="限额冻结">
+            <t-alert theme="danger" class="company-rule-alert">
+              <template #message>
+                <strong>买方限额已冻结</strong>：{{ frozenLimitCheck.message }}
+              </template>
+            </t-alert>
+          </t-form-item>
+          <t-form-item v-if="frozenLimitCheck?.autoDetected" label="冻结预警">
+            <t-alert theme="warning" class="company-rule-alert">
+              <template #message>
+                {{ frozenLimitCheck.message }}
+              </template>
+            </t-alert>
+          </t-form-item>
           <t-form-item v-if="premiumCheck.isFrozen" label="保费冻结">
             <t-alert theme="danger" class="company-rule-alert">
               <template #message>
@@ -177,19 +191,18 @@
           </t-form-item>
 
           <t-divider v-if="quotaWarning">{{ quotaWarning }}</t-divider>
-
-          <t-form-item>
-            <t-space>
-              <t-button theme="primary" type="submit">提交申报</t-button>
-              <t-button variant="outline" @click="formVisible = false">取消</t-button>
-            </t-space>
-          </t-form-item>
         </t-form>
 
         <div v-else>
           <detail-panel title="出运申报详情" :columns="detailColumns" :data="currentRow || {}" />
         </div>
       </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="formVisible = false">取消</t-button>
+          <t-button v-if="formMode !== 'detail'" theme="primary" @click="formRef?.submit()">提交申报</t-button>
+        </t-space>
+      </template>
     </t-dialog>
   </div>
 </template>
@@ -203,6 +216,7 @@ import StatusTag from '@/components/common/StatusTag.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 import { useBusinessStore } from '@/stores/business'
 import { checkPremiumStatus, checkRenewalGap } from '@/utils/rules/shipmentRules'
+import { checkFrozenStatus } from '@/utils/rules/creditLimitRules'
 
 const store = useBusinessStore()
 const loading = computed(() => false)
@@ -384,6 +398,14 @@ const quotaWarning = computed(() => {
   return ''
 })
 
+const frozenLimitCheck = computed(() => {
+  if (!formData.buyerName) return null
+  const limit = store.creditLimits.find(c => c.buyerName === formData.buyerName)
+  if (!limit) return null
+  const claims = store.claims || []
+  return checkFrozenStatus(limit, claims)
+})
+
 const handlePolicyChange = (value) => {
   const policy = store.policies.find(p => p.policyNo === value)
   if (policy) {
@@ -441,6 +463,12 @@ const handleEdit = (row) => {
 
 const handleSubmit = ({ validateResult }) => {
   if (validateResult !== true) return
+
+  // 限额冻结阻断
+  if (frozenLimitCheck.value?.isFrozen) {
+    MessagePlugin.error(frozenLimitCheck.value.message || '该买方限额已被冻结，无法进行出运申报')
+    return
+  }
 
   // 保费冻结阻断
   if (premiumCheck.value.isFrozen) {

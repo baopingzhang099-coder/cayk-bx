@@ -570,7 +570,7 @@ export const useBusinessStore = defineStore('business', {
           effectiveDate: '2026-05-15',
           expiryDate: '2027-05-15',
           status: 'pending_review',
-          statusName: '待审核',
+          statusName: '待确认',
           usedQuota: 0,
           remainingQuota: 250000
         },
@@ -585,7 +585,7 @@ export const useBusinessStore = defineStore('business', {
           effectiveDate: '2026-05-20',
           expiryDate: '2027-05-20',
           status: 'approved',
-          statusName: '审核通过',
+          statusName: '确认通过',
           usedQuota: 0,
           remainingQuota: 450000
         }
@@ -626,6 +626,21 @@ export const useBusinessStore = defineStore('business', {
           status: 'exhausted',
           effectiveDate: '2026-04-01',
           expiryDate: '2027-03-31'
+        },
+        {
+          id: 'CL2026004',
+          buyerName: 'JKL Co',
+          buyerCountry: '日本',
+          appliedLimit: 200000,
+          usedLimit: 50000,
+          remainingLimit: 150000,
+          usageRate: 25,
+          status: 'frozen',
+          effectiveDate: '2026-01-15',
+          expiryDate: '2027-01-14',
+          freezeDate: '2026-05-10',
+          freezeReason: '买方逾期超30天且未回应催款通知',
+          canUnfreeze: false
         }
       ]
       this.shipments = [
@@ -972,7 +987,7 @@ export const useBusinessStore = defineStore('business', {
       const now = new Date()
       const cur = this.insuranceApplications[idx]
       if (cur.status !== 'pending_review') {
-        return { ok: false, message: '仅“待审核”状态允许审核通过' }
+        return { ok: false, message: '仅”待确认”状态允许确认通过' }
       }
       const policyNo = `PI${String(now.getFullYear())}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
       const next = { ...cur, status: 'approved', updateTime: formatDateTime(now),
@@ -1029,7 +1044,7 @@ export const useBusinessStore = defineStore('business', {
       const now = new Date()
       const cur = this.insuranceApplications[idx]
       if (cur.status !== 'pending_review') {
-        return { ok: false, message: '仅“待审核”状态允许驳回' }
+        return { ok: false, message: '仅”待确认”状态允许驳回' }
       }
       if (!rejectReason || rejectReason.trim() === '') {
         return { ok: false, message: '驳回原因不能为空' }

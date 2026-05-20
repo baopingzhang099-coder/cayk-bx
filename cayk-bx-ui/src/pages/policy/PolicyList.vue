@@ -12,7 +12,7 @@
     </div>
 
     <t-tabs v-model="mainTab" theme="card" class="mb-16">
-      <t-tab-panel value="review" label="投保审核">
+      <t-tab-panel value="review" label="投保确认">
         <div class="status-tabs">
           <t-tabs v-model="currentStatusTab" theme="card">
             <t-tab-panel
@@ -35,8 +35,8 @@
         </search-filter>
 
         <div class="stats-grid mb-24">
-          <stat-card title="审核通过" :value="activePolicyCount" icon="check-circle" color="success" />
-          <stat-card title="待审核" :value="pendingReviewCount" icon="clock" color="warning" />
+          <stat-card title="确认通过" :value="activePolicyCount" icon="check-circle" color="success" />
+          <stat-card title="待确认" :value="pendingReviewCount" icon="clock" color="warning" />
           <stat-card title="总申请数" :value="store.insuranceApplications.length" icon="file" color="primary" />
           <stat-card title="总投保金额" :value="`$${totalInsuranceAmount.toLocaleString()}`" icon="credit-card" color="danger" />
         </div>
@@ -61,7 +61,7 @@
           <template #operation="{ row }">
             <t-space>
               <t-link @click="handleView(row)">查看</t-link>
-              <t-link v-if="isInkasso && row.status === 'pending_review'" theme="primary" @click="handleApprove(row)">审核</t-link>
+              <t-link v-if="isInkasso && row.status === 'pending_review'" theme="primary" @click="handleApprove(row)">确认</t-link>
               <t-link v-if="isInkasso && row.status === 'pending_review'" theme="danger" @click="handleReject(row)">驳回</t-link>
               <t-link v-if="!isInkasso && row.status === 'rejected'" theme="primary" @click="handleSubmit(row)">重新提交</t-link>
             </t-space>
@@ -116,7 +116,7 @@
       </t-tab-panel>
     </t-tabs>
 
-    <!-- 投保审核详情弹窗 -->
+    <!-- 投保确认详情弹窗 -->
     <t-dialog v-model:visible="detailVisible" header="投保详情" width="800px" :footer="false">
       <detail-panel title="基础信息" :columns="detailColumns" :data="currentRow || {}" />
       <detail-panel title="业务信息" :columns="businessColumns" :data="currentRow || {}" />
@@ -198,7 +198,7 @@
       </div>
     </t-dialog>
 
-    <!-- 审核确认弹窗 -->
+    <!-- 确认弹窗 -->
     <t-dialog v-model:visible="confirmVisible" :header="confirmTitle" width="800px">
       <div class="confirm-content">
         <detail-panel v-if="confirmRow" title="基础信息" :columns="detailColumns" :data="confirmRow || {}" />
@@ -213,11 +213,18 @@
 
         <div class="confirm-tip" v-if="confirmAction === 'submit'">
           <t-icon name="warning-circle" size="16px" class="tip-icon" />
-          <span class="tip-text">提交后状态将变为待审核，请确认信息无误</span>
+          <span class="tip-text">提交后状态将变为待确认，请确认信息无误</span>
         </div>
-        <div class="confirm-tip" v-else-if="confirmAction === 'approve'">
-          <t-icon name="check-circle" size="16px" class="tip-icon success" />
-          <span class="tip-text">确认审核通过此投保申请？</span>
+        <div v-if="confirmAction === 'approve'" class="attachment-section">
+          <t-divider>附件（自动生成）</t-divider>
+          <div class="attachment-row">
+            <span class="attachment-label">保单申请书</span>
+            <t-button variant="outline" size="small" @click="showPreview('policy')">查看预览</t-button>
+          </div>
+          <div class="attachment-row">
+            <span class="attachment-label">买方信息采集表</span>
+            <t-button variant="outline" size="small" @click="showPreview('buyer')">查看预览</t-button>
+          </div>
         </div>
         <div class="confirm-tip" v-else-if="confirmAction === 'reject'">
           <t-icon name="close-circle" size="16px" class="tip-icon danger" />
@@ -227,9 +234,20 @@
       <template #footer>
         <t-space>
           <t-button variant="outline" @click="confirmVisible = false">取消</t-button>
-          <t-button v-if="confirmAction === 'approve'" theme="primary" @click="handleConfirm">通过</t-button>
+          <t-button v-if="confirmAction === 'approve'" theme="primary" @click="handleConfirm">确认</t-button>
           <t-button v-else-if="confirmAction === 'reject'" theme="danger" @click="handleConfirm">驳回</t-button>
           <t-button v-else-if="confirmAction === 'submit'" theme="primary" @click="handleConfirm">确认</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- 附件预览弹窗 -->
+    <t-dialog v-model:visible="previewVisible" :header="previewTitle" width="900px" :destroy-on-close="true" :draggable="true" top="32px">
+      <div class="preview-wrapper" ref="previewWrapperRef" @wheel="handlePreviewWheel" v-html="previewHtml"></div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="previewVisible = false">关闭</t-button>
+          <t-button theme="primary" @click="previewDownload">下载Excel</t-button>
         </t-space>
       </template>
     </t-dialog>
@@ -274,6 +292,7 @@ import SurrenderDialog from '@/components/business/SurrenderDialog.vue'
 import PolicyChangeDialog from '@/components/business/PolicyChangeDialog.vue'
 import { useBusinessStore } from '@/stores/business'
 import { useUserStore } from '@/stores/user'
+import { generatePolicyApplicationXlsx, generateBuyerInfoXlsx, downloadWorkbook, workbookToHtml } from '@/utils/templateFiller'
 
 const store = useBusinessStore()
 const userStore = useUserStore()
@@ -293,15 +312,15 @@ const statusTabs = [
 
 const statusOptions = [
   { value: 'draft', label: '草稿' },
-  { value: 'pending_review', label: '待审核' },
-  { value: 'approved', label: '审核通过' },
+  { value: 'pending_review', label: '待确认' },
+  { value: 'approved', label: '确认通过' },
   { value: 'rejected', label: '已驳回' }
 ]
 
 const statusMap = {
-  draft: '待审核',
-  pending_review: '待审核',
-  approved: '审核通过',
+  draft: '待确认',
+  pending_review: '待确认',
+  approved: '确认通过',
   rejected: '已驳回'
 }
 
@@ -395,6 +414,13 @@ const renewalVisible = ref(false)
 const surrenderVisible = ref(false)
 const changeVisible = ref(false)
 
+const previewVisible = ref(false)
+const previewTitle = ref('')
+const previewHtml = ref('')
+const previewWb = ref(null)
+const previewType = ref('')
+const previewWrapperRef = ref(null)
+
 const exportVisible = ref(false)
 const exportData = ref([])
 
@@ -423,9 +449,7 @@ const insuranceColumns = [
   { label: '投保类型', key: 'insuranceType' },
   { label: '投保金额', key: 'insuranceAmount', formatter: (v) => `$${Number(v).toLocaleString()}` },
   { label: '投保期限', key: 'expectedInsurancePeriod', formatter: (v) => Array.isArray(v) ? v.join(' ~ ') : v },
-  { label: '申请日期', key: 'createTime' },
-  { label: '状态', key: 'status', formatter: (v) => statusMap[v] || v },
-  { label: '驳回原因', key: 'rejectReason' }
+  { label: '申请日期', key: 'createTime' }
 ]
 
 const policyDetailColumns = [
@@ -453,7 +477,7 @@ const handleView = (row) => { currentRow.value = row; detailVisible.value = true
 const handleViewPolicy = (row) => { currentPolicy.value = row; policyDetailVisible.value = true }
 
 const handleApprove = (row) => {
-  confirmTitle.value = '审核通过'
+  confirmTitle.value = '投保信息详情'
   confirmRow.value = row
   confirmAction.value = 'approve'
   rejectReason.value = ''
@@ -468,6 +492,49 @@ const handleReject = (row) => {
   confirmVisible.value = true
 }
 
+const showPreview = (type) => {
+  const row = confirmRow.value
+  if (!row) return
+  previewType.value = type
+  if (type === 'policy') {
+    previewTitle.value = '保单申请书'
+    previewWb.value = generatePolicyApplicationXlsx(row, statusMap)
+  } else {
+    previewTitle.value = '买方信息采集表'
+    previewWb.value = generateBuyerInfoXlsx(row)
+  }
+  previewHtml.value = workbookToHtml(previewWb.value)
+  previewVisible.value = true
+  // Reset scroll on next tick
+  setTimeout(() => {
+    if (previewWrapperRef.value) {
+      previewWrapperRef.value.scrollTop = 0
+      previewWrapperRef.value.scrollLeft = 0
+    }
+  }, 50)
+}
+
+const handlePreviewWheel = (e) => {
+  const el = previewWrapperRef.value
+  if (!el) return
+  // If holding Shift, let browser handle horizontal scroll natively
+  if (e.shiftKey) return
+  // If content overflows horizontally, scroll horizontally with wheel
+  if (el.scrollWidth > el.clientWidth) {
+    el.scrollLeft += e.deltaY
+    e.preventDefault()
+  }
+}
+
+const previewDownload = () => {
+  if (!previewWb.value) return
+  const row = confirmRow.value
+  const filename = previewType.value === 'policy'
+    ? `保单申请书_${row?.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
+    : `买方信息采集表_${row?.buyerName || row?.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
+  downloadWorkbook(previewWb.value, filename)
+}
+
 const handleSubmit = (row) => {
   confirmTitle.value = '重新提交申请'
   confirmRow.value = row
@@ -478,8 +545,8 @@ const handleSubmit = (row) => {
 const handleConfirm = () => {
   if (confirmAction.value === 'approve' && confirmRow.value) {
     const res = store.approveInsuranceApplication(confirmRow.value.id)
-    if (res?.ok) MessagePlugin.success('审核通过成功')
-    else MessagePlugin.error(res?.message || '审核失败')
+    if (res?.ok) MessagePlugin.success('确认成功')
+    else MessagePlugin.error(res?.message || '确认失败')
   } else if (confirmAction.value === 'reject' && confirmRow.value) {
     if (!rejectReason.value.trim()) { MessagePlugin.warning('请输入驳回原因'); return }
     const res = store.rejectInsuranceApplication(confirmRow.value.id, rejectReason.value)
@@ -603,4 +670,12 @@ onMounted(() => { store.ensureSeeded() })
 .more-data, .no-data { text-align: center; color: #999; padding: 12px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px; border-top: 1px solid #e0e0e0; }
 .breadcrumbs { display: flex; align-items: center; margin-bottom: 16px; font-size: 14px; }
+.attachment-section { margin-top: 16px; }
+.attachment-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8f9fa; border-radius: 4px; margin-bottom: 8px; }
+.attachment-label { font-size: 14px; color: #333; font-weight: 500; }
+.preview-wrapper { max-height: 520px; overflow: auto; resize: both; min-height: 200px; min-width: 400px; border: 1px solid #e0e0e0; border-radius: 4px; padding: 12px; background: #fff; }
+.preview-wrapper :deep(table) { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+.preview-wrapper :deep(td) { padding: 5px 8px; border: 1px solid #d0d0d0; max-width: 400px; overflow: hidden; text-overflow: ellipsis; }
+.preview-wrapper :deep(th) { padding: 5px 8px; border: 1px solid #d0d0d0; background: #f5f5f5; font-weight: 600; color: #333; text-align: center; white-space: nowrap; }
+.preview-wrapper :deep(tr:nth-child(even)) { background: #fafafa; }
 </style>

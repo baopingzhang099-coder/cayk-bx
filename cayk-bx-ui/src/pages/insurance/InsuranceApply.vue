@@ -35,7 +35,6 @@
                 <div class="flow-step-label" :class="{ active: index + 1 === currentStep, completed: index + 1 < currentStep }">
                   {{ step.label }}
                 </div>
-                <div class="flow-step-role">{{ stepRoles[index].label }}</div>
                 <div class="flow-step-status">
                   <t-tag
                     v-if="index + 1 < currentStep"
@@ -708,14 +707,6 @@ $gray-800: #1f2937;
     color: $primary;
     font-weight: 600;
   }
-}
-
-.flow-step-role {
-  font-size: 11px;
-  color: $gray-400;
-  text-align: center;
-  margin-top: 2px;
-  font-weight: 400;
 }
 
 .flow-step-status {

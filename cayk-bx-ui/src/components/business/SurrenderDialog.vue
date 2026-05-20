@@ -1,5 +1,5 @@
 <template>
-  <t-dialog :visible="visible" @update:visible="emit('update:visible', $event)" header="退保申请" width="600px" :footer="false" :destroy-on-close="true">
+  <t-dialog :visible="visible" @update:visible="emit('update:visible', $event)" header="退保申请" width="600px" :destroy-on-close="true">
     <t-form ref="formRef" :data="formData" :rules="formRules" label-width="140px" @submit="handleSubmit">
       <t-divider>退保信息</t-divider>
       <t-form-item label="退保申请日期" name="applicationDate">
@@ -46,13 +46,13 @@
         <t-upload v-model="formData.otherDocuments" action="https://demo.com/upload" accept=".pdf,.jpg" multiple />
       </t-form-item>
 
-      <t-form-item>
-        <t-space>
-          <t-button theme="primary" type="submit">提交退保申请</t-button>
-          <t-button variant="outline" @click="emit('update:visible', false)">取消</t-button>
-        </t-space>
-      </t-form-item>
     </t-form>
+    <template #footer>
+      <t-space>
+        <t-button variant="outline" @click="emit('update:visible', false)">取消</t-button>
+        <t-button theme="primary" @click="formRef?.submit()">提交退保申请</t-button>
+      </t-space>
+    </template>
   </t-dialog>
 </template>
 

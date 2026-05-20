@@ -1,5 +1,5 @@
 <template>
-  <t-dialog :visible="visible" @update:visible="emit('update:visible', $event)" header="保单数字化 - 新增投保" width="800px" :footer="false" :destroy-on-close="true">
+  <t-dialog :visible="visible" @update:visible="emit('update:visible', $event)" header="保单数字化 - 新增投保" width="800px" :destroy-on-close="true">
     <t-tabs v-model="activeTab" :disabled="ocrTabDisabled">
       <t-tab-panel value="upload" label="1. 上传文件">
         <div class="ocr-upload">
@@ -255,13 +255,15 @@
             </t-form-item>
           </t-form>
 
-          <div class="ocr-actions">
-            <t-button theme="primary" size="large" @click="handleSaveOcr">保存结构化结果</t-button>
-            <t-button variant="outline" size="large" @click="emit('update:visible', false)">取消</t-button>
-          </div>
         </div>
       </t-tab-panel>
     </t-tabs>
+    <template #footer>
+      <t-space v-if="activeTab === 'review'">
+        <t-button variant="outline" @click="emit('update:visible', false)">取消</t-button>
+        <t-button theme="primary" @click="handleSaveOcr">保存结构化结果</t-button>
+      </t-space>
+    </template>
   </t-dialog>
 </template>
 

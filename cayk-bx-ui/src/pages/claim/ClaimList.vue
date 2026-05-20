@@ -54,7 +54,7 @@
       </template>
     </data-table>
 
-    <t-dialog v-model:visible="createVisible" header="新建理赔" width="900px" :footer="false">
+    <t-dialog v-model:visible="createVisible" header="新建理赔" width="900px">
       <t-form ref="createFormRef" :data="createForm" :rules="createRules" label-align="top">
         <t-divider>基本信息</t-divider>
         <div class="form-grid">
@@ -147,13 +147,13 @@
           </t-form-item>
         </div>
 
-        <div class="dialog-actions">
-          <t-space>
-            <t-button variant="outline" @click="createVisible = false">取消</t-button>
-            <t-button theme="primary" @click="handleCreateSubmit">提交理赔</t-button>
-          </t-space>
-        </div>
       </t-form>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="createVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handleCreateSubmit">提交理赔</t-button>
+        </t-space>
+      </template>
     </t-dialog>
 
     <t-dialog v-model:visible="detailVisible" header="理赔详情" width="650px" :footer="false">
@@ -202,13 +202,13 @@
             <t-textarea v-model="editForm.lossDescription" :autosize="{ minRows: 2, maxRows: 4 }" />
           </t-form-item>
         </div>
-        <div class="dialog-actions" style="margin-top: 16px;">
-          <t-space>
-            <t-button variant="outline" @click="editVisible = false">取消</t-button>
-            <t-button theme="primary" @click="handleEditSubmit">保存</t-button>
-          </t-space>
-        </div>
       </t-form>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="editVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handleEditSubmit">保存</t-button>
+        </t-space>
+      </template>
     </t-dialog>
   </div>
 </template>

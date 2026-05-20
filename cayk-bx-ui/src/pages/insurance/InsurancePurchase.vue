@@ -54,10 +54,10 @@
     </t-card>
 
     <div class="stats-grid mb-16">
-      <stat-card title="待提交" :value="insuranceStats.pending_submit" icon="send" color="warning" />
-      <stat-card title="资信调查中" :value="insuranceStats.credit_investigating" icon="search" color="primary" />
+      <stat-card title="暂存" :value="insuranceStats.draft" icon="edit" color="danger" />
+      <stat-card title="审核中" :value="insuranceStats.pending_review" icon="search" color="warning" />
+      <stat-card title="已驳回" :value="insuranceStats.rejected" icon="alert-circle" color="error" />
       <stat-card title="已完成" :value="insuranceStats.completed" icon="check-circle" color="success" />
-      <stat-card title="草稿" :value="insuranceStats.draft" icon="edit" color="danger" />
     </div>
 
     <t-card>
@@ -85,10 +85,7 @@
           <t-space>
             <t-link @click="handleView(row)">查看</t-link>
             <t-link v-if="row.status === 'draft' || row.status === 'rejected'" @click="handleEdit(row)">编辑</t-link>
-            <t-tag v-if="row.status === 'pending_review'" theme="warning">审核中</t-tag>
-            <t-tag v-if="row.status === 'rejected'" theme="danger">已驳回</t-tag>
-            <t-link v-if="row.status === 'draft' || row.status === 'rejected'" theme="primary" @click="handleShowSubmitModal(row)">提交审核</t-link>
-            <t-link v-if="row.status === 'draft'" theme="danger" @click="handleDelete(row)">删除</t-link>
+            <t-link v-if="row.status === 'draft'" theme="danger" @click="handleShowDeleteModal(row)">删除</t-link>
           </t-space>
         </template>
       </t-table>
@@ -111,53 +108,113 @@
         <div class="form-preview">
           <h4 class="preview-title">申请信息摘要</h4>
           <div class="preview-grid">
-            <div class="preview-item">
-              <span class="preview-label">投保编号</span>
-              <span class="preview-value">{{ currentSubmitData?.id || '-' }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-blue">
+                <t-icon name="file-text" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">投保编号</span>
+                <span class="preview-value">{{ currentSubmitData?.id || '-' }}</span>
+              </div>
             </div>
-            <div class="preview-item">
-              <span class="preview-label">企业名称</span>
-              <span class="preview-value">{{ currentSubmitData?.companyName || currentSubmitData?.enterpriseName || '-' }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-green">
+                <t-icon name="building" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">企业名称</span>
+                <span class="preview-value">{{ currentSubmitData?.companyName || currentSubmitData?.enterpriseName || '-' }}</span>
+              </div>
             </div>
-            <div class="preview-item">
-              <span class="preview-label">买方名称</span>
-              <span class="preview-value">{{ currentSubmitData?.buyerName || '-' }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-purple">
+                <t-icon name="user" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">买方名称</span>
+                <span class="preview-value">{{ currentSubmitData?.buyerName || '-' }}</span>
+              </div>
             </div>
-            <div class="preview-item">
-              <span class="preview-label">买方国别</span>
-              <span class="preview-value">{{ currentSubmitData?.buyerCountry || '-' }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-orange">
+                <t-icon name="globe" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">买方国别</span>
+                <span class="preview-value">{{ currentSubmitData?.buyerCountry || '-' }}</span>
+              </div>
             </div>
-            <div class="preview-item">
-              <span class="preview-label">投保类型</span>
-              <span class="preview-value">{{ currentSubmitData?.insuranceType || '-' }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-cyan">
+                <t-icon name="tag" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">投保类型</span>
+                <span class="preview-value">{{ currentSubmitData?.insuranceType || '-' }}</span>
+              </div>
             </div>
-            <div class="preview-item">
-              <span class="preview-label">投保金额</span>
-              <span class="preview-value">{{ currentSubmitData?.insuranceCurrency || 'USD' }}{{ Number(currentSubmitData?.insuranceAmount || 0).toLocaleString() }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-yellow">
+                <t-icon name="wallet" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">投保金额</span>
+                <span class="preview-value">{{ currentSubmitData?.insuranceCurrency || 'USD' }}{{ Number(currentSubmitData?.insuranceAmount || 0).toLocaleString() }}</span>
+              </div>
             </div>
-            <div class="preview-item">
-              <span class="preview-label">投保期限</span>
-              <span class="preview-value">{{ currentSubmitData?.expectedInsurancePeriod?.join(' 至 ') || '-' }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-red">
+                <t-icon name="calendar" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">投保期限</span>
+                <span class="preview-value">{{ currentSubmitData?.expectedInsurancePeriod?.join(' 至 ') || '-' }}</span>
+              </div>
             </div>
-            <div class="preview-item">
-              <span class="preview-label">机构类型</span>
-              <span class="preview-value">{{ currentSubmitData?.preferredInsuranceOrgType || '-' }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-indigo">
+                <t-icon name="briefcase" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">机构类型</span>
+                <span class="preview-value">{{ currentSubmitData?.preferredInsuranceOrgType || '-' }}</span>
+              </div>
             </div>
-            <div class="preview-item">
-              <span class="preview-label">投保目的</span>
-              <span class="preview-value">{{ [currentSubmitData?.insurancePrimaryPurpose1, currentSubmitData?.insurancePrimaryPurpose2].filter(Boolean).join('、') || '-' }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-pink">
+                <t-icon name="target" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">投保目的</span>
+                <span class="preview-value">{{ [currentSubmitData?.insurancePrimaryPurpose1, currentSubmitData?.insurancePrimaryPurpose2].filter(Boolean).join('、') || '-' }}</span>
+              </div>
             </div>
-            <div class="preview-item">
-              <span class="preview-label">预计年销售额</span>
-              <span class="preview-value">{{ currentSubmitData?.turnoverCurrency || 'USD' }}{{ Number(currentSubmitData?.expectedInsurableTurnover || 0).toLocaleString() }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-teal">
+                <t-icon name="trending-up" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">预计年销售额</span>
+                <span class="preview-value">{{ currentSubmitData?.turnoverCurrency || 'USD' }}{{ Number(currentSubmitData?.expectedInsurableTurnover || 0).toLocaleString() }}</span>
+              </div>
             </div>
-            <div class="preview-item">
-              <span class="preview-label">申请日期</span>
-              <span class="preview-value">{{ currentSubmitData?.createTime || '-' }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-gray">
+                <t-icon name="date" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">申请日期</span>
+                <span class="preview-value">{{ currentSubmitData?.createTime || '-' }}</span>
+              </div>
             </div>
-            <div class="preview-item">
-              <span class="preview-label">联系人</span>
-              <span class="preview-value">{{ currentSubmitData?.contactName || '-' }} {{ currentSubmitData?.contactPhone || '' }}</span>
+            <div class="preview-card">
+              <div class="preview-icon-wrapper bg-primary">
+                <t-icon name="phone" :size="18" />
+              </div>
+              <div class="preview-content">
+                <span class="preview-label">联系人</span>
+                <span class="preview-value">{{ currentSubmitData?.contactName || '-' }} {{ currentSubmitData?.contactPhone || '' }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -167,6 +224,138 @@
           <t-button theme="primary" @click="handleConfirmSubmit">确认提交</t-button>
         </div>
       </div>
+    </t-dialog>
+
+    <t-dialog v-model:visible="exportVisible" header="导出预览" width="800px" :footer="false">
+      <div class="export-modal">
+        <div class="export-filters">
+          <h4 class="filter-title">筛选条件</h4>
+          <div class="filter-grid">
+            <div class="filter-item" v-if="searchParams.enterpriseName">
+              <span class="filter-label">企业名称：</span>
+              <span class="filter-value">{{ searchParams.enterpriseName }}</span>
+            </div>
+            <div class="filter-item" v-if="searchParams.buyerName">
+              <span class="filter-label">买方名称：</span>
+              <span class="filter-value">{{ searchParams.buyerName }}</span>
+            </div>
+            <div class="filter-item" v-if="searchParams.buyerCountry">
+              <span class="filter-label">买方国别：</span>
+              <span class="filter-value">{{ searchParams.buyerCountry }}</span>
+            </div>
+            <div class="filter-item" v-if="searchParams.status">
+              <span class="filter-label">状态：</span>
+              <span class="filter-value">{{ statusMap[searchParams.status] || searchParams.status }}</span>
+            </div>
+            <div class="filter-item" v-if="searchParams.preferredInsuranceOrgType">
+              <span class="filter-label">机构类型：</span>
+              <span class="filter-value">{{ searchParams.preferredInsuranceOrgType }}</span>
+            </div>
+            <div class="filter-item" v-if="searchParams.dateRange && searchParams.dateRange.length">
+              <span class="filter-label">申请日期：</span>
+              <span class="filter-value">{{ searchParams.dateRange.join(' 至 ') }}</span>
+            </div>
+            <div class="filter-item" v-if="!Object.values(searchParams).some(v => v && (Array.isArray(v) ? v.length : true))">
+              <span class="filter-label">筛选条件：</span>
+              <span class="filter-value">全部数据</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="export-preview">
+          <h4 class="preview-title">数据预览（共 {{ exportData.length }} 条）</h4>
+          <div class="preview-table-wrapper">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>投保编号</th>
+                  <th>企业名称</th>
+                  <th>买方名称</th>
+                  <th>买方国别</th>
+                  <th>投保类型</th>
+                  <th>机构类型</th>
+                  <th>投保金额</th>
+                  <th>状态</th>
+                  <th>申请日期</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in exportData.slice(0, 10)" :key="row.id">
+                  <td>{{ row.id }}</td>
+                  <td>{{ row.companyName || row.enterpriseName }}</td>
+                  <td>{{ row.buyerName }}</td>
+                  <td>{{ row.buyerCountry }}</td>
+                  <td>{{ row.insuranceType }}</td>
+                  <td>{{ row.preferredInsuranceOrgType }}</td>
+                  <td>{{ (row.insuranceCurrency || 'USD') }}{{ Number(row.insuranceAmount || 0).toLocaleString() }}</td>
+                  <td>{{ statusMap[row.status] || row.status }}</td>
+                  <td>{{ row.createTime }}</td>
+                </tr>
+                <tr v-if="exportData.length > 10">
+                  <td colspan="9" class="more-data">... 还有 {{ exportData.length - 10 }} 条数据</td>
+                </tr>
+                <tr v-if="exportData.length === 0">
+                  <td colspan="9" class="no-data">暂无数据</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <t-button variant="outline" @click="exportVisible = false">取消</t-button>
+          <t-button theme="primary" @click="generateExcel">导出Excel</t-button>
+        </div>
+      </div>
+    </t-dialog>
+
+    <t-dialog v-model:visible="deleteVisible" header="确认删除" width="480px">
+      <div class="delete-modal">
+        <div v-if="currentDeleteData" class="delete-info">
+          <div class="info-section">
+            <div class="info-row">
+              <span class="info-label">投保编号</span>
+              <span class="info-value">{{ currentDeleteData.id }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">企业名称</span>
+              <span class="info-value">{{ currentDeleteData.companyName || currentDeleteData.enterpriseName }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">买方名称</span>
+              <span class="info-value">{{ currentDeleteData.buyerName || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">买方国别</span>
+              <span class="info-value">{{ currentDeleteData.buyerCountry || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">投保类型</span>
+              <span class="info-value">{{ currentDeleteData.insuranceType || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">投保金额</span>
+              <span class="info-value">{{ currentDeleteData?.insuranceCurrency || 'USD' }}{{ Number(currentDeleteData?.insuranceAmount || 0).toLocaleString() }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">投保期限</span>
+              <span class="info-value">{{ currentDeleteData?.expectedInsurancePeriod?.join(' 至 ') || '-' }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="delete-warning-text">
+          <span class="warning-highlight">确定要删除这条投保申请吗？</span>
+        </div>
+        <div class="delete-caution">
+          此操作无法撤回
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="deleteVisible = false">取消</t-button>
+          <t-button theme="danger" @click="handleConfirmDelete">确认删除</t-button>
+        </t-space>
+      </template>
     </t-dialog>
   </div>
 </template>
@@ -185,6 +374,9 @@ const loading = computed(() => false)
 
 const submitVisible = ref(false)
 const currentSubmitData = ref(null)
+
+const deleteVisible = ref(false)
+const currentDeleteData = ref(null)
 
 const searchParams = reactive({
   enterpriseName: '',
@@ -219,16 +411,15 @@ const countryOptions = [
 ]
 
 const statusOptions = [
-  { value: 'draft', label: '草稿' },
-  { value: 'pending_review', label: '待审核' },
-  { value: 'approved', label: '审核通过' },
+  { value: 'draft', label: '暂存' },
+  { value: 'pending_review', label: '审核中' },
   { value: 'rejected', label: '已驳回' }
 ]
 
 const statusMap = {
-  draft: '草稿',
-  pending_review: '待审核',
-  approved: '审核通过',
+  draft: '暂存',
+  pending_review: '审核中',
+  approved: '已完成',
   rejected: '已驳回'
 }
 
@@ -279,7 +470,56 @@ const paginationConfig = computed(() => ({
 const handleSearch = () => { pagination.current = 1 }
 const handleReset = () => { searchParams.enterpriseName = ''; searchParams.buyerName = ''; searchParams.buyerCountry = ''; searchParams.status = ''; searchParams.preferredInsuranceOrgType = ''; searchParams.dateRange = []; pagination.current = 1 }
 const handlePageChange = (pageInfo) => { pagination.current = pageInfo.current; pagination.pageSize = pageInfo.pageSize }
-const handleExport = () => { console.log('export') }
+const exportVisible = ref(false)
+const exportData = ref([])
+
+const handleExport = () => {
+  exportData.value = filteredData.value
+  exportVisible.value = true
+}
+
+const generateExcel = () => {
+  const headers = [
+    { key: 'id', label: '投保编号' },
+    { key: 'enterpriseName', label: '企业名称' },
+    { key: 'buyerName', label: '买方名称' },
+    { key: 'buyerCountry', label: '买方国别' },
+    { key: 'insuranceType', label: '投保类型' },
+    { key: 'preferredInsuranceOrgType', label: '机构类型' },
+    { key: 'insuranceAmount', label: '投保金额' },
+    { key: 'status', label: '状态' },
+    { key: 'createTime', label: '申请日期' }
+  ]
+  
+  let excelContent = headers.map(h => h.label).join('\t') + '\n'
+  
+  exportData.value.forEach(row => {
+    const rowData = headers.map(h => {
+      let value = row[h.key]
+      if (h.key === 'status') {
+        value = statusMap[row[h.key]] || row[h.key]
+      }
+      if (h.key === 'insuranceAmount') {
+        value = (row.insuranceCurrency || 'USD') + ' ' + (Number(value) || 0).toLocaleString()
+      }
+      return value || '-'
+    })
+    excelContent += rowData.join('\t') + '\n'
+  })
+  
+  const blob = new Blob(['\uFEFF' + excelContent], { type: 'application/vnd.ms-excel;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `投保信息_${new Date().toISOString().split('T')[0]}.xls`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  
+  exportVisible.value = false
+  MessagePlugin.success('导出成功')
+}
 
 const handleAdd = () => { router.push('/insurance/purchase/new') }
 const handleView = (row) => { router.push(`/insurance/purchase/${row.id}`) }
@@ -306,7 +546,18 @@ const handleApprove = (row) => {
   MessagePlugin.success('已模拟通过，已生成保单与信用限额')
   router.push('/policy/list')
 }
-const handleDelete = (row) => { store.insuranceApplications = store.insuranceApplications.filter(it => it.id !== row.id) }
+const handleShowDeleteModal = (row) => {
+  currentDeleteData.value = row
+  deleteVisible.value = true
+}
+
+const handleConfirmDelete = () => {
+  if (currentDeleteData.value) {
+    store.insuranceApplications = store.insuranceApplications.filter(it => it.id !== currentDeleteData.value.id)
+    MessagePlugin.success('删除成功')
+  }
+  deleteVisible.value = false
+}
 
 onMounted(() => { store.ensureSeeded() })
 </script>
@@ -331,34 +582,36 @@ onMounted(() => { store.ensureSeeded() })
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 20px;
-    background: #f8fafc;
-    border-radius: 8px;
-    margin-bottom: 16px;
+    padding: 24px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     
     .info-icon {
-      width: 64px;
-      height: 64px;
+      width: 72px;
+      height: 72px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #e0f2fe;
+      background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
       border-radius: 50%;
-      color: #0ea5e9;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
     }
     
     .info-text {
       h3 {
         margin: 0 0 8px 0;
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 600;
-        color: #1a1a1a;
+        color: #1e293b;
       }
       
       p {
         margin: 0;
         font-size: 14px;
-        color: #666;
+        color: #64748b;
         line-height: 1.6;
       }
     }
@@ -366,44 +619,91 @@ onMounted(() => { store.ensureSeeded() })
   
   .modal-divider {
     height: 1px;
-    background: #e7e7e7;
-    margin: 16px 0;
+    background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+    margin: 20px 0;
   }
   
   .form-preview {
     .preview-title {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 600;
-      color: #333;
-      margin: 0 0 16px 0;
-      padding-left: 12px;
-      border-left: 3px solid #1d39c4;
+      color: #1e293b;
+      margin: 0 0 20px 0;
+      padding-left: 16px;
+      border-left: 4px solid #1d39c4;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     
     .preview-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+      gap: 14px;
     }
     
-    .preview-item {
+    .preview-card {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 10px 12px;
-      background: #fafafa;
-      border-radius: 6px;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      transition: all 0.2s ease;
       
-      .preview-label {
-        font-size: 13px;
-        color: #999;
+      &:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transform: translateY(-1px);
       }
       
-      .preview-value {
-        font-size: 14px;
-        color: #333;
-        font-weight: 500;
-        word-break: break-all;
+      .preview-icon-wrapper {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        flex-shrink: 0;
+        
+        &.bg-blue { background: #dbeafe; color: #2563eb; }
+        &.bg-green { background: #dcfce7; color: #16a34a; }
+        &.bg-purple { background: #ede9fe; color: #7c3aed; }
+        &.bg-orange { background: #ffedd5; color: #ea580c; }
+        &.bg-cyan { background: #cffafe; color: #0891b2; }
+        &.bg-yellow { background: #fef3c7; color: #ca8a04; }
+        &.bg-red { background: #fee2e2; color: #dc2626; }
+        &.bg-indigo { background: #e0e7ff; color: #4f46e5; }
+        &.bg-pink { background: #fce7f3; color: #db2777; }
+        &.bg-teal { background: #ccfbf1; color: #14b8a6; }
+        &.bg-gray { background: #f3f4f6; color: #6b7280; }
+        &.bg-primary { background: #e0e7ff; color: #1d39c4; }
+      }
+      
+      .preview-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+        
+        .preview-label {
+          font-size: 12px;
+          color: #94a3b8;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+        
+        .preview-value {
+          font-size: 14px;
+          color: #1e293b;
+          font-weight: 600;
+          word-break: break-all;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
       }
     }
   }
@@ -413,8 +713,182 @@ onMounted(() => { store.ensureSeeded() })
     justify-content: flex-end;
     gap: 12px;
     margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
+.export-modal {
+  padding: 16px 0;
+  
+  .export-filters {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    
+    .filter-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin: 0 0 12px 0;
+      padding-left: 8px;
+      border-left: 3px solid #1d39c4;
+    }
+    
+    .filter-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    
+    .filter-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-radius: 6px;
+      
+      .filter-label {
+        font-size: 13px;
+        color: #64748b;
+        margin-right: 4px;
+      }
+      
+      .filter-value {
+        font-size: 13px;
+        color: #1e293b;
+        font-weight: 500;
+      }
+    }
+  }
+  
+  .export-preview {
+    .preview-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin: 0 0 12px 0;
+      padding-left: 8px;
+      border-left: 3px solid #1d39c4;
+    }
+    
+    .preview-table-wrapper {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      
+      th, td {
+        padding: 10px 12px;
+        text-align: left;
+        font-size: 13px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      
+      th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #64748b;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+      
+      td {
+        color: #1e293b;
+      }
+      
+      tbody tr:hover {
+        background: #f8fafc;
+      }
+      
+      .more-data, .no-data {
+        text-align: center;
+        color: #94a3b8;
+        font-style: italic;
+      }
+    }
+  }
+  
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
     padding-top: 16px;
-    border-top: 1px solid #e7e7e7;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
+.delete-modal {
+  padding: 16px 0;
+  
+  .delete-info {
+    width: 100%;
+    margin-bottom: 16px;
+    
+    .info-section {
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      
+      &:not(:last-child) {
+        border-bottom: 1px dashed #e2e8f0;
+      }
+      
+      .info-label {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 500;
+      }
+      
+      .info-value {
+        font-size: 13px;
+        color: #1e293b;
+        font-weight: 600;
+        text-align: right;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+  
+  .delete-warning-text {
+    text-align: center;
+    margin-bottom: 8px;
+    
+    .warning-highlight {
+      font-size: 14px;
+      font-weight: 600;
+      color: #dc2626;
+    }
+  }
+  
+  .delete-caution {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 16px;
+    padding: 8px 16px;
+    background: #fef3c7;
+    border-radius: 4px;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 </style>

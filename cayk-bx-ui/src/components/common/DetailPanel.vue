@@ -6,7 +6,7 @@
     <div class="panel-body">
       <div v-for="col in columns" :key="col.key" class="detail-item">
         <span class="detail-label">{{ col.label }}</span>
-        <span class="detail-value">{{ getValue(col) }}</span>
+        <span class="detail-value" v-html="getValue(col)"></span>
       </div>
     </div>
   </div>

@@ -27,7 +27,7 @@ const statusClass = computed(() => {
   const status = props.status
   if (['draft', 'pending_submit', 'pending_material'].includes(status)) return 'status-warning'
   if (['credit_investigating', 'limit_approving', 'underwriting', 'processing', 'declaring'].includes(status)) return 'status-primary'
-  if (['completed', 'active', 'declared', 'passed', 'effective'].includes(status)) return 'status-success'
+  if (['completed', 'active', 'declared', 'passed', 'effective', 'approved'].includes(status)) return 'status-success'
   if (['rejected', 'suspended', 'cancelled', 'terminated'].includes(status)) return 'status-danger'
   if (['pending_payment', 'pending_declare', 'pending_premium', 'expiring', 'timeout_warning'].includes(status)) return 'status-warning'
   return 'status-default'

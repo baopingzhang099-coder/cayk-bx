@@ -4,12 +4,41 @@
       <div class="page-title">{{ pageTitle }}</div>
       <div class="page-actions" v-if="mode !== 'detail'">
         <t-space>
-          <t-button variant="outline" @click="handleBack">返回</t-button>
           <t-button variant="outline" @click="handleSave">保存</t-button>
           <t-button theme="primary" @click="handleSubmit">申请投保</t-button>
         </t-space>
       </div>
+      <div class="page-actions" v-else>
+        <t-button variant="outline" @click="handleBack">返回列表</t-button>
+      </div>
     </div>
+
+    <t-dialog v-model:visible="previewVisible" :header="previewFile?.name || '文件预览'" width="800px" :footer="false">
+      <div class="file-preview-modal">
+        <div class="preview-content" v-if="previewFile">
+          <div class="preview-info">
+            <div class="info-item">
+              <span class="info-label">文件名称：</span>
+              <span class="info-value">{{ previewFile.name }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">文件大小：</span>
+              <span class="info-value">{{ formatFileSize(previewFile.size) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">文件类型：</span>
+              <span class="info-value">{{ previewFile.type || 'PDF' }}</span>
+            </div>
+          </div>
+          <div class="preview-placeholder">
+            <div class="file-icon">📄</div>
+            <div class="file-name">{{ previewFile.name }}</div>
+            <div class="file-tip">PDF文件预览</div>
+            <t-button theme="primary" class="download-btn">下载文件</t-button>
+          </div>
+        </div>
+      </div>
+    </t-dialog>
 
     <t-card v-if="mode === 'detail'">
       <t-tabs default-value="customer">
@@ -463,7 +492,7 @@
 
             <div id="section-7" class="form-section">
               <div class="section-header">
-                <span class="section-num">8</span>
+                <span class="section-num">7</span>
                 <span class="section-title">保单数字化信息</span>
               </div>
               <div class="section-title-sub">基础信息</div>
@@ -1052,9 +1081,38 @@ const policyFeeColumns = [
   { label: '赔款追回款项支付对象', key: 'recoveryPayee' }
 ]
 
+const previewFile = ref(null)
+const previewVisible = ref(false)
+
+const handlePreviewFile = (file) => {
+  previewFile.value = file
+  previewVisible.value = true
+}
+
+const formatFileSize = (size) => {
+  if (!size) return '-'
+  if (size < 1024) return size + ' B'
+  if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB'
+  return (size / (1024 * 1024)).toFixed(2) + ' MB'
+}
+
 const policyFileColumns = [
-  { label: '保单文件', key: 'policyFile', formatter: (v) => Array.isArray(v) && v.length > 0 ? v.map(f => f.name).join('; ') : '-' },
-  { label: '批单文件', key: 'endorsementFile', formatter: (v) => Array.isArray(v) && v.length > 0 ? v.map(f => f.name).join('; ') : '-' }
+  { label: '保单文件', key: 'policyFile', formatter: (v) => {
+    if (Array.isArray(v) && v.length > 0) {
+      return v.map((f, idx) => 
+        `<span class="file-preview" @click="handlePreviewFile(${JSON.stringify(f).replace(/"/g, '&quot;')})">${f.name || `文件${idx + 1}`} <span class="preview-icon">👁</span></span>`
+      ).join('; ')
+    }
+    return '-'
+  }},
+  { label: '批单文件', key: 'endorsementFile', formatter: (v) => {
+    if (Array.isArray(v) && v.length > 0) {
+      return v.map((f, idx) => 
+        `<span class="file-preview" @click="handlePreviewFile(${JSON.stringify(f).replace(/"/g, '&quot;')})">${f.name || `文件${idx + 1}`} <span class="preview-icon">👁</span></span>`
+      ).join('; ')
+    }
+    return '-'
+  }}
 ]
 
 const processTimeline = computed(() => {
@@ -1183,7 +1241,7 @@ const handleSave = () => {
     payload.policyEndDate = payload.policyPeriodRange[1]
   }
   const saved = store.createOrUpdateInsuranceApplication(payload)
-  router.replace(`/insurance/purchase/${saved.id}/edit`)
+  router.push('/insurance/purchase')
   MessagePlugin.success('已保存')
 }
 
@@ -1477,5 +1535,87 @@ onMounted(() => {
 .ai-suggestion {
   font-size: 14px;
   color: #475569;
+}
+
+:deep(.file-preview) {
+  color: #1d39c4;
+  cursor: pointer;
+  text-decoration: underline;
+  margin-right: 8px;
+  
+  &:hover {
+    color: #1e40af;
+  }
+  
+  .preview-icon {
+    margin-left: 4px;
+    font-size: 12px;
+  }
+}
+
+.file-preview-modal {
+  padding: 16px;
+  
+  .preview-content {
+    .preview-info {
+      background: #f8fafc;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      
+      .info-item {
+        display: flex;
+        margin-bottom: 8px;
+        
+        &:last-child {
+          margin-bottom: 0;
+        }
+        
+        .info-label {
+          font-size: 13px;
+          color: #64748b;
+          min-width: 80px;
+        }
+        
+        .info-value {
+          font-size: 13px;
+          color: #1e293b;
+          font-weight: 500;
+        }
+      }
+    }
+    
+    .preview-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      background: #f8fafc;
+      border-radius: 8px;
+      
+      .file-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+      }
+      
+      .file-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 8px;
+      }
+      
+      .file-tip {
+        font-size: 14px;
+        color: #64748b;
+        margin-bottom: 16px;
+      }
+      
+      .download-btn {
+        padding: 8px 24px;
+      }
+    }
+  }
 }
 </style>

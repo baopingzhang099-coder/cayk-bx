@@ -84,9 +84,10 @@
         <template #operation="{ row }">
           <t-space>
             <t-link @click="handleView(row)">查看</t-link>
-            <t-link @click="handleEdit(row)">编辑</t-link>
-            <t-link v-if="row.status === 'pending_submit' || row.status === 'draft'" theme="warning" @click="handleShowSubmitModal(row)">提交</t-link>
-            <t-link v-if="row.status === 'credit_investigating'" theme="success" @click="handleApprove(row)">模拟通过</t-link>
+            <t-link v-if="row.status === 'draft' || row.status === 'rejected'" @click="handleEdit(row)">编辑</t-link>
+            <t-tag v-if="row.status === 'pending_review'" theme="warning">审核中</t-tag>
+            <t-tag v-if="row.status === 'rejected'" theme="danger">已驳回</t-tag>
+            <t-link v-if="row.status === 'draft' || row.status === 'rejected'" theme="primary" @click="handleShowSubmitModal(row)">提交审核</t-link>
             <t-link v-if="row.status === 'draft'" theme="danger" @click="handleDelete(row)">删除</t-link>
           </t-space>
         </template>
@@ -219,26 +220,16 @@ const countryOptions = [
 
 const statusOptions = [
   { value: 'draft', label: '草稿' },
-  { value: 'pending_material', label: '待补充资料' },
-  { value: 'pending_submit', label: '待提交' },
-  { value: 'credit_investigating', label: '资信调查中' },
-  { value: 'limit_approving', label: '限额审批中' },
-  { value: 'underwriting', label: '核保中' },
-  { value: 'pending_payment', label: '待支付' },
-  { value: 'completed', label: '已完成' },
-  { value: 'rejected', label: '已拒绝' }
+  { value: 'pending_review', label: '待审核' },
+  { value: 'approved', label: '审核通过' },
+  { value: 'rejected', label: '已驳回' }
 ]
 
 const statusMap = {
   draft: '草稿',
-  pending_material: '待补充资料',
-  pending_submit: '待提交',
-  credit_investigating: '资信调查中',
-  limit_approving: '限额审批中',
-  underwriting: '核保中',
-  pending_payment: '待支付',
-  completed: '已完成',
-  rejected: '已拒绝'
+  pending_review: '待审核',
+  approved: '审核通过',
+  rejected: '已驳回'
 }
 
 const columns = [

@@ -182,7 +182,7 @@ export const useBusinessStore = defineStore('business', {
           declarationDate: '2026-05-01',
           companySeal: [{ name: '公章文件.pdf' }],
           // 状态
-          status: 'pending_submit',
+          status: 'draft',
           createTime: '2026-05-01',
           updateTime: '2026-05-01 10:30:00'
         },
@@ -254,7 +254,7 @@ export const useBusinessStore = defineStore('business', {
           declarationDate: '2026-04-28',
           companySeal: [{ name: '公章文件.pdf' }],
           // 状态
-          status: 'credit_investigating',
+          status: 'pending_review',
           createTime: '2026-04-28',
           updateTime: '2026-05-05 14:20:00'
         },
@@ -326,7 +326,7 @@ export const useBusinessStore = defineStore('business', {
           declarationDate: '2026-03-15',
           companySeal: [{ name: '公章文件.jpg' }],
           // 状态
-          status: 'completed',
+          status: 'approved',
           createTime: '2026-03-15',
           updateTime: '2026-04-20 11:00:00',
           // 保单数字化信息 - 基础信息
@@ -364,6 +364,63 @@ export const useBusinessStore = defineStore('business', {
           // 保单数字化信息 - 保单文件
           policyFile: [{ name: 'PI2026005678_保单.pdf', url: '#' }],
           endorsementFile: []
+        },
+        {
+          id: 'TB2026004',
+          companyName: '广州XX科技有限公司',
+          unifiedSocialCreditCode: '91440100XXXXXXXXXX',
+          registeredAddress: '广州市天河区科技园XX路XX号',
+          businessAddress: '广州市天河区科技园XX路XX号',
+          organizationCode: 'G401234-6',
+          establishmentYear: '2018',
+          legalRepresentative: '陈志强',
+          enterpriseNature: '民营企业',
+          businessType: '科技公司',
+          contactName: '陈经理',
+          contactPosition: '外贸主管',
+          contactPhone: '136****5555',
+          companyEmail: 'chen@gz-xx.com',
+          exportBusinessHistory: '1-3年',
+          exportMainCountries: ['韩国', '日本'],
+          mainExportIndustry: '电子',
+          expectedInsurableTurnover: 2000000,
+          turnoverCurrency: 'USD',
+          mainPaymentMethods: 'T/T',
+          mostUsedPaymentTerm: 30,
+          longestPaymentTerm: 60,
+          hasLongerCreditPeriod: '否',
+          insuranceType: '短期出口信用保险',
+          preferredInsuranceOrgType: '商业性保险机构',
+          insuranceBusinessScope: '全部适保业务',
+          insuranceCurrency: 'USD',
+          insuranceAmount: 200000,
+          expectedInsurancePeriod: ['2026-05-01', '2027-04-30'],
+          buyerName: 'Samsung Electronics',
+          buyerCountry: '韩国',
+          buyerAddress: '123 Samsung-ro, Yeongtong-gu, Suwon-si, Gyeonggi-do, Korea',
+          cooperationYearsWithBuyer: '1-3年',
+          last12MonthExportAmount: 180,
+          last12MonthCreditSalesAmount: 150,
+          expectedNext12MonthCreditSales: 200,
+          creditSalesCurrency: 'USD',
+          paymentTerms: 'T/T 30天',
+          appliedCreditLimit: 200000,
+          creditLimitCurrency: 'USD',
+          exportProductCategory: '电子元器件',
+          involvesControlledGoods: '否',
+          hasTitleRetentionClause: '否',
+          businessLicense: [{ name: '营业执照.pdf' }],
+          importExportQualification: [{ name: '进出口资质.pdf' }],
+          tradeContract: null,
+          customsDeclaration: null,
+          authorizationDocument: [{ name: '授权文件.pdf' }],
+          declarationSignature: '陈志强',
+          declarationDate: '2026-05-10',
+          companySeal: [{ name: '公章文件.pdf' }],
+          status: 'rejected',
+          rejectReason: '缺少贸易合同和报关单等核心证明文件，请补充后重新提交。',
+          createTime: '2026-05-10',
+          updateTime: '2026-05-12 16:30:00'
         }
       ]
       this.policies = [
@@ -663,7 +720,7 @@ export const useBusinessStore = defineStore('business', {
       if (idx < 0) return { ok: false, message: '投保记录不存在' }
       const now = new Date()
       const cur = this.insuranceApplications[idx]
-      if (!['pending_submit', 'draft', 'pending_material'].includes(cur.status)) {
+      if (!['draft', 'rejected'].includes(cur.status)) {
         return { ok: false, message: '当前状态不允许提交' }
       }
       const missing = []
@@ -671,7 +728,7 @@ export const useBusinessStore = defineStore('business', {
       if (!hasFile(cur.importExportQualification)) missing.push('对外贸易经营者备案登记表')
       if (!hasFile(cur.authorizationDocument)) missing.push('授权保险公司联系买方的签字文件')
       if (missing.length > 0) return { ok: false, message: `提交失败：缺少必传附件（${missing.join('、')}）` }
-      this.insuranceApplications[idx] = { ...cur, status: 'credit_investigating', updateTime: formatDateTime(now) }
+      this.insuranceApplications[idx] = { ...cur, status: 'pending_review', updateTime: formatDateTime(now) }
       return { ok: true, data: this.insuranceApplications[idx] }
     },
     approveInsuranceApplication(id) {
@@ -679,11 +736,11 @@ export const useBusinessStore = defineStore('business', {
       if (idx < 0) return { ok: false, message: '投保记录不存在' }
       const now = new Date()
       const cur = this.insuranceApplications[idx]
-      if (cur.status !== 'credit_investigating') {
-        return { ok: false, message: '仅”资信调查中”状态允许模拟通过' }
+      if (cur.status !== 'pending_review') {
+        return { ok: false, message: '仅“待审核”状态允许审核通过' }
       }
       const policyNo = `PI${String(now.getFullYear())}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
-      const next = { ...cur, status: 'completed', updateTime: formatDateTime(now),
+      const next = { ...cur, status: 'approved', updateTime: formatDateTime(now),
         policyNo,
         insuranceCompanyName: cur.preferredInsuranceOrgType === '政策性保险机构' ? '中国信保' : '人保财险',
         insurerName: cur.preferredInsuranceOrgType === '政策性保险机构' ? '中国信保' : '人保财险',
@@ -730,6 +787,25 @@ export const useBusinessStore = defineStore('business', {
         })
       }
       return { ok: true, data: next }
+    },
+    rejectInsuranceApplication(id, rejectReason) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const now = new Date()
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'pending_review') {
+        return { ok: false, message: '仅“待审核”状态允许驳回' }
+      }
+      if (!rejectReason || rejectReason.trim() === '') {
+        return { ok: false, message: '驳回原因不能为空' }
+      }
+      this.insuranceApplications[idx] = { 
+        ...cur, 
+        status: 'rejected', 
+        updateTime: formatDateTime(now),
+        rejectReason 
+      }
+      return { ok: true, data: this.insuranceApplications[idx] }
     },
     createCreditLimit(payload) {
       const now = new Date()

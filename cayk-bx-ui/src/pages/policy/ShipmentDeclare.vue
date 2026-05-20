@@ -165,7 +165,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { MessagePlugin } from 'tdesign-vue-next'
+import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import SearchFilter from '@/components/common/SearchFilter.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
@@ -371,51 +371,63 @@ const handleEdit = (row) => {
   formVisible.value = true
 }
 
-const handleSubmit = async ({ validateResult }) => {
+const handleSubmit = ({ validateResult }) => {
   if (validateResult !== true) return
+  
+  const doSubmit = () => {
+    if (!formData.billOfLading || formData.billOfLading.length === 0) {
+      MessagePlugin.error('请上传提单/货运单据')
+      return
+    }
+    const limit = store.creditLimits.find(c => c.buyerName === formData.buyerName)
+    if (limit && formData.shipmentAmount > limit.remainingLimit) {
+      MessagePlugin.error('申报金额超过买方剩余可用限额，申报失败')
+      return
+    }
+    if (formMode.value === 'create') {
+      store.createShipment({
+        relatedPolicyNo: formData.relatedPolicyNo,
+        buyerName: formData.buyerName,
+        shipmentDate: formData.shipmentDate,
+        destinationPort: formData.destinationPort,
+        shipmentAmount: formData.shipmentAmount,
+        currency: formData.currency,
+        paymentTerms: formData.paymentTerms,
+        declarationType: formData.declarationType,
+        declarationTypeName: formData.declarationType === 'single' ? '逐笔申报' : '月度汇总',
+        status: 'declared',
+        statusName: '已申报'
+      })
+      MessagePlugin.success('出运申报已提交')
+    } else if (currentRow.value) {
+      Object.assign(currentRow.value, {
+        relatedPolicyNo: formData.relatedPolicyNo,
+        buyerName: formData.buyerName,
+        shipmentDate: formData.shipmentDate,
+        destinationPort: formData.destinationPort,
+        shipmentAmount: formData.shipmentAmount,
+        currency: formData.currency,
+        paymentTerms: formData.paymentTerms,
+        declarationType: formData.declarationType,
+        declarationTypeName: formData.declarationType === 'single' ? '逐笔申报' : '月度汇总'
+      })
+      MessagePlugin.success('出运申报已更新')
+    }
+    formVisible.value = false
+    resetForm()
+  }
+  
   if (quotaWarning.value) {
-    const confirm = await MessagePlugin.confirm('本次申报金额超过买方剩余可用限额，是否确认提交？', '超限额警告')
-    if (confirm !== 'confirm') return
-  }
-  if (!formData.billOfLading || formData.billOfLading.length === 0) {
-    MessagePlugin.error('请上传提单/货运单据')
-    return
-  }
-  const limit = store.creditLimits.find(c => c.buyerName === formData.buyerName)
-  if (limit && formData.shipmentAmount > limit.remainingLimit) {
-    MessagePlugin.error('申报金额超过买方剩余可用限额，申报失败')
-    return
-  }
-  if (formMode.value === 'create') {
-    store.createShipment({
-      relatedPolicyNo: formData.relatedPolicyNo,
-      buyerName: formData.buyerName,
-      shipmentDate: formData.shipmentDate,
-      destinationPort: formData.destinationPort,
-      shipmentAmount: formData.shipmentAmount,
-      currency: formData.currency,
-      paymentTerms: formData.paymentTerms,
-      declarationType: formData.declarationType,
-      declarationTypeName: formData.declarationType === 'single' ? '逐笔申报' : '月度汇总',
-      status: 'declared',
-      statusName: '已申报'
+    DialogPlugin.confirm({
+      title: '超限额警告',
+      content: '本次申报金额超过买方剩余可用限额，是否确认提交？',
+      confirmBtnText: '确认提交',
+      cancelBtnText: '取消',
+      onConfirm: doSubmit
     })
-    MessagePlugin.success('出运申报已提交')
-  } else if (currentRow.value) {
-    Object.assign(currentRow.value, {
-      relatedPolicyNo: formData.relatedPolicyNo,
-      buyerName: formData.buyerName,
-      shipmentDate: formData.shipmentDate,
-      destinationPort: formData.destinationPort,
-      shipmentAmount: formData.shipmentAmount,
-      currency: formData.currency,
-      paymentTerms: formData.paymentTerms,
-      declarationType: formData.declarationType,
-      declarationTypeName: formData.declarationType === 'single' ? '逐笔申报' : '月度汇总'
-    })
-    MessagePlugin.success('出运申报已更新')
+  } else {
+    doSubmit()
   }
-  formVisible.value = false
 }
 
 onMounted(() => { store.ensureSeeded() })

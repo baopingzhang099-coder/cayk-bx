@@ -9,14 +9,14 @@ const roleLabelMap = {
 }
 
 const roleUserMap = {
-  customer: { name: '客户A', avatarText: '客' },
-  inkasso: { name: '张经理', avatarText: '张' },
-  clerk: { name: '李跟单', avatarText: '跟' }
+  customer: { name: '深圳XX国际贸易有限公司', avatarText: '深', companyName: '深圳XX国际贸易有限公司', userId: 'C20260001' },
+  inkasso: { name: '张经理', avatarText: '张', companyName: '长安银科', userId: 'M20260001' },
+  clerk: { name: '李跟单', avatarText: '跟', companyName: '长安银科', userId: 'S20260001' }
 }
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    role: localStorage.getItem(ROLE_KEY) || 'inkasso'
+    role: localStorage.getItem(ROLE_KEY) || 'customer'
   }),
   getters: {
     roleLabel(state) {
@@ -27,6 +27,12 @@ export const useUserStore = defineStore('user', {
     },
     avatarText(state) {
       return roleUserMap[state.role]?.avatarText || '张'
+    },
+    companyName(state) {
+      return roleUserMap[state.role]?.companyName || ''
+    },
+    userId(state) {
+      return roleUserMap[state.role]?.userId || ''
     }
   },
   actions: {
@@ -36,4 +42,3 @@ export const useUserStore = defineStore('user', {
     }
   }
 })
-

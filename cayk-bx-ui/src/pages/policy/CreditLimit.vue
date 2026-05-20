@@ -39,7 +39,11 @@
         <t-progress :percentage="row.usageRate" :color="row.usageRate > 80 ? '#E34D57' : '#0052D9'" />
       </template>
       <template #status="{ row }">
-        <status-tag :status="row.status" :status-map="statusMap" />
+        <t-space>
+          <t-tag v-if="row._idleStatus?.level === 'danger'" theme="danger">闲置待撤销</t-tag>
+          <t-tag v-else-if="row._idleStatus?.level === 'warning'" theme="warning">闲置预警</t-tag>
+          <status-tag v-else :status="row.status" :status-map="statusMap" />
+        </t-space>
       </template>
       <template #operation="{ row }">
         <t-space>
@@ -80,6 +84,14 @@
               <t-option value="LC" label="LC" />
               <t-option value="预付款" label="预付款" />
               <t-option value="其他" label="其他" />
+            </t-select>
+          </t-form-item>
+          <t-form-item label="与该买方合作年限" name="cooperationYears">
+            <t-select v-model="formData.cooperationYears" placeholder="请选择合作年限" clearable>
+              <t-option value="new" label="新买家" />
+              <t-option value="1年以内" label="1年以内" />
+              <t-option value="1-3年" label="1-3年" />
+              <t-option value="3年以上" label="3年以上" />
             </t-select>
           </t-form-item>
 
@@ -128,6 +140,17 @@
             </t-radio-group>
           </t-form-item>
 
+          <t-form-item v-if="idleWarning" label="闲置预警">
+            <t-alert :theme="idleWarning.level" :message="idleWarning.message" />
+          </t-form-item>
+          <t-form-item
+            v-for="w in formConcentrationWarnings"
+            :key="w.type"
+            label="集中度提示"
+          >
+            <t-alert :theme="w.level" :message="w.message" />
+          </t-form-item>
+
           <t-form-item>
             <t-space>
               <t-button theme="primary" type="submit">{{ formMode === 'create' ? '提交申请' : '保存' }}</t-button>
@@ -149,6 +172,7 @@ import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 import { useBusinessStore } from '@/stores/business'
+import { checkIdleStatus, checkConcentration, getStatusTag } from '@/utils/rules/creditLimitRules'
 
 const store = useBusinessStore()
 const loading = computed(() => false)
@@ -196,10 +220,24 @@ const filteredData = computed(() => {
   })
 })
 
+const enrichedData = computed(() => {
+  const shipments = store.shipments || []
+  return filteredData.value.map(it => {
+    const idleStatus = checkIdleStatus(it, shipments)
+    const concentration = checkConcentration(it, store.creditLimits || [])
+    return {
+      ...it,
+      _idleStatus: idleStatus,
+      _concentrationWarnings: concentration.warnings,
+      _statusTag: getStatusTag(it, shipments)
+    }
+  })
+})
+
 const tableData = computed(() => {
-  pagination.total = filteredData.value.length
+  pagination.total = enrichedData.value.length
   const start = (pagination.current - 1) * pagination.pageSize
-  return filteredData.value.slice(start, start + pagination.pageSize)
+  return enrichedData.value.slice(start, start + pagination.pageSize)
 })
 
 const activeCount = computed(() => (store.creditLimits || []).filter(it => it.status === 'active').length)
@@ -232,6 +270,7 @@ const formData = reactive({
   currency: 'USD',
   paymentTermsDays: 0,
   paymentMethod: '',
+  cooperationYears: '',
   historicalTransactionAmount: 0,
   estimatedAnnualShipment: 0,
   hasGuarantee: 'no',
@@ -240,6 +279,24 @@ const formData = reactive({
   historyFiles: null,
   buyerQualificationFiles: null,
   allowContactBuyer: 'yes'
+})
+
+const formConcentrationWarnings = computed(() => {
+  if (!formData.buyerName || !formData.appliedLimit) return []
+  const tempLimit = {
+    buyerName: formData.buyerName,
+    buyerCountry: formData.buyerCountry,
+    appliedLimit: formData.appliedLimit
+  }
+  const allLimits = store.creditLimits || []
+  const { warnings } = checkConcentration(tempLimit, allLimits)
+  return warnings
+})
+
+const idleWarning = computed(() => {
+  if (formMode.value !== 'edit' || !currentRow.value) return null
+  const shipments = store.shipments || []
+  return checkIdleStatus(currentRow.value, shipments)
 })
 
 const formRules = {
@@ -278,6 +335,7 @@ const handleAdd = () => {
     currency: 'USD',
     paymentTermsDays: 0,
     paymentMethod: '',
+    cooperationYears: '',
     historicalTransactionAmount: 0,
     estimatedAnnualShipment: 0,
     hasGuarantee: 'no',
@@ -306,6 +364,7 @@ const handleEdit = (row) => {
     currency: row.currency || 'USD',
     paymentTermsDays: Number(row.paymentTermsDays) || 0,
     paymentMethod: row.paymentMethod || '',
+    cooperationYears: row.cooperationYears || '',
     historicalTransactionAmount: Number(row.historicalTransactionAmount) || 0,
     estimatedAnnualShipment: Number(row.estimatedAnnualShipment) || 0,
     hasGuarantee: row.hasGuarantee || 'no',
@@ -341,6 +400,7 @@ const handleSubmit = async ({ validateResult }) => {
       currency: formData.currency,
       paymentTermsDays: formData.paymentTermsDays,
       paymentMethod: formData.paymentMethod,
+      cooperationYears: formData.cooperationYears,
       historicalTransactionAmount: formData.historicalTransactionAmount,
       estimatedAnnualShipment: formData.estimatedAnnualShipment,
       hasGuarantee: formData.hasGuarantee,
@@ -361,6 +421,7 @@ const handleSubmit = async ({ validateResult }) => {
       currency: formData.currency,
       paymentTermsDays: formData.paymentTermsDays,
       paymentMethod: formData.paymentMethod,
+      cooperationYears: formData.cooperationYears,
       historicalTransactionAmount: formData.historicalTransactionAmount,
       estimatedAnnualShipment: formData.estimatedAnnualShipment,
       hasGuarantee: formData.hasGuarantee,

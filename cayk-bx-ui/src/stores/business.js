@@ -781,13 +781,12 @@ export const useBusinessStore = defineStore('business', {
           status: 'completed',
           statusName: '已完成',
           stepOptions: [
-            { label: '投保方案确认', value: 1 },
-            { label: '申请投保', value: 2 },
-            { label: '提交投保申请', value: 3 },
-            { label: '审核流转', value: 4 },
-            { label: '核保', value: 5 },
-            { label: '保单签发', value: 6 },
-            { label: '支付管理', value: 7 }
+            { label: '提交投保申请', value: 1 },
+            { label: '资料审核', value: 2 },
+            { label: '资信调查', value: 3 },
+            { label: '信用限额审批', value: 4 },
+            { label: '核保出单', value: 5 },
+            { label: '缴费生效', value: 6 }
           ],
           stepInfo: [
             { handler: '张三', startTime: '2026-05-18 09:00:00', endTime: '2026-05-18 10:30:00' },
@@ -795,8 +794,7 @@ export const useBusinessStore = defineStore('business', {
             { handler: '王五', startTime: '2026-05-19 09:00:00', endTime: '2026-05-19 11:00:00' },
             { handler: '赵六', startTime: '2026-05-19 11:00:00', endTime: '2026-05-19 16:00:00' },
             { handler: '钱七', startTime: '2026-05-20 09:00:00', endTime: '2026-05-20 11:30:00' },
-            { handler: '孙八', startTime: '2026-05-20 13:00:00', endTime: '2026-05-20 14:30:00' },
-            { handler: '周九', startTime: '2026-05-20 14:30:00', endTime: '2026-05-20 15:30:00' }
+            { handler: '孙八', startTime: '2026-05-20 13:00:00', endTime: '2026-05-20 14:30:00' }
           ],
           formData: {
             step1: {
@@ -820,20 +818,13 @@ export const useBusinessStore = defineStore('business', {
               auditOpinion: '基本信息校验通过，资料完整，风险评估为低风险，同意流转。'
             },
             step5: {
-              checkedItems: ['policyInfo', 'premiumInfo', 'coverageInfo'],
-              underwritingResult: 'approved',
-              underwritingOpinion: '保单信息、保费信息、保障范围均核对无误，同意承保。',
-              approvalResult: 'approved',
-              auditOpinion: '核保通过。'
-            },
-            step6: {
               policyNo: 'POL20260602001',
               issueDate: '2026-05-20',
               policyFile: [{ name: '保单文件.pdf' }],
               approvalResult: 'approved',
               auditOpinion: '保单已签发，信息无误。'
             },
-            step7: {
+            step6: {
               premiumAmount: '¥12,500.00',
               paymentStatus: 'paid',
               paymentReceipt: [{ name: '支付凭证.pdf' }],
@@ -869,13 +860,12 @@ export const useBusinessStore = defineStore('business', {
           status: 'completed',
           statusName: '已完成',
           stepOptions: [
-            { label: '投保方案确认', value: 1 },
-            { label: '申请投保', value: 2 },
-            { label: '提交投保申请', value: 3 },
-            { label: '审核流转', value: 4 },
-            { label: '核保', value: 5 },
-            { label: '保单签发', value: 6 },
-            { label: '支付管理', value: 7 }
+            { label: '提交投保申请', value: 1 },
+            { label: '资料审核', value: 2 },
+            { label: '资信调查', value: 3 },
+            { label: '信用限额审批', value: 4 },
+            { label: '核保出单', value: 5 },
+            { label: '缴费生效', value: 6 }
           ],
           stepInfo: [
             { handler: '陈经理', startTime: '2026-05-10 09:00:00', endTime: '2026-05-10 11:00:00' },
@@ -883,8 +873,7 @@ export const useBusinessStore = defineStore('business', {
             { handler: '王五', startTime: '2026-05-12 09:00:00', endTime: '2026-05-12 12:00:00' },
             { handler: '赵六', startTime: '2026-05-13 09:00:00', endTime: '2026-05-14 11:00:00' },
             { handler: '钱七', startTime: '2026-05-15 09:00:00', endTime: '2026-05-15 16:30:00' },
-            { handler: '孙八', startTime: '2026-05-18 09:00:00', endTime: '2026-05-18 15:00:00' },
-            { handler: '周九', startTime: '2026-05-19 09:00:00', endTime: '2026-05-19 17:00:00' }
+            { handler: '孙八', startTime: '2026-05-18 09:00:00', endTime: '2026-05-18 15:00:00' }
           ],
           formData: {
             step1: {
@@ -908,20 +897,13 @@ export const useBusinessStore = defineStore('business', {
               auditOpinion: '校验通过。'
             },
             step5: {
-              checkedItems: ['policyInfo', 'premiumInfo'],
-              underwritingResult: 'conditional',
-              underwritingOpinion: '有条件承保，需客户补充部分资料。',
-              approvalResult: 'approved',
-              auditOpinion: '有条件通过。'
-            },
-            step6: {
               policyNo: 'POL20260602002',
               issueDate: '2026-05-18',
               policyFile: [{ name: '保单文件.pdf' }],
               approvalResult: 'approved',
               auditOpinion: '保单已签发。'
             },
-            step7: {
+            step6: {
               premiumAmount: '¥10,000.00',
               paymentStatus: 'paid',
               paymentReceipt: [{ name: '支付凭证.pdf' }],

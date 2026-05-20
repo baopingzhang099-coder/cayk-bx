@@ -8,70 +8,127 @@
       </t-breadcrumb>
     </div>
     <div class="page-header">
-      <div class="page-title">投保信息管理</div>
+      <div class="page-title">保单信息管理</div>
     </div>
 
-    <div class="status-tabs">
-      <t-tabs v-model="currentStatusTab" theme="card">
-        <t-tab-panel
-          v-for="tab in statusTabs"
-          :key="tab.value"
-          :value="tab.value"
-          :label="tab.label"
-        />
-      </t-tabs>
-    </div>
+    <t-tabs v-model="mainTab" theme="card" class="mb-16">
+      <t-tab-panel value="review" label="投保审核">
+        <div class="status-tabs">
+          <t-tabs v-model="currentStatusTab" theme="card">
+            <t-tab-panel
+              v-for="tab in statusTabs"
+              :key="tab.value"
+              :value="tab.value"
+              :label="tab.label"
+            />
+          </t-tabs>
+        </div>
 
-    <search-filter
-      :status-options="statusOptions"
-      @search="handleSearch"
-      @reset="handleReset"
-    >
-      <template #actions>
-        <t-button theme="primary" @click="handleExport">导出</t-button>
-      </template>
-    </search-filter>
+        <search-filter
+          :status-options="statusOptions"
+          @search="handleSearch"
+          @reset="handleReset"
+        >
+          <template #actions>
+            <t-button theme="primary" @click="handleExport">导出</t-button>
+          </template>
+        </search-filter>
 
-    <div class="stats-grid mb-24">
-      <stat-card title="审核通过" :value="activePolicyCount" icon="check-circle" color="success" />
-      <stat-card title="待审核" :value="pendingReviewCount" icon="clock" color="warning" />
-      <stat-card title="总申请数" :value="store.insuranceApplications.length" icon="file" color="primary" />
-      <stat-card title="总投保金额" :value="`$${totalInsuranceAmount.toLocaleString()}`" icon="credit-card" color="danger" />
-    </div>
+        <div class="stats-grid mb-24">
+          <stat-card title="审核通过" :value="activePolicyCount" icon="check-circle" color="success" />
+          <stat-card title="待审核" :value="pendingReviewCount" icon="clock" color="warning" />
+          <stat-card title="总申请数" :value="store.insuranceApplications.length" icon="file" color="primary" />
+          <stat-card title="总投保金额" :value="`$${totalInsuranceAmount.toLocaleString()}`" icon="credit-card" color="danger" />
+        </div>
 
-    <data-table
-      :data="tableData"
-      :columns="columns"
-      :pagination="pagination"
-      :loading="loading"
-      row-key="id"
-      @page-change="handlePageChange"
-    >
-      <template #status="{ row }">
-        <status-tag :status="row.status" :status-map="statusMap" />
-      </template>
-      <template #insuranceAmount="{ row }">
-        <span>${{ Number(row.insuranceAmount || 0).toLocaleString() }}</span>
-      </template>
-      <template #expectedInsurancePeriod="{ row }">
-        <span>{{ Array.isArray(row.expectedInsurancePeriod) ? row.expectedInsurancePeriod.join(' ~ ') : row.expectedInsurancePeriod }}</span>
-      </template>
-      <template #operation="{ row }">
-        <t-space>
-          <t-link @click="handleView(row)">查看</t-link>
-          <t-link v-if="isInkasso && row.status === 'pending_review'" theme="primary" @click="handleApprove(row)">审核</t-link>
-          <t-link v-if="isInkasso && row.status === 'pending_review'" theme="danger" @click="handleReject(row)">驳回</t-link>
-          <t-link v-if="!isInkasso && row.status === 'rejected'" theme="primary" @click="handleSubmit(row)">重新提交</t-link>
-        </t-space>
-      </template>
-    </data-table>
+        <data-table
+          :data="tableData"
+          :columns="columns"
+          :pagination="pagination"
+          :loading="loading"
+          row-key="id"
+          @page-change="handlePageChange"
+        >
+          <template #status="{ row }">
+            <status-tag :status="row.status" :status-map="statusMap" />
+          </template>
+          <template #insuranceAmount="{ row }">
+            <span>${{ Number(row.insuranceAmount || 0).toLocaleString() }}</span>
+          </template>
+          <template #expectedInsurancePeriod="{ row }">
+            <span>{{ Array.isArray(row.expectedInsurancePeriod) ? row.expectedInsurancePeriod.join(' ~ ') : row.expectedInsurancePeriod }}</span>
+          </template>
+          <template #operation="{ row }">
+            <t-space>
+              <t-link @click="handleView(row)">查看</t-link>
+              <t-link v-if="isInkasso && row.status === 'pending_review'" theme="primary" @click="handleApprove(row)">审核</t-link>
+              <t-link v-if="isInkasso && row.status === 'pending_review'" theme="danger" @click="handleReject(row)">驳回</t-link>
+              <t-link v-if="!isInkasso && row.status === 'rejected'" theme="primary" @click="handleSubmit(row)">重新提交</t-link>
+            </t-space>
+          </template>
+        </data-table>
+      </t-tab-panel>
 
+      <t-tab-panel value="policy" label="保单列表">
+        <div class="table-header">
+          <span class="table-title">保单信息管理</span>
+          <t-space>
+            <t-button theme="primary" @click="ocrDialogVisible = true">
+              <template #icon><t-icon name="file-pdf" /></template>
+              新增投保（OCR）
+            </t-button>
+          </t-space>
+        </div>
+
+        <div class="stats-grid mb-24">
+          <stat-card title="有效保单" :value="activePolicyCount" icon="check-circle" color="success" />
+          <stat-card title="即将到期" :value="expiringPolicyCount" icon="alarm" color="warning" />
+          <stat-card title="总保额" :value="`$${totalCoverage.toLocaleString()}`" icon="wallet" color="primary" />
+          <stat-card title="总保费" :value="`$${totalPremium.toLocaleString()}`" icon="credit-card" color="danger" />
+        </div>
+
+        <data-table
+          :data="policyTableData"
+          :columns="policyColumns"
+          :pagination="policyPagination"
+          :loading="loading"
+          row-key="id"
+          @page-change="handlePolicyPageChange"
+        >
+          <template #status="{ row }">
+            <status-tag :status="row.status" :status-map="policyStatusMap" />
+          </template>
+          <template #coverageAmount="{ row }">
+            <span>${{ Number(row.coverageAmount || 0).toLocaleString() }}</span>
+          </template>
+          <template #premium="{ row }">
+            <span>${{ Number(row.premium || 0).toLocaleString() }}</span>
+          </template>
+          <template #operation="{ row }">
+            <t-space>
+              <t-link @click="handleViewPolicy(row)">查看</t-link>
+              <t-link theme="primary" @click="handlePolicyChange(row)">变更</t-link>
+              <t-link theme="primary" @click="handleRenewal(row)">续保</t-link>
+              <t-link theme="danger" @click="handleSurrender(row)">退保</t-link>
+            </t-space>
+          </template>
+        </data-table>
+      </t-tab-panel>
+    </t-tabs>
+
+    <!-- 投保审核详情弹窗 -->
     <t-dialog v-model:visible="detailVisible" header="投保详情" width="800px" :footer="false">
       <detail-panel title="基础信息" :columns="detailColumns" :data="currentRow || {}" />
       <detail-panel title="业务信息" :columns="businessColumns" :data="currentRow || {}" />
       <detail-panel title="投保需求" :columns="insuranceColumns" :data="currentRow || {}" />
     </t-dialog>
 
+    <!-- 保单详情弹窗 -->
+    <t-dialog v-model:visible="policyDetailVisible" header="保单详情" width="600px" :footer="false">
+      <detail-panel title="保单信息" :columns="policyDetailColumns" :data="currentPolicy || {}" />
+    </t-dialog>
+
+    <!-- 导出弹窗 -->
     <t-dialog v-model:visible="exportVisible" header="导出预览" width="800px" :footer="false">
       <div class="export-modal">
         <div class="export-filters">
@@ -95,7 +152,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="export-preview">
           <h4 class="preview-title">数据预览（共 {{ exportData.length }} 条）</h4>
           <div class="preview-table-wrapper">
@@ -133,7 +190,7 @@
             </table>
           </div>
         </div>
-        
+
         <div class="modal-footer">
           <t-button variant="outline" @click="exportVisible = false">取消</t-button>
           <t-button theme="primary" @click="generateExcel">导出Excel</t-button>
@@ -141,18 +198,19 @@
       </div>
     </t-dialog>
 
+    <!-- 审核确认弹窗 -->
     <t-dialog v-model:visible="confirmVisible" :header="confirmTitle" width="800px">
       <div class="confirm-content">
         <detail-panel v-if="confirmRow" title="基础信息" :columns="detailColumns" :data="confirmRow || {}" />
         <detail-panel v-if="confirmRow" title="业务信息" :columns="businessColumns" :data="confirmRow || {}" />
         <detail-panel v-if="confirmRow" title="投保需求" :columns="insuranceColumns" :data="confirmRow || {}" />
-        
+
         <t-form v-if="confirmAction === 'reject'" label-width="100px">
           <t-form-item label="驳回原因">
             <t-textarea v-model="rejectReason" placeholder="请输入驳回原因" :autosize="{ minRows: 3, maxRows: 6 }" />
           </t-form-item>
         </t-form>
-        
+
         <div class="confirm-tip" v-if="confirmAction === 'submit'">
           <t-icon name="warning-circle" size="16px" class="tip-icon" />
           <span class="tip-text">提交后状态将变为待审核，请确认信息无误</span>
@@ -175,6 +233,30 @@
         </t-space>
       </template>
     </t-dialog>
+
+    <!-- OCR弹窗 -->
+    <policy-ocr-dialog v-model:visible="ocrDialogVisible" />
+
+    <!-- 续保弹窗 -->
+    <renewal-dialog
+      v-model:visible="renewalVisible"
+      :policy="currentPolicy"
+      @saved="handleRenewalSaved"
+    />
+
+    <!-- 退保弹窗 -->
+    <surrender-dialog
+      v-model:visible="surrenderVisible"
+      :policy="currentPolicy"
+      @saved="handleSurrenderSaved"
+    />
+
+    <!-- 保单变更弹窗 -->
+    <policy-change-dialog
+      v-model:visible="changeVisible"
+      :policy="currentPolicy"
+      @saved="handleChangeSaved"
+    />
   </div>
 </template>
 
@@ -186,6 +268,10 @@ import DataTable from '@/components/common/DataTable.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
+import PolicyOcrDialog from '@/components/business/PolicyOcrDialog.vue'
+import RenewalDialog from '@/components/business/RenewalDialog.vue'
+import SurrenderDialog from '@/components/business/SurrenderDialog.vue'
+import PolicyChangeDialog from '@/components/business/PolicyChangeDialog.vue'
 import { useBusinessStore } from '@/stores/business'
 import { useUserStore } from '@/stores/user'
 
@@ -195,7 +281,9 @@ const loading = computed(() => false)
 const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRange: [] })
 
 const isInkasso = computed(() => userStore.role === 'inkasso')
+const mainTab = ref('review')
 
+// ===== Application review =====
 const currentStatusTab = ref('all')
 
 const statusTabs = [
@@ -229,11 +317,7 @@ const columns = [
   { colKey: 'operation', title: '操作', width: 140, fixed: 'right', slot: 'operation' }
 ]
 
-const pagination = reactive({
-  total: 0,
-  current: 1,
-  pageSize: 20
-})
+const pagination = reactive({ total: 0, current: 1, pageSize: 20 })
 
 const filteredData = computed(() => {
   const list = store.insuranceApplications || []
@@ -257,17 +341,64 @@ const activePolicyCount = computed(() => (store.insuranceApplications || []).fil
 const pendingReviewCount = computed(() => (store.insuranceApplications || []).filter(p => p.status === 'pending_review').length)
 const totalInsuranceAmount = computed(() => (store.insuranceApplications || []).reduce((sum, p) => sum + (Number(p.insuranceAmount) || 0), 0))
 
+// ===== Policy list =====
+const policyStatusMap = {
+  pending_effect: '待生效',
+  active: '有效',
+  expiring: '即将到期',
+  expired: '已到期',
+  suspended: '中止',
+  cancelled: '退保',
+  terminated: '终止'
+}
+
+const policyColumns = [
+  { colKey: 'policyNo', title: '保单号', width: 140 },
+  { colKey: 'insuranceCompany', title: '保险公司', width: 100 },
+  { colKey: 'policyholder', title: '被保险人', ellipsis: true },
+  { colKey: 'insured', title: '投保买方', ellipsis: true },
+  { colKey: 'coverageAmount', title: '保险金额', align: 'right', width: 120, slot: 'coverageAmount' },
+  { colKey: 'premium', title: '保费金额', align: 'right', width: 120, slot: 'premium' },
+  { colKey: 'effectiveDate', title: '生效日期', width: 110 },
+  { colKey: 'expiryDate', title: '到期日期', width: 110 },
+  { colKey: 'status', title: '状态', width: 100, slot: 'status' },
+  { colKey: 'operation', title: '操作', width: 200, fixed: 'right', slot: 'operation' }
+]
+
+const policyPagination = reactive({ total: 0, current: 1, pageSize: 20 })
+
+const policyTableData = computed(() => {
+  const list = store.policies || []
+  policyPagination.total = list.length
+  const start = (policyPagination.current - 1) * policyPagination.pageSize
+  return list.slice(start, start + policyPagination.pageSize)
+})
+
+const expiringPolicyCount = computed(() => (store.policies || []).filter(p => p.status === 'expiring' || p.status === 'pending_effect').length)
+const totalCoverage = computed(() => (store.policies || []).reduce((sum, p) => sum + (Number(p.coverageAmount) || 0), 0))
+const totalPremium = computed(() => (store.policies || []).reduce((sum, p) => sum + (Number(p.premium) || 0), 0))
+
+// ===== Dialog state =====
 const detailVisible = ref(false)
 const currentRow = ref(null)
+const policyDetailVisible = ref(false)
+const currentPolicy = ref(null)
 
 const confirmVisible = ref(false)
 const confirmTitle = ref('')
-const confirmContent = ref('')
-const confirmButtonText = ref('')
 const confirmRow = ref(null)
 const confirmAction = ref('')
 const rejectReason = ref('')
 
+const ocrDialogVisible = ref(false)
+const renewalVisible = ref(false)
+const surrenderVisible = ref(false)
+const changeVisible = ref(false)
+
+const exportVisible = ref(false)
+const exportData = ref([])
+
+// ===== Column defs =====
 const detailColumns = [
   { label: '投保编号', key: 'id' },
   { label: '企业名称', key: 'companyName' },
@@ -297,25 +428,29 @@ const insuranceColumns = [
   { label: '驳回原因', key: 'rejectReason' }
 ]
 
-const handleSearch = (params) => {
-  searchParams.value = params
-  pagination.current = 1
-}
+const policyDetailColumns = [
+  { label: '保单号', key: 'policyNo' },
+  { label: '保险公司', key: 'insuranceCompany' },
+  { label: '被保险人', key: 'policyholder' },
+  { label: '投保买方', key: 'insured' },
+  { label: '保险金额', key: 'coverageAmount', formatter: (v) => `$${Number(v).toLocaleString()}` },
+  { label: '保费金额', key: 'premium', formatter: (v) => `$${Number(v).toLocaleString()}` },
+  { label: '生效日期', key: 'effectiveDate' },
+  { label: '到期日期', key: 'expiryDate' },
+  { label: '已用额度', key: 'usedQuota', formatter: (v) => `$${Number(v || 0).toLocaleString()}` },
+  { label: '剩余额度', key: 'remainingQuota', formatter: (v) => `$${Number(v || 0).toLocaleString()}` },
+  { label: '币种', key: 'currency' },
+  { label: '状态', key: 'status' }
+]
 
-const handleReset = () => {
-  searchParams.value = { enterpriseName: '', buyerName: '', status: '', dateRange: [] }
-  pagination.current = 1
-}
+// ===== Handlers =====
+const handleSearch = (params) => { searchParams.value = params; pagination.current = 1 }
+const handleReset = () => { searchParams.value = { enterpriseName: '', buyerName: '', status: '', dateRange: [] }; pagination.current = 1 }
+const handlePageChange = (pageInfo) => { pagination.current = pageInfo.current; pagination.pageSize = pageInfo.pageSize }
+const handlePolicyPageChange = (pageInfo) => { policyPagination.current = pageInfo.current; policyPagination.pageSize = pageInfo.pageSize }
 
-const handlePageChange = (pageInfo) => {
-  pagination.current = pageInfo.current
-  pagination.pageSize = pageInfo.pageSize
-}
-
-const handleView = (row) => {
-  currentRow.value = row
-  detailVisible.value = true
-}
+const handleView = (row) => { currentRow.value = row; detailVisible.value = true }
+const handleViewPolicy = (row) => { currentPolicy.value = row; policyDetailVisible.value = true }
 
 const handleApprove = (row) => {
   confirmTitle.value = '审核通过'
@@ -335,8 +470,6 @@ const handleReject = (row) => {
 
 const handleSubmit = (row) => {
   confirmTitle.value = '重新提交申请'
-  confirmContent.value = ''
-  confirmButtonText.value = ''
   confirmRow.value = row
   confirmAction.value = 'submit'
   confirmVisible.value = true
@@ -345,70 +478,87 @@ const handleSubmit = (row) => {
 const handleConfirm = () => {
   if (confirmAction.value === 'approve' && confirmRow.value) {
     const res = store.approveInsuranceApplication(confirmRow.value.id)
-    if (res?.ok) {
-      MessagePlugin.success('审核通过成功')
-    } else {
-      MessagePlugin.error(res?.message || '审核失败')
-    }
+    if (res?.ok) MessagePlugin.success('审核通过成功')
+    else MessagePlugin.error(res?.message || '审核失败')
   } else if (confirmAction.value === 'reject' && confirmRow.value) {
-    if (!rejectReason.value.trim()) {
-      MessagePlugin.warning('请输入驳回原因')
-      return
-    }
+    if (!rejectReason.value.trim()) { MessagePlugin.warning('请输入驳回原因'); return }
     const res = store.rejectInsuranceApplication(confirmRow.value.id, rejectReason.value)
-    if (res?.ok) {
-      MessagePlugin.success('驳回成功')
-    } else {
-      MessagePlugin.error(res?.message || '驳回失败')
-    }
+    if (res?.ok) MessagePlugin.success('驳回成功')
+    else MessagePlugin.error(res?.message || '驳回失败')
   } else if (confirmAction.value === 'submit' && confirmRow.value) {
     const res = store.submitInsuranceApplication(confirmRow.value.id)
-    if (res?.ok) {
-      MessagePlugin.success('提交申请成功')
-    } else {
-      MessagePlugin.error(res?.message || '提交失败')
-    }
+    if (res?.ok) MessagePlugin.success('提交申请成功')
+    else MessagePlugin.error(res?.message || '提交失败')
   }
   confirmVisible.value = false
 }
 
-const exportVisible = ref(false)
-const exportData = ref([])
+const handlePolicyChange = (row) => { currentPolicy.value = row; changeVisible.value = true }
+const handleRenewal = (row) => { currentPolicy.value = row; renewalVisible.value = true }
+const handleSurrender = (row) => { currentPolicy.value = row; surrenderVisible.value = true }
 
-const handleExport = () => {
-  exportData.value = filteredData.value
-  exportVisible.value = true
+const handleRenewalSaved = (data) => {
+  if (currentPolicy.value) {
+    store.policies = store.policies.map(p =>
+      p.policyNo === currentPolicy.value.policyNo
+        ? { ...p, renewalFlag: 'yes', status: 'expiring' }
+        : p
+    )
+    MessagePlugin.success('续保申请已记录')
+  }
+}
+const handleSurrenderSaved = (data) => {
+  if (currentPolicy.value) {
+    store.policies = store.policies.map(p =>
+      p.policyNo === currentPolicy.value.policyNo
+        ? { ...p, status: 'cancelled' }
+        : p
+    )
+    MessagePlugin.success('保单状态已更新为退保')
+  }
+}
+const handleChangeSaved = (data) => {
+  MessagePlugin.success('变更申请已记录')
+}
+
+// ===== Export =====
+const handleExport = () => { exportData.value = filteredData.value; exportVisible.value = true }
+
+const handleExportPolicies = () => {
+  const list = store.policies || []
+  let content = '保单号\t保险公司\t被保险人\t投保买方\t保险金额\t保费金额\t生效日期\t到期日期\t状态\n'
+  list.forEach(p => {
+    content += `${p.policyNo}\t${p.insuranceCompany}\t${p.policyholder}\t${p.insured}\t${p.coverageAmount}\t${p.premium}\t${p.effectiveDate}\t${p.expiryDate}\t${policyStatusMap[p.status] || p.status}\n`
+  })
+  const blob = new Blob(['﻿' + content], { type: 'application/vnd.ms-excel;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `保单信息_${new Date().toISOString().split('T')[0]}.xls`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  MessagePlugin.success('保单导出成功')
 }
 
 const generateExcel = () => {
   const headers = [
-    { key: 'id', label: '投保编号' },
-    { key: 'companyName', label: '企业名称' },
-    { key: 'buyerName', label: '买方名称' },
-    { key: 'buyerCountry', label: '买方国别' },
-    { key: 'insuranceType', label: '投保类型' },
-    { key: 'insuranceAmount', label: '投保金额' },
-    { key: 'status', label: '状态' },
-    { key: 'createTime', label: '申请日期' }
+    { key: 'id', label: '投保编号' }, { key: 'companyName', label: '企业名称' },
+    { key: 'buyerName', label: '买方名称' }, { key: 'buyerCountry', label: '买方国别' },
+    { key: 'insuranceType', label: '投保类型' }, { key: 'insuranceAmount', label: '投保金额' },
+    { key: 'status', label: '状态' }, { key: 'createTime', label: '申请日期' }
   ]
-  
-  let excelContent = headers.map(h => h.label).join('\t') + '\n'
-  
+  let content = headers.map(h => h.label).join('\t') + '\n'
   exportData.value.forEach(row => {
-    const rowData = headers.map(h => {
+    content += headers.map(h => {
       let value = row[h.key]
-      if (h.key === 'status') {
-        value = statusMap[row[h.key]] || row[h.key]
-      }
-      if (h.key === 'insuranceAmount') {
-        value = '$' + (Number(value) || 0).toLocaleString()
-      }
+      if (h.key === 'status') value = statusMap[value] || value
+      if (h.key === 'insuranceAmount') value = '$' + (Number(value) || 0).toLocaleString()
       return value || '-'
-    })
-    excelContent += rowData.join('\t') + '\n'
+    }).join('\t') + '\n'
   })
-  
-  const blob = new Blob(['\uFEFF' + excelContent], { type: 'application/vnd.ms-excel;charset=utf-8' })
+  const blob = new Blob(['﻿' + content], { type: 'application/vnd.ms-excel;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -417,259 +567,40 @@ const generateExcel = () => {
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
-  
   exportVisible.value = false
   MessagePlugin.success('导出成功')
 }
 
-onMounted(() => {
-  store.ensureSeeded()
-})
+onMounted(() => { store.ensureSeeded() })
 </script>
 
 <style lang="scss" scoped>
-.status-tabs {
-  margin-bottom: 16px;
-}
+.status-tabs { margin-bottom: 16px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.mb-16 { margin-bottom: 16px; }
+.table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.table-title { font-size: 16px; font-weight: 600; color: #333; }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
+.confirm-content { padding: 16px 0; p { margin-bottom: 20px; color: #333; font-size: 14px; line-height: 1.6; } }
+.confirm-tip { display: flex; align-items: center; gap: 8px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; padding: 10px 14px; margin-top: 16px; }
+.tip-icon { color: #f59e0b; &.success { color: #16a34a; } &.danger { color: #dc2626; } }
+.tip-text { font-size: 13px; color: #92400e; }
+.confirm-tip { &:has(.tip-icon.success) .tip-text { color: #166534; } &:has(.tip-icon.danger) .tip-text { color: #991b1b; } }
 
-.confirm-content {
-  padding: 16px 0;
-  
-  p {
-    margin-bottom: 20px;
-    color: #333;
-    font-size: 14px;
-    line-height: 1.6;
-  }
-}
-
-.confirm-info {
-  background: #f8f9fa;
-  border-radius: 4px;
-  padding: 12px 16px;
-}
-
-.info-item {
-  display: flex;
-  padding: 8px 0;
-  
-  &:not(:last-child) {
-    border-bottom: 1px dashed #e0e0e0;
-  }
-}
-
-.info-label {
-  width: 100px;
-  flex-shrink: 0;
-  color: #999;
-  font-size: 14px;
-}
-
-.info-value {
-  flex: 1;
-  color: #333;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.export-modal {
-  padding: 16px;
-}
-
-.export-filters {
-  margin-bottom: 20px;
-}
-
-.filter-title,
-.preview-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 12px;
-}
-
-.filter-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.filter-item {
-  display: flex;
-  align-items: center;
-  background: #f8f9fa;
-  padding: 8px 12px;
-  border-radius: 4px;
-}
-
-.filter-label {
-  color: #999;
-  font-size: 13px;
-}
-
-.filter-value {
-  color: #333;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.export-preview {
-  margin-bottom: 20px;
-}
-
-.preview-table-wrapper {
-  max-height: 300px;
-  overflow-y: auto;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-}
-
-.preview-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.preview-table th,
-.preview-table td {
-  padding: 10px 12px;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.preview-table th {
-  background: #f5f5f5;
-  font-weight: 600;
-  color: #666;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.preview-table tbody tr:hover {
-  background: #f8f9fa;
-}
-
-.more-data,
-.no-data {
-  text-align: center;
-  color: #999;
-  padding: 12px;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid #e0e0e0;
-}
-
-.confirm-content {
-  padding: 8px 0;
-}
-
-.confirm-info {
-  background: #fafafa;
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.info-row {
-  display: flex;
-  align-items: center;
-  padding: 10px 0;
-  
-  &:not(:last-child) {
-    border-bottom: 1px dashed #e0e0e0;
-  }
-}
-
-.info-label {
-  width: 100px;
-  flex-shrink: 0;
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
-}
-
-.info-value {
-  flex: 1;
-  font-size: 14px;
-  color: #333;
-  word-break: break-all;
-}
-
-.status-tag {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  
-  &.rejected {
-    background: #fee2e2;
-    color: #dc2626;
-  }
-  
-  &.pending_review {
-    background: #fef3c7;
-    color: #d97706;
-  }
-  
-  &.approved {
-    background: #dcfce7;
-    color: #16a34a;
-  }
-}
-
-.confirm-tip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #fffbeb;
-  border: 1px solid #fef3c7;
-  border-radius: 6px;
-  padding: 10px 14px;
-  margin-top: 16px;
-}
-
-.tip-icon {
-  color: #f59e0b;
-  
-  &.success {
-    color: #16a34a;
-  }
-  
-  &.danger {
-    color: #dc2626;
-  }
-}
-
-.tip-text {
-  font-size: 13px;
-  color: #92400e;
-}
-
-.confirm-tip {
-  &:has(.tip-icon.success) .tip-text {
-    color: #166534;
-  }
-  
-  &:has(.tip-icon.danger) .tip-text {
-    color: #991b1b;
-  }
-}
-.breadcrumbs {
-  display: flex;
-  align-items: center;
-  margin-bottom: 16px;
-  font-size: 14px;
-}
+.export-modal { padding: 16px; }
+.export-filters { margin-bottom: 20px; }
+.filter-title, .preview-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; }
+.filter-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+.filter-item { display: flex; align-items: center; background: #f8f9fa; padding: 8px 12px; border-radius: 4px; }
+.filter-label { color: #999; font-size: 13px; }
+.filter-value { color: #333; font-size: 13px; font-weight: 500; }
+.export-preview { margin-bottom: 20px; }
+.preview-table-wrapper { max-height: 300px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 4px; }
+.preview-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.preview-table th, .preview-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+.preview-table th { background: #f5f5f5; font-weight: 600; color: #666; position: sticky; top: 0; z-index: 1; }
+.preview-table tbody tr:hover { background: #f8f9fa; }
+.more-data, .no-data { text-align: center; color: #999; padding: 12px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px; border-top: 1px solid #e0e0e0; }
+.breadcrumbs { display: flex; align-items: center; margin-bottom: 16px; font-size: 14px; }
 </style>

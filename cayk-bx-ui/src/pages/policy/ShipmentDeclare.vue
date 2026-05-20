@@ -64,6 +64,30 @@
               <t-option v-for="p in activePolicies" :key="p.policyNo" :value="p.policyNo" :label="`${p.policyNo} - ${p.insured}`" />
             </t-select>
           </t-form-item>
+          <t-form-item v-if="selectedPolicyInsurance" label="保险公司规则">
+            <t-alert :theme="companyRule.theme" class="company-rule-alert">
+              <template #message>
+                <strong>{{ selectedPolicyInsurance }}</strong>：申报截止日 {{ companyRule.deadline }}，{{ companyRule.method }}，逾期处理：{{ companyRule.penalty }}
+              </template>
+            </t-alert>
+          </t-form-item>
+          <t-form-item v-if="premiumCheck.isFrozen" label="保费冻结">
+            <t-alert theme="danger" class="company-rule-alert">
+              <template #message>
+                <strong>保费逾期未缴</strong>：{{ premiumCheck.message }}
+              </template>
+            </t-alert>
+          </t-form-item>
+          <t-form-item v-if="renewalGap.hasGapWarning" label="续保提示">
+            <t-alert :theme="renewalGap.level === 'danger' ? 'danger' : 'warning'" class="company-rule-alert">
+              <template #message>
+                {{ renewalGap.message }}
+              </template>
+            </t-alert>
+          </t-form-item>
+          <t-form-item v-if="formData.usedLimitRemaining !== null" label="已用限额余额">
+            <t-input :value="`$${Number(formData.usedLimitRemaining).toLocaleString()}`" disabled />
+          </t-form-item>
 
           <t-divider>出运信息</t-divider>
           <t-form-item label="买方名称" name="buyerName">
@@ -178,6 +202,7 @@ import DataTable from '@/components/common/DataTable.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 import { useBusinessStore } from '@/stores/business'
+import { checkPremiumStatus, checkRenewalGap } from '@/utils/rules/shipmentRules'
 
 const store = useBusinessStore()
 const loading = computed(() => false)
@@ -256,6 +281,39 @@ const formMode = ref('create')
 const currentRow = ref(null)
 const formRef = ref(null)
 
+const companyRules = {
+  '中国信保': { deadline: '次月15日前', method: '线下/系统', penalty: '补缴 + 滞纳金', theme: 'warning' },
+  '人保财险': { deadline: '次月10日前', method: '线下/线上', penalty: '补缴 + 滞纳金', theme: 'warning' },
+  '太保产险': { deadline: '次月15日前', method: '线下/线上', penalty: '补缴', theme: 'info' },
+  '平安产险': { deadline: '次月10日前', method: 'APP实时', penalty: '自动提醒', theme: 'success' },
+  '裕利安宜': { deadline: '次月10日前', method: '在线平台', penalty: '补缴', theme: 'info' },
+  '安裕': { deadline: '次月10日前', method: '在线平台', penalty: '补缴', theme: 'info' },
+  '科法斯': { deadline: '次月15日前', method: '在线平台', penalty: '补缴', theme: 'info' },
+  '香港信保局': { deadline: '次月15日前', method: '在线/线下', penalty: '补缴', theme: 'info' }
+}
+
+const selectedPolicy = computed(() => {
+  if (!formData.relatedPolicyNo) return null
+  return store.policies.find(p => p.policyNo === formData.relatedPolicyNo) || null
+})
+
+const selectedPolicyInsurance = computed(() => selectedPolicy.value?.insuranceCompany || '')
+
+const companyRule = computed(() => {
+  if (!selectedPolicyInsurance.value) return { deadline: '-', method: '-', penalty: '-', theme: 'info' }
+  return companyRules[selectedPolicyInsurance.value] || { deadline: '以保单条款为准', method: '-', penalty: '-', theme: 'info' }
+})
+
+const premiumCheck = computed(() => {
+  if (!selectedPolicy.value) return { isFrozen: false, message: '', level: 'normal' }
+  return checkPremiumStatus(selectedPolicy.value)
+})
+
+const renewalGap = computed(() => {
+  if (!selectedPolicy.value) return { hasGapWarning: false, gapDays: 0, message: '', level: 'normal' }
+  return checkRenewalGap(selectedPolicy.value)
+})
+
 const formData = reactive({
   relatedPolicyNo: '',
   buyerName: '',
@@ -266,7 +324,8 @@ const formData = reactive({
   paymentTerms: '',
   declarationType: 'single',
   billOfLading: [],
-  customsDeclaration: []
+  customsDeclaration: [],
+  usedLimitRemaining: null
 })
 
 const formRules = {
@@ -329,6 +388,7 @@ const handlePolicyChange = (value) => {
   const policy = store.policies.find(p => p.policyNo === value)
   if (policy) {
     formData.buyerName = policy.insured || ''
+    formData.usedLimitRemaining = policy.remainingQuota || 0
   }
 }
 
@@ -349,7 +409,8 @@ const handleAdd = () => {
     paymentTerms: '',
     declarationType: 'single',
     billOfLading: [],
-    customsDeclaration: []
+    customsDeclaration: [],
+    usedLimitRemaining: null
   })
   formVisible.value = true
 }
@@ -380,7 +441,19 @@ const handleEdit = (row) => {
 
 const handleSubmit = ({ validateResult }) => {
   if (validateResult !== true) return
-  
+
+  // 保费冻结阻断
+  if (premiumCheck.value.isFrozen) {
+    MessagePlugin.error(premiumCheck.value.message || '保费未缴，申报被冻结')
+    return
+  }
+
+  // 空窗期严重阻断
+  if (renewalGap.value.level === 'danger') {
+    MessagePlugin.error(renewalGap.value.message || '保单已过期，无法进行出运申报')
+    return
+  }
+
   const doSubmit = () => {
     if (!formData.billOfLading || formData.billOfLading.length === 0) {
       MessagePlugin.error('请上传提单/货运单据')
@@ -421,10 +494,18 @@ const handleSubmit = ({ validateResult }) => {
       MessagePlugin.success('出运申报已更新')
     }
     formVisible.value = false
-    resetForm()
   }
-  
-  if (quotaWarning.value) {
+
+  // 空窗期温和提醒
+  if (renewalGap.value.level === 'warning') {
+    DialogPlugin.confirm({
+      title: '续保提示',
+      content: renewalGap.value.message + '\n\n是否仍要提交申报？',
+      confirmBtnText: '确认提交',
+      cancelBtnText: '取消',
+      onConfirm: doSubmit
+    })
+  } else if (quotaWarning.value) {
     DialogPlugin.confirm({
       title: '超限额警告',
       content: '本次申报金额超过买方剩余可用限额，是否确认提交？',
@@ -449,4 +530,5 @@ onMounted(() => { store.ensureSeeded() })
   margin-bottom: 16px;
   font-size: 14px;
 }
+.company-rule-alert { width: 100%; }
 </style>

@@ -35,6 +35,7 @@
                 <div class="flow-step-label" :class="{ active: index + 1 === currentStep, completed: index + 1 < currentStep }">
                   {{ step.label }}
                 </div>
+                <div class="flow-step-role">{{ stepRoles[index].label }}</div>
                 <div class="flow-step-status">
                   <t-tag
                     v-if="index + 1 < currentStep"
@@ -97,6 +98,7 @@
                 <div class="node-title">
                   <span class="node-step-num">Step {{ index + 1 }}</span>
                   <span class="node-step-name">{{ step.label }}</span>
+                  <t-tag :theme="stepRoles[index].role === userStore.role ? 'primary' : 'default'" variant="light" size="small" class="role-tag">{{ stepRoles[index].label }}</t-tag>
                   <span v-if="stepInfo[index].handler" class="node-handler">处理人：{{ stepInfo[index].handler }}</span>
                 </div>
                 <div class="node-meta">
@@ -116,56 +118,56 @@
             </div>
 
             <div v-show="expandedSteps[index]" class="node-body">
-              <div v-if="index >= 5" class="node-content">
-                <div v-if="index === 5" class="content-inner">
+              <div v-if="index >= 4" class="node-content">
+                <div v-if="index === 4" class="content-inner">
                   <div class="content-section">
-                    <div class="content-section-title">保单签发</div>
-                    <t-form :data="formData.step6" label-width="100">
+                    <div class="content-section-title">核保出单</div>
+                    <t-form :data="formData.step5" label-width="100">
                       <t-form-item label="保单编号">
-                        <t-input v-model="formData.step6.policyNo" readonly placeholder="系统自动生成" />
+                        <t-input v-model="formData.step5.policyNo" readonly placeholder="系统自动生成" />
                       </t-form-item>
                       <t-form-item label="保单状态">
                         <t-tag theme="success" variant="light">已签发</t-tag>
                       </t-form-item>
                       <t-form-item label="签发日期">
-                        <t-date-picker v-model="formData.step6.issueDate" />
+                        <t-date-picker v-model="formData.step5.issueDate" />
                       </t-form-item>
                       <t-form-item label="保单文件">
-                        <t-upload v-model="formData.step6.policyFile" :files="[]" placeholder="上传保单文件" />
+                        <t-upload v-model="formData.step5.policyFile" :files="[]" placeholder="上传保单文件" />
                       </t-form-item>
                     </t-form>
                   </div>
                 </div>
 
-                <div v-else-if="index === 6" class="content-inner">
+                <div v-else-if="index === 5" class="content-inner">
                   <div class="content-section">
-                    <div class="content-section-title">支付管理</div>
-                    <t-form :data="formData.step7" label-width="100">
+                    <div class="content-section-title">缴费生效</div>
+                    <t-form :data="formData.step6" label-width="100">
                       <t-form-item label="保费金额">
-                        <t-input v-model="formData.step7.premiumAmount" readonly placeholder="¥12,500.00" />
+                        <t-input v-model="formData.step6.premiumAmount" readonly placeholder="¥12,500.00" />
                       </t-form-item>
                       <t-form-item label="支付状态">
-                        <t-select v-model="formData.step7.paymentStatus" placeholder="请选择支付状态">
+                        <t-select v-model="formData.step6.paymentStatus" placeholder="请选择支付状态">
                           <t-option value="unpaid" label="未支付" />
                           <t-option value="partial" label="部分支付" />
                           <t-option value="paid" label="已支付" />
                         </t-select>
                       </t-form-item>
                       <t-form-item label="支付凭证">
-                        <t-upload v-model="formData.step7.paymentReceipt" :files="[]" placeholder="上传支付凭证" />
+                        <t-upload v-model="formData.step6.paymentReceipt" :files="[]" placeholder="上传支付凭证" />
                       </t-form-item>
                       <t-form-item label="保单明细表">
-                        <t-upload v-model="formData.step7.policyDetailFile" :files="[]" placeholder="上传保单明细表" />
+                        <t-upload v-model="formData.step6.policyDetailFile" :files="[]" placeholder="上传保单明细表" />
                       </t-form-item>
                       <t-form-item label="费率表">
-                        <t-upload v-model="formData.step7.rateFile" :files="[]" placeholder="上传费率表" />
+                        <t-upload v-model="formData.step6.rateFile" :files="[]" placeholder="上传费率表" />
                       </t-form-item>
                     </t-form>
                   </div>
                 </div>
               </div>
 
-              <t-divider v-if="index >= 5" />
+              <t-divider v-if="index >= 4" />
 
               <div class="node-approval">
                 <div class="approval-row">
@@ -207,7 +209,7 @@
             上一步
           </t-button>
           <t-button
-            v-if="currentStep < 7"
+            v-if="currentStep < 6"
             theme="primary"
             @click="nextStep"
           >
@@ -279,7 +281,7 @@
             <span class="detail-step-time" v-if="currentTask.stepInfo[idx]?.endTime">完成：{{ currentTask.stepInfo[idx].endTime }}</span>
           </div>
           <div class="detail-step-content">
-            <!-- Step 1: 投保方案确认 -->
+            <!-- Step 1: 提交投保申请 -->
             <template v-if="idx === 0">
               <div class="detail-field-row">
                 <span class="detail-field-label">投保方案</span>
@@ -294,7 +296,7 @@
                 <span class="detail-field-value">{{ currentTask.formData.step1?.matchRule }}</span>
               </div>
             </template>
-            <!-- Step 2: 申请投保 -->
+            <!-- Step 2: 资料审核 -->
             <template v-if="idx === 1">
               <div class="detail-field-row">
                 <span class="detail-field-label">投保申请书</span>
@@ -331,45 +333,26 @@
                 <span class="detail-field-value">{{ currentTask.formData.step4?.checkedItems?.includes('riskAssessment') ? '已完成' : '未完成' }}</span>
               </div>
             </template>
-            <!-- Step 5: 核保 -->
+            <!-- Step 5: 核保出单 -->
             <template v-if="idx === 4">
               <div class="detail-field-row">
-                <span class="detail-field-label">核保信息确认</span>
-                <span class="detail-field-value">{{ (currentTask.formData.step5?.checkedItems || []).join('、') || '无' }}</span>
-              </div>
-              <div class="detail-field-row">
-                <span class="detail-field-label">核保结论</span>
-                <span class="detail-field-value">{{ { approved: '承保', conditional: '有条件承保', rejected: '拒保' }[currentTask.formData.step5?.underwritingResult] || currentTask.formData.step5?.underwritingResult || '无' }}</span>
-              </div>
-              <div class="detail-field-row detail-field-row-full">
-                <span class="detail-field-label">核保意见</span>
-                <span class="detail-field-value">{{ currentTask.formData.step5?.underwritingOpinion || '无' }}</span>
-              </div>
-            </template>
-            <!-- Step 6: 保单签发 -->
-            <template v-if="idx === 5">
-              <div class="detail-field-row">
                 <span class="detail-field-label">保单编号</span>
-                <span class="detail-field-value">{{ currentTask.formData.step6?.policyNo || '无' }}</span>
-              </div>
-              <div class="detail-field-row">
-                <span class="detail-field-label">保单状态</span>
-                <span class="detail-field-value">已签发</span>
+                <span class="detail-field-value">{{ currentTask.formData.step5?.policyNo || '无' }}</span>
               </div>
               <div class="detail-field-row">
                 <span class="detail-field-label">签发日期</span>
-                <span class="detail-field-value">{{ currentTask.formData.step6?.issueDate || '无' }}</span>
+                <span class="detail-field-value">{{ currentTask.formData.step5?.issueDate || '无' }}</span>
               </div>
             </template>
-            <!-- Step 7: 支付管理 -->
-            <template v-if="idx === 6">
+            <!-- Step 6: 缴费生效 -->
+            <template v-if="idx === 5">
               <div class="detail-field-row">
                 <span class="detail-field-label">保费金额</span>
-                <span class="detail-field-value">{{ currentTask.formData.step7?.premiumAmount || '无' }}</span>
+                <span class="detail-field-value">{{ currentTask.formData.step6?.premiumAmount || '无' }}</span>
               </div>
               <div class="detail-field-row">
                 <span class="detail-field-label">支付状态</span>
-                <span class="detail-field-value">{{ { unpaid: '未支付', partial: '部分支付', paid: '已支付' }[currentTask.formData.step7?.paymentStatus] || currentTask.formData.step7?.paymentStatus || '无' }}</span>
+                <span class="detail-field-value">{{ { unpaid: '未支付', partial: '部分支付', paid: '已支付' }[currentTask.formData.step6?.paymentStatus] || currentTask.formData.step6?.paymentStatus || '无' }}</span>
               </div>
             </template>
             <!-- Approval fields for every step -->
@@ -392,21 +375,32 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useBusinessStore } from '@/stores/business'
+import { useUserStore } from '@/stores/user'
 import { MessagePlugin } from 'tdesign-vue-next'
 
 const businessStore = useBusinessStore()
+const userStore = useUserStore()
 
 const activeTab = ref('process')
 const currentStep = ref(3)
 
 const stepOptions = [
-  { label: '投保方案确认', value: 1 },
-  { label: '申请投保', value: 2 },
-  { label: '提交投保申请', value: 3 },
-  { label: '审核流转', value: 4 },
-  { label: '核保', value: 5 },
-  { label: '保单签发', value: 6 },
-  { label: '支付管理', value: 7 }
+  { label: '提交投保申请', value: 1 },
+  { label: '资料审核', value: 2 },
+  { label: '资信调查', value: 3 },
+  { label: '信用限额审批', value: 4 },
+  { label: '核保出单', value: 5 },
+  { label: '缴费生效', value: 6 }
+]
+
+/** 每步对应的审批角色 */
+const stepRoles = [
+  { role: 'customer', label: '客户' },
+  { role: 'clerk', label: '跟单员' },
+  { role: 'insurance', label: '保险公司' },
+  { role: 'insurance', label: '保险公司' },
+  { role: 'insurance', label: '保险公司' },
+  { role: 'customer', label: '客户' }
 ]
 
 const getCurrentTime = () => {
@@ -419,7 +413,6 @@ const stepInfo = reactive([
   { handler: '张三', startTime: '2026-06-01 10:30:00', endTime: '2026-06-01 11:00:00' },
   { handler: '李四', startTime: '2026-06-01 11:00:00', endTime: '2026-06-01 14:00:00' },
   { handler: '王五', startTime: '', endTime: '' },
-  { handler: '', startTime: '', endTime: '' },
   { handler: '', startTime: '', endTime: '' },
   { handler: '', startTime: '', endTime: '' },
   { handler: '', startTime: '', endTime: '' }
@@ -461,20 +454,13 @@ const formData = reactive({
     auditOpinion: ''
   },
   step5: {
-    checkedItems: [],
-    underwritingResult: '',
-    underwritingOpinion: '',
-    approvalResult: '',
-    auditOpinion: ''
-  },
-  step6: {
     policyNo: 'POL20260602001',
     issueDate: '',
     policyFile: [],
     approvalResult: '',
     auditOpinion: ''
   },
-  step7: {
+  step6: {
     premiumAmount: '¥12,500.00',
     paymentStatus: 'unpaid',
     paymentReceipt: [],
@@ -527,7 +513,7 @@ const prevStep = () => {
 }
 
 const nextStep = () => {
-  if (currentStep.value < 7) {
+  if (currentStep.value < 6) {
     setStepEndTime(currentStep.value)
     currentStep.value++
     setStepStartTime(currentStep.value)
@@ -541,8 +527,8 @@ const completeProcess = () => {
     policyNo: 'PI2026001234',
     companyName: '深圳XX国际贸易有限公司',
     startTime: stepInfo[0].startTime,
-    endTime: stepInfo[6].endTime,
-    stepsCompleted: 7,
+    endTime: stepInfo[5].endTime,
+    stepsCompleted: 6,
     stepOptions: [...stepOptions],
     stepInfo: stepInfo.map(s => ({ ...s })),
     formData: Object.fromEntries(
@@ -724,11 +710,24 @@ $gray-800: #1f2937;
   }
 }
 
+.flow-step-role {
+  font-size: 11px;
+  color: $gray-400;
+  text-align: center;
+  margin-top: 2px;
+  font-weight: 400;
+}
+
 .flow-step-status {
   :deep(.t-tag) {
     min-width: 52px;
     justify-content: center;
   }
+}
+
+.role-tag {
+  margin-left: 4px;
+  font-weight: 500;
 }
 
 .flow-arrow {

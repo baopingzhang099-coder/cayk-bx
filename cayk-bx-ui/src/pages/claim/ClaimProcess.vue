@@ -52,6 +52,10 @@
         <template #status="{ row }">
           <status-tag :status="row.status" :status-map="statusMap" />
         </template>
+        <template #deadlineWarning="{ row }">
+          <t-tag v-if="row._deadlineCheck?.isOverdue" theme="danger">超时</t-tag>
+          <t-tag v-else theme="success">正常</t-tag>
+        </template>
         <template #currentStep="{ row }">
           <t-tag :theme="getStepTheme(row.currentStep)">{{ getStepName(row.currentStep) }}</t-tag>
         </template>
@@ -70,12 +74,22 @@
           <detail-panel title="基本信息" :columns="detailColumns" :data="currentRow" />
           <t-divider />
           <div class="company-rules">
-            <div class="rules-title">适用保险公司规则</div>
+            <div class="rules-title">适用保险公司规则 — {{ currentRow.insuranceCompany }}</div>
             <t-table :data="getCompanyRules(currentRow.insuranceCompany)" :columns="ruleColumns" row-key="company" size="small">
               <template #reportDeadline="{ row }">
                 <t-tag :theme="getDeadlineTheme(row.reportDeadline)">{{ row.reportDeadline }}</t-tag>
               </template>
             </t-table>
+            <t-alert class="mt-8" theme="info">
+              <template #message>
+                <strong>所需资料</strong>：{{ getClaimRule(currentRow.insuranceCompany).requiredDocs?.join('、') || '以保险公司要求为准' }}
+              </template>
+            </t-alert>
+            <t-alert class="mt-8" theme="info">
+              <template #message>
+                <strong>追偿周期</strong>：{{ getClaimRule(currentRow.insuranceCompany).recoursePeriod || '以保险公司规则为准' }}
+              </template>
+            </t-alert>
           </div>
           <t-divider />
           <div class="process-timeline">
@@ -101,6 +115,7 @@ import { useBusinessStore } from '@/stores/business'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
+import { getClaimRule, checkClaimDeadline } from '@/utils/rules/claimRules'
 
 const store = useBusinessStore()
 const loading = ref(false)
@@ -144,27 +159,48 @@ const columns = [
   { colKey: 'estimatedLossAmount', title: '预估损失', align: 'right', width: 120 },
   { colKey: 'currentStep', title: '当前阶段', width: 100, slot: 'currentStep' },
   { colKey: 'status', title: '案件状态', width: 100, slot: 'status' },
+  { colKey: 'deadlineWarning', title: '时限状态', width: 90, slot: 'deadlineWarning' },
   { colKey: 'createTime', title: '报案时间', width: 160 },
   { colKey: 'operation', title: '操作', width: 120, fixed: 'right', slot: 'operation' }
 ]
 
 const detailColumns = [
   { label: '理赔单号', key: 'claimNo' },
+  { label: '关联保单', key: 'relatedPolicyNo' },
   { label: '保险公司', key: 'insuranceCompany' },
   { label: '买方名称', key: 'buyerName' },
   { label: '报案类型', key: 'claimTypeName' },
-  { label: '预估损失金额', key: 'estimatedLossAmount' },
-  { label: '实际赔付金额', key: 'claimAmount' },
+  { label: '出险日期', key: 'lossDate' },
   { label: '报案时间', key: 'createTime' },
-  { label: '案件状态', key: 'statusName' }
+  { label: '预估损失金额', key: 'estimatedLossAmount', formatter: (v) => `$${Number(v).toLocaleString()}` },
+  { label: '实际赔付金额', key: 'claimAmount', formatter: (v) => v ? `$${Number(v).toLocaleString()}` : '-' },
+  { label: '损失币种', key: 'lossCurrency' },
+  { label: '损失描述', key: 'lossDescription' },
+  { label: '损失发生地点', key: 'lossLocation' },
+  { label: '案件状态', key: 'statusName' },
+  { label: '报案时限', key: 'reportDeadline', formatter: (v) => v || '按保单条款' },
+  { label: '调查时限', key: 'investigationDeadline', formatter: (v) => v || '按保单条款' },
+  { label: '赔付时限', key: 'paymentDeadline', formatter: (v) => v || '按保单条款' },
+  { label: '理赔联系人', key: 'claimContact' },
+  { label: '联系电话', key: 'claimPhone' },
+  { label: '联系邮箱', key: 'claimEmail' },
+  { label: '收款银行账户', key: 'bankAccount' }
 ]
 
 const pagination = reactive({ total: 0, current: 1, pageSize: 20 })
 
+const enrichedClaims = computed(() => {
+  return (store.claims || []).map(c => ({
+    ...c,
+    _deadlineCheck: checkClaimDeadline(c),
+    _claimRule: getClaimRule(c.insuranceCompany)
+  }))
+})
+
 const tableData = computed(() => {
-  pagination.total = store.claims.length
+  pagination.total = enrichedClaims.value.length
   const start = (pagination.current - 1) * pagination.pageSize
-  return store.claims.slice(start, start + pagination.pageSize)
+  return enrichedClaims.value.slice(start, start + pagination.pageSize)
 })
 
 const getStepTheme = (step) => {
@@ -229,4 +265,5 @@ onMounted(() => {
   margin-bottom: 16px;
   font-size: 14px;
 }
+.mt-8 { margin-top: 8px; }
 </style>

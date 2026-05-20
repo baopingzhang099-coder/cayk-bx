@@ -115,28 +115,28 @@
         <t-divider>附件材料（必传）</t-divider>
         <div class="form-grid">
           <t-form-item label="出险通知书/报案表" name="lossNotice" class="form-item-full">
-            <t-upload v-model="createForm.lossNotice" action="https://demo.com/upload" tips="必传：出险通知书或报案表（PDF）" />
+            <t-upload v-model="createForm.lossNotice" action="https://demo.com/upload" />
           </t-form-item>
           <t-form-item label="贸易合同" name="tradeContract" class="form-item-full">
-            <t-upload v-model="createForm.tradeContract" action="https://demo.com/upload" tips="必传：贸易合同（PDF）" />
+            <t-upload v-model="createForm.tradeContract" action="https://demo.com/upload" />
           </t-form-item>
           <t-form-item label="商业发票" name="commercialInvoice" class="form-item-full">
-            <t-upload v-model="createForm.commercialInvoice" action="https://demo.com/upload" tips="必传：商业发票（PDF）" />
+            <t-upload v-model="createForm.commercialInvoice" action="https://demo.com/upload" />
           </t-form-item>
           <t-form-item label="提单/运单" name="billOfLading" class="form-item-full">
-            <t-upload v-model="createForm.billOfLading" action="https://demo.com/upload" tips="必传：提单或运单（PDF）" />
+            <t-upload v-model="createForm.billOfLading" action="https://demo.com/upload" />
           </t-form-item>
           <t-form-item label="报关单" name="customsDeclaration" class="form-item-full">
-            <t-upload v-model="createForm.customsDeclaration" action="https://demo.com/upload" tips="可选：报关单（PDF）" />
+            <t-upload v-model="createForm.customsDeclaration" action="https://demo.com/upload" />
           </t-form-item>
           <t-form-item label="买方收货凭证" name="receiptProof" class="form-item-full">
-            <t-upload v-model="createForm.receiptProof" action="https://demo.com/upload" tips="可选：买方收货凭证（PDF）" />
+            <t-upload v-model="createForm.receiptProof" action="https://demo.com/upload" />
           </t-form-item>
           <t-form-item label="损失证明" name="lossProof" class="form-item-full">
-            <t-upload v-model="createForm.lossProof" action="https://demo.com/upload" tips="条件必传：根据报案类型上传（破产公告/拖欠催款记录/拒收证明/政治风险证明）" />
+            <t-upload v-model="createForm.lossProof" action="https://demo.com/upload" />
           </t-form-item>
           <t-form-item label="追偿授权书" name="recourseAuth" class="form-item-full">
-            <t-upload v-model="createForm.recourseAuth" action="https://demo.com/upload" tips="可选：追偿授权书（PDF）" />
+            <t-upload v-model="createForm.recourseAuth" action="https://demo.com/upload" />
           </t-form-item>
         </div>
 

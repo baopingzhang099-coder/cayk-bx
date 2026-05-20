@@ -116,10 +116,11 @@ const allMenuItems = [
   { key: 'insurance', 
     title: '保险购买', 
     icon: 'document-popular', 
+    roles: ['customer', 'clerk'],
     children: [
       { key: 'insurance-purchase', title: '投保信息管理', path: '/insurance/purchase', roles: ['customer', 'inkasso', 'clerk'], icon: 'clipboard' },
-      { key: 'insurance-apply', title: '投保流程管理', path: '/insurance/apply', roles: ['inkasso', 'clerk'], icon: 'switch' },
-      { key: 'insurance-report', title: '投保数据报表', path: '/insurance/report', roles: ['inkasso'], icon: 'chart' }
+      { key: 'insurance-report', title: '投保数据报表', path: '/insurance/report', roles: ['customer', 'inkasso', 'clerk'], icon: 'chart' },
+      { key: 'insurance-apply', title: '投保流程管理', path: '/insurance/apply', roles: ['customer', 'inkasso', 'clerk'], icon: 'switch' }
     ]
   },
   { 
@@ -225,7 +226,7 @@ const renderIcon = (iconName) => {
 }
 
 const findPathByMenuKey = (key) => {
-  for (const item of filteredMenuItems.value) {
+  for (const item of allMenuItems) {
     if (item.key === key && item.path) return item.path
     if (item.children) {
       const child = item.children.find(c => c.key === key)
@@ -238,7 +239,7 @@ const findPathByMenuKey = (key) => {
 const getDefaultPathByRole = (role) => {
   if (role === 'customer') return '/insurance/purchase'
   if (role === 'clerk') return '/insurance/apply'
-  return '/insurance/purchase'
+  return '/policy/list'
 }
 
 const handleMenuChange = (value) => {

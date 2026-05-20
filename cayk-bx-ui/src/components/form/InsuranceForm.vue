@@ -31,14 +31,12 @@
             <t-upload
               v-model="formData.businessLicense"
               action="https://demo.com/upload"
-              tips="请上传企业法人营业执照扫描件"
             />
           </t-form-item>
           <t-form-item label="进出口资质" name="importExportQualification" class="form-item-full">
             <t-upload
               v-model="formData.importExportQualification"
               action="https://demo.com/upload"
-              tips="请上传对外贸易经营者备案登记表"
             />
           </t-form-item>
         </div>
@@ -73,7 +71,6 @@
             <t-upload
               v-model="formData.authorizationDocument"
               action="https://demo.com/upload"
-              tips="请上传授权保险公司联系买方的签字文件"
             />
           </t-form-item>
         </div>

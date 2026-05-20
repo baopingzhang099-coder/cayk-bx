@@ -106,13 +106,13 @@
 
           <t-divider>附件与授权</t-divider>
           <t-form-item label="授权文件（必传）" name="authorizationDocument">
-            <t-upload v-model="formData.authorizationDocument" action="https://demo.com/upload" tips="必传：授权保险公司联系买方的签字文件（PDF）" />
+            <t-upload v-model="formData.authorizationDocument" action="https://demo.com/upload" />
           </t-form-item>
           <t-form-item label="历史交易记录（附件）" name="historyFiles">
-            <t-upload v-model="formData.historyFiles" action="https://demo.com/upload" tips="可选：PDF/Excel" multiple />
+            <t-upload v-model="formData.historyFiles" action="https://demo.com/upload" multiple />
           </t-form-item>
           <t-form-item label="买方资质证明（附件）" name="buyerQualificationFiles">
-            <t-upload v-model="formData.buyerQualificationFiles" action="https://demo.com/upload" tips="可选：PDF/JPG/PNG" multiple />
+            <t-upload v-model="formData.buyerQualificationFiles" action="https://demo.com/upload" multiple />
           </t-form-item>
           <t-form-item label="是否同意联系买方" name="allowContactBuyer">
             <t-radio-group v-model="formData.allowContactBuyer">

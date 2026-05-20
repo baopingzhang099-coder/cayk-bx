@@ -108,7 +108,7 @@
 
         <t-divider>上传文件</t-divider>
         <t-form-item label="贸易合同扫描件" name="contractFiles">
-          <t-upload v-model="formData.contractFiles" action="https://demo.com/upload" tips="请上传贸易合同扫描件" />
+          <t-upload v-model="formData.contractFiles" action="https://demo.com/upload" />
         </t-form-item>
 
         <t-form-item>

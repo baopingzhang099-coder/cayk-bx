@@ -133,16 +133,16 @@
 
           <t-divider>附件上传</t-divider>
           <t-form-item label="商业发票（必传）" name="commercialInvoice">
-            <t-upload v-model="formData.commercialInvoice" action="https://demo.com/upload" tips="必传：商业发票（PDF/JPG/PNG）" />
+            <t-upload v-model="formData.commercialInvoice" action="https://demo.com/upload" />
           </t-form-item>
           <t-form-item label="提单/运单（必传）" name="billOfLading">
-            <t-upload v-model="formData.billOfLading" action="https://demo.com/upload" tips="必传：提单或运单（PDF/JPG/PNG）" />
+            <t-upload v-model="formData.billOfLading" action="https://demo.com/upload" />
           </t-form-item>
           <t-form-item label="报关单" name="customsDeclaration">
-            <t-upload v-model="formData.customsDeclaration" action="https://demo.com/upload" tips="可选：报关单（PDF）" />
+            <t-upload v-model="formData.customsDeclaration" action="https://demo.com/upload" />
           </t-form-item>
           <t-form-item label="买方收货凭证" name="receiptProof">
-            <t-upload v-model="formData.receiptProof" action="https://demo.com/upload" tips="可选：买方收货凭证（PDF）" />
+            <t-upload v-model="formData.receiptProof" action="https://demo.com/upload" />
           </t-form-item>
 
           <t-divider v-if="quotaWarning">{{ quotaWarning }}</t-divider>

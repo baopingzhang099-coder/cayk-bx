@@ -41,13 +41,13 @@ const routes = [
         path: '/insurance/apply',
         name: 'InsuranceApply',
         component: () => import('@/pages/insurance/InsuranceApply.vue'),
-        meta: { title: '投保流程管理', menuKey: 'insurance-apply', roles: ['inkasso', 'clerk'] }
+        meta: { title: '投保流程管理', menuKey: 'insurance-apply', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/insurance/report',
         name: 'InsuranceReport',
         component: () => import('@/pages/insurance/InsuranceReport.vue'),
-        meta: { title: '投保数据报表', menuKey: 'insurance-report', roles: ['inkasso'] }
+        meta: { title: '投保数据报表', menuKey: 'insurance-report', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/policy/list',
@@ -164,7 +164,7 @@ router.beforeEach((to, from, next) => {
       ? '/insurance/purchase'
       : role === 'clerk'
         ? '/insurance/apply'
-        : '/insurance/purchase'
+        : '/policy/list'
     next(fallback)
     return
   }

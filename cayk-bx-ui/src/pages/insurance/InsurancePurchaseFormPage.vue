@@ -155,16 +155,12 @@
                 <t-upload
                   v-model="formData.businessLicense"
                   action="https://demo.com/upload"
-                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
-                  accept=".pdf,.jpg,.jpeg,.png"
                 />
               </t-form-item>
               <t-form-item label="对外贸易经营者备案登记表" name="importExportQualification" class="form-item-full">
                 <t-upload
                   v-model="formData.importExportQualification"
                   action="https://demo.com/upload"
-                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
-                  accept=".pdf,.jpg,.jpeg,.png"
                 />
               </t-form-item>
             </div>
@@ -397,8 +393,6 @@
                 <t-upload
                   v-model="formData.authorizationDocument"
                   action="https://demo.com/upload"
-                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB"
-                  accept=".pdf,.jpg,.jpeg,.png"
                 />
               </t-form-item>
             </div>
@@ -432,8 +426,6 @@
                 <t-upload
                   v-model="formData.tradeContract"
                   action="https://demo.com/upload"
-                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB，最多3份；内容：含买卖双方名称、商品名称、付款方式、账期条款"
-                  accept=".pdf,.jpg,.jpeg,.png"
                   multiple
                 />
               </t-form-item>
@@ -441,8 +433,6 @@
                 <t-upload
                   v-model="formData.customsDeclaration"
                   action="https://demo.com/upload"
-                  tips="格式：PDF/JPG/PNG；大小：单文件≤10MB，最多2份；内容：含报关单号、出口国别、商品名称、金额"
-                  accept=".pdf,.jpg,.jpeg,.png"
                   multiple
                 />
               </t-form-item>
@@ -450,8 +440,6 @@
                 <t-upload
                   v-model="formData.exportLicense"
                   action="https://demo.com/upload"
-                  tips="格式：PDF/JPG/PNG；大小：单文件≤5MB，最多1份"
-                  accept=".pdf,.jpg,.jpeg,.png"
                 />
               </t-form-item>
             </div>
@@ -483,8 +471,6 @@
                   <t-upload
                     v-model="formData.companySeal"
                     action="https://demo.com/upload"
-                    tips="请上传加盖公司公章的声明文件"
-                    accept=".pdf,.jpg,.jpeg,.png"
                   />
                 </t-form-item>
               </div>
@@ -604,10 +590,10 @@
             <div class="section-title">保单文件</div>
             <div class="form-grid">
               <t-form-item label="保单文件" name="policyFile" class="form-item-full">
-                <t-upload v-model="formData.policyFile" action="https://demo.com/upload" tips="格式：PDF；大小：单文件≤10MB" accept=".pdf" />
+                <t-upload v-model="formData.policyFile" action="https://demo.com/upload" />
               </t-form-item>
               <t-form-item label="批单文件" name="endorsementFile" class="form-item-full">
-                <t-upload v-model="formData.endorsementFile" action="https://demo.com/upload" tips="格式：PDF；大小：单文件≤10MB" accept=".pdf" />
+                <t-upload v-model="formData.endorsementFile" action="https://demo.com/upload" />
               </t-form-item>
             </div>
             </div>

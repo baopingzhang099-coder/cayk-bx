@@ -1,5 +1,12 @@
 <template>
   <div class="page-container">
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/policy/list">保单管理</t-breadcrumb-item>
+        <t-breadcrumb-item>信用限额管理</t-breadcrumb-item>
+      </t-breadcrumb>
+    </div>
     <div class="page-header">
       <div class="page-title">信用限额管理</div>
       <div class="page-actions">
@@ -377,5 +384,11 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+}
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
 }
 </style>

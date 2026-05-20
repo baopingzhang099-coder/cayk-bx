@@ -1,5 +1,12 @@
 <template>
   <div class="page-container">
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/stats/business">数据统计</t-breadcrumb-item>
+        <t-breadcrumb-item>业务数据统计</t-breadcrumb-item>
+      </t-breadcrumb>
+    </div>
     <div class="page-header">
       <div class="page-title">业务数据统计</div>
       <div class="page-actions">
@@ -125,4 +132,10 @@ onMounted(() => store.ensureSeeded())
 .page-actions { display: flex; gap: 12px; }
 .mb-16 { margin-bottom: 16px; }
 .chart-placeholder { height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #999; }
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
 </style>

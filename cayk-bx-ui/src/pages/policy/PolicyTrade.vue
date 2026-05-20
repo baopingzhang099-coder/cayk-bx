@@ -1,5 +1,12 @@
 <template>
   <div class="page-container">
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/policy/list">保单管理</t-breadcrumb-item>
+        <t-breadcrumb-item>贸易信息管理</t-breadcrumb-item>
+      </t-breadcrumb>
+    </div>
     <div class="page-header">
       <div class="page-title">贸易信息管理</div>
       <div class="page-actions">
@@ -309,4 +316,10 @@ onMounted(() => fetchData())
 .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .table-title { font-size: 16px; font-weight: 600; color: #333; }
 .table-count { font-size: 14px; color: #999; }
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
 </style>

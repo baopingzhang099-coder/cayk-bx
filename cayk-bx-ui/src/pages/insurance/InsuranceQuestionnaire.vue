@@ -1,9 +1,11 @@
 <template>
   <div class="page-container">
-    <div class="page-breadcrumb">
-      <span>投保管理</span>
-      <span class="separator">></span>
-      <span>客户投保需求问卷</span>
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/insurance/purchase">投保管理</t-breadcrumb-item>
+        <t-breadcrumb-item>客户投保需求问卷</t-breadcrumb-item>
+      </t-breadcrumb>
     </div>
 
     <div class="questionnaire-card">
@@ -630,4 +632,10 @@ const handleClose = () => {
 .btn-close { padding: 12px 32px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; }
 .btn-close:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
 .other-input { padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 13px; margin-left: 8px; width: 150px; }
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
 </style>

@@ -2,8 +2,8 @@
   <div class="page-container">
     <div class="breadcrumbs">
       <t-breadcrumb>
-        <t-breadcrumb-item>首页</t-breadcrumb-item>
-        <t-breadcrumb-item>投保管理</t-breadcrumb-item>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/insurance/purchase">投保管理</t-breadcrumb-item>
         <t-breadcrumb-item>投保流程管理</t-breadcrumb-item>
       </t-breadcrumb>
     </div>

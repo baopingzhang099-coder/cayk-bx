@@ -1,5 +1,12 @@
 <template>
   <div class="page-container">
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/policy/list">保单管理</t-breadcrumb-item>
+        <t-breadcrumb-item>出运申报管理</t-breadcrumb-item>
+      </t-breadcrumb>
+    </div>
     <div class="page-header">
       <div class="page-title">出运申报管理</div>
       <div class="page-actions">
@@ -436,4 +443,10 @@ onMounted(() => { store.ensureSeeded() })
 <style lang="scss" scoped>
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .mb-16 { margin-bottom: 16px; }
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
 </style>

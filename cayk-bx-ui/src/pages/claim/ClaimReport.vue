@@ -1,5 +1,12 @@
 <template>
   <div class="page-container">
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/claim/list">理赔管理</t-breadcrumb-item>
+        <t-breadcrumb-item>理赔报表管理</t-breadcrumb-item>
+      </t-breadcrumb>
+    </div>
     <div class="page-header">
       <div class="page-title">理赔报表管理</div>
       <div class="page-actions">
@@ -81,4 +88,10 @@ const columns = [
 .page-actions { display: flex; gap: 12px; }
 .mb-16 { margin-bottom: 16px; }
 .chart-placeholder { height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #999; }
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
 </style>

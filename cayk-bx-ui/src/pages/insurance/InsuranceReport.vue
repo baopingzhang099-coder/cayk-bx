@@ -1,5 +1,12 @@
 <template>
   <div class="page-container">
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/insurance/purchase">投保管理</t-breadcrumb-item>
+        <t-breadcrumb-item>投保数据报表</t-breadcrumb-item>
+      </t-breadcrumb>
+    </div>
     <div class="page-header">
       <div class="page-title">投保数据报表</div>
       <div class="page-actions">
@@ -362,5 +369,11 @@ onUnmounted(() => {
     justify-content: flex-end;
     gap: 12px;
   }
+}
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
 }
 </style>

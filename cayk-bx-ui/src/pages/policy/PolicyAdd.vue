@@ -1,9 +1,11 @@
 <template>
   <div class="page-container">
-    <div class="page-breadcrumb">
-      <span>投保管理</span>
-      <span class="separator">></span>
-      <span class="current">新增投保</span>
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/policy/list">保单管理</t-breadcrumb-item>
+        <t-breadcrumb-item>新增保单</t-breadcrumb-item>
+      </t-breadcrumb>
     </div>
 
     <div class="form-card">
@@ -556,4 +558,10 @@ const handleSubmit = () => {
 .btn-submit { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; }
 .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59,130,246,0.4); }
 .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
 </style>

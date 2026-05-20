@@ -1,5 +1,12 @@
 <template>
   <div class="page-container">
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/policy/list">保单管理</t-breadcrumb-item>
+        <t-breadcrumb-item>保单信息管理</t-breadcrumb-item>
+      </t-breadcrumb>
+    </div>
     <div class="page-header">
       <div class="page-title">投保信息管理</div>
     </div>
@@ -658,5 +665,11 @@ onMounted(() => {
   &:has(.tip-icon.danger) .tip-text {
     color: #991b1b;
   }
+}
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
 }
 </style>

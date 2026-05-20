@@ -1,5 +1,12 @@
 <template>
   <div class="page-container">
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/clerk/list">跟单管理</t-breadcrumb-item>
+        <t-breadcrumb-item>跟单员信息</t-breadcrumb-item>
+      </t-breadcrumb>
+    </div>
     <div class="page-header">
       <div class="page-title">跟单员信息</div>
       <div class="page-actions">
@@ -318,4 +325,10 @@ onMounted(() => fetchData())
 .permission-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
 .permission-name { font-size: 18px; font-weight: 600; color: #333; }
 .permission-dept { color: #666; font-size: 14px; margin-top: 4px; }
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
 </style>

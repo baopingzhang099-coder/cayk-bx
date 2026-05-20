@@ -1,5 +1,12 @@
 <template>
   <div class="page-container">
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/claim/list">理赔管理</t-breadcrumb-item>
+        <t-breadcrumb-item>理赔信息管理</t-breadcrumb-item>
+      </t-breadcrumb>
+    </div>
     <div class="page-header">
       <div class="page-title">理赔信息管理</div>
       <div class="page-actions">
@@ -480,4 +487,10 @@ onMounted(() => store.ensureSeeded())
 .form-item-full { grid-column: 1 / -1; }
 .dialog-actions { display: flex; justify-content: center; margin-top: 24px; }
 .mb-24 { margin-bottom: 24px; }
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
 </style>

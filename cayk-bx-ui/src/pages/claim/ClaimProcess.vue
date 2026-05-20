@@ -1,5 +1,12 @@
 <template>
   <div class="page-container">
+    <div class="breadcrumbs">
+      <t-breadcrumb>
+        <t-breadcrumb-item to="/insurance/purchase">首页</t-breadcrumb-item>
+        <t-breadcrumb-item to="/claim/list">理赔管理</t-breadcrumb-item>
+        <t-breadcrumb-item>理赔流程管理</t-breadcrumb-item>
+      </t-breadcrumb>
+    </div>
     <div class="page-header">
       <div class="page-title">理赔流程管理</div>
     </div>
@@ -216,4 +223,10 @@ onMounted(() => {
 .rules-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; }
 .process-timeline { margin: 16px 0; }
 .timeline-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; }
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
 </style>

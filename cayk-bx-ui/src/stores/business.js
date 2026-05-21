@@ -83,7 +83,8 @@ export const useBusinessStore = defineStore('business', {
     processTasks: [],
     contracts: [],
     payments: [],
-    externalPolicies: []
+    externalPolicies: [],
+    clerkList: []
   }),
   getters: {
     insuranceStats(state) {
@@ -671,6 +672,20 @@ export const useBusinessStore = defineStore('business', {
           claimAmount: null,
           lossDate: '2026-05-05',
           lossCurrency: 'USD',
+          lossLocation: '深圳港',
+          currentStep: 2,
+          currentStepName: '跟单接单',
+          warningLevel: 'safe',
+          clerkId: 'C001',
+          clerkName: '李明',
+          delegationAgreement: [],
+          serviceFeePaid: false,
+          serviceFeeVoucher: [],
+          deductible: null,
+          claimDecision: null,
+          calculatedLoss: null,
+          payoutVoucher: [],
+          rwaSyncStatus: 'pending',
           status: 'processing',
           statusName: '处理中',
           createTime: '2026-05-08 10:00:00',
@@ -695,6 +710,20 @@ export const useBusinessStore = defineStore('business', {
           claimAmount: 64000,
           lossDate: '2026-04-15',
           lossCurrency: 'USD',
+          lossLocation: '香港',
+          currentStep: 4,
+          currentStepName: '调查定损',
+          warningLevel: 'safe',
+          clerkId: 'C002',
+          clerkName: '赵敏',
+          delegationAgreement: [{ name: '理赔委托授权书_GHI.pdf', size: 2048000 }],
+          serviceFeePaid: true,
+          serviceFeeVoucher: [{ name: '代理费水单_GHI.jpg', size: 1024000 }],
+          deductible: 2000,
+          claimDecision: 'approved',
+          calculatedLoss: 80000,
+          payoutVoucher: [],
+          rwaSyncStatus: 'pending',
           status: 'decided',
           statusName: '已决定',
           createTime: '2026-05-05 14:30:00',
@@ -719,8 +748,22 @@ export const useBusinessStore = defineStore('business', {
           claimAmount: null,
           lossDate: '2026-04-20',
           lossCurrency: 'USD',
+          lossLocation: '',
+          currentStep: 1,
+          currentStepName: '报案提交',
+          warningLevel: 'danger',
+          clerkId: null,
+          clerkName: null,
+          delegationAgreement: [],
+          serviceFeePaid: false,
+          serviceFeeVoucher: [],
+          deductible: null,
+          claimDecision: null,
+          calculatedLoss: null,
+          payoutVoucher: [],
+          rwaSyncStatus: 'pending',
           status: 'pending',
-          statusName: '待处理',
+          statusName: '待接收报案',
           createTime: '2026-04-28 09:15:00',
           reportDeadline: '按保单条款',
           investigationDeadline: '按保单条款',
@@ -1099,6 +1142,12 @@ export const useBusinessStore = defineStore('business', {
           ocrBusinessType: 'goods'
         })
       }
+      this.clerkList = [
+        { id: 'C001', name: '李明', department: '业务部' },
+        { id: 'C002', name: '赵敏', department: '业务部' },
+        { id: 'C003', name: '王芳', department: '客服部' },
+        { id: 'C004', name: '张伟', department: '业务部' }
+      ]
     },
     // ===== External policy upload & OCR flow =====
     uploadCustomerPolicy({ file, companyName, uploadUser }) {
@@ -1641,38 +1690,181 @@ export const useBusinessStore = defineStore('business', {
     },
     createClaim(payload) {
       const now = new Date()
-      const policyNo = payload.relatedPolicyNo
-      const policy = this.policies.find(p => p.policyNo === policyNo)
-      if (!policyNo) return { ok: false, message: '请选择关联保单' }
-      if (!policy) return { ok: false, message: '关联保单不存在' }
-      if (policy.status !== 'active') return { ok: false, message: '关联保单非有效状态，无法发起理赔' }
-      const missing = []
-      if (!hasFile(payload.evidenceMaterials)) missing.push('证据材料')
-      if (!hasFile(payload.relevantDocuments)) missing.push('相关文件')
-      if (missing.length > 0) return { ok: false, message: `提交失败：缺少必传附件（${missing.join('、')}）` }
+      let policyNo = payload.relatedPolicyNo
+      let policy = this.policies.find(p => p.policyNo === policyNo)
+      if (!policyNo || !policy || policy.status !== 'active') {
+        policy = this.policies.find(p => p.status === 'active')
+        policyNo = policy?.policyNo || ''
+      }
       const item = {
         id: payload.id || createId('CL'),
         claimNo: payload.claimNo || createId('CL'),
         relatedPolicyNo: policyNo,
+        insuranceCompany: payload.insuranceCompany || policy.insuranceCompany || '',
         buyerName: payload.buyerName || policy.insured,
         claimType: payload.claimType,
         claimTypeName: payload.claimTypeName,
         lossDescription: payload.lossDescription,
         estimatedLossAmount: Number(payload.estimatedLossAmount) || 0,
         lossDate: payload.lossDate,
-        lossLocation: payload.lossLocation,
+        lossLocation: payload.lossLocation || '',
+        currentStep: payload.currentStep || 1,
+        currentStepName: payload.currentStepName || '报案提交',
+        warningLevel: payload.warningLevel || 'safe',
+        clerkId: payload.clerkId || null,
+        clerkName: payload.clerkName || null,
+        delegationAgreement: payload.delegationAgreement || [],
+        serviceFeePaid: payload.serviceFeePaid || false,
+        serviceFeeVoucher: payload.serviceFeeVoucher || [],
+        deductible: payload.deductible ?? null,
+        claimDecision: payload.claimDecision || null,
+        calculatedLoss: payload.calculatedLoss ?? null,
+        payoutVoucher: payload.payoutVoucher || [],
+        rwaSyncStatus: payload.rwaSyncStatus || 'pending',
         evidenceMaterials: payload.evidenceMaterials,
         relevantDocuments: payload.relevantDocuments,
         status: payload.status || 'pending',
-        statusName: payload.statusName || '待处理',
+        statusName: payload.statusName || '待接收报案',
         claimAmount: payload.claimAmount ?? null,
+        docStatus: payload.docStatus || 'pending',
+        docReviewComment: payload.docReviewComment || '',
+        supplementCount: payload.supplementCount || 0,
+        preparedDocs: payload.preparedDocs || [],
+        supplementedDocs: payload.supplementedDocs || [],
         createTime: payload.createTime || formatDateTime(now)
       }
       this.claims.unshift(item)
       return { ok: true, data: item }
     },
 
-    // ===== External policy upload actions =====
+    advanceClaimStep(id, payload = {}) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      const STEP_NAMES = { 1: '报案提交', 2: '跟单接单', 3: '审核补件', 4: '调查定损', 5: '理赔收回' }
+      const STATUS_MAP = { 1: 'pending', 2: 'pending', 3: 'supplement', 4: 'processing', 5: 'decided' }
+      const newStep = Math.min(cur.currentStep + 1, 5)
+      Object.assign(cur, {
+        currentStep: newStep,
+        currentStepName: STEP_NAMES[newStep],
+        status: STATUS_MAP[newStep] || cur.status,
+        ...payload,
+        updateTime: formatDateTime(new Date())
+      })
+      if (newStep === 5) cur.rwaSyncStatus = 'pending'
+      return { ok: true, data: cur }
+    },
+
+    completeClaim(id, payload = {}) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      Object.assign(cur, {
+        status: 'completed',
+        statusName: '已赔付',
+        currentStep: 5,
+        ...payload,
+        updateTime: formatDateTime(new Date())
+      })
+      return { ok: true, data: cur }
+    },
+
+    inkassoReceiveClaim(id, clerkId, clerkName) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.status !== 'pending') return { ok: false, message: '当前状态不允许接收报案' }
+      cur.clerkId = clerkId
+      cur.clerkName = clerkName
+      cur.status = 'assigned'
+      cur.statusName = '待接单'
+      cur.docStatus = 'pending'
+      cur.docReviewComment = ''
+      cur.supplementCount = 0
+      cur.updateTime = formatDateTime(new Date())
+      return { ok: true, data: cur }
+    },
+
+    clerkAcceptClaim(id) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.status !== 'assigned') return { ok: false, message: '当前状态不允许接单' }
+      cur.status = 'processing'
+      cur.statusName = '处理中'
+      cur.currentStep = 2
+      cur.currentStepName = '跟单接单'
+      cur.updateTime = formatDateTime(new Date())
+      return { ok: true, data: cur }
+    },
+
+    // ===== 理赔资料管理 =====
+    prepareClaimDocs(id, docs) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.status !== 'assigned' || (cur.docStatus !== 'pending' && cur.docStatus !== 'prepared')) {
+        return { ok: false, message: '当前状态不允许准备资料' }
+      }
+      cur.preparedDocs = docs
+      cur.docStatus = 'prepared'
+      cur.statusName = '资料已准备'
+      cur.updateTime = formatDateTime(new Date())
+      return { ok: true, data: cur }
+    },
+
+    submitDocsToClerk(id) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.docStatus !== 'prepared') return { ok: false, message: '请先准备理赔资料' }
+      cur.docStatus = 'reviewing'
+      cur.status = 'pending_receive'
+      cur.statusName = '待接收'
+      cur.updateTime = formatDateTime(new Date())
+      return { ok: true, data: cur }
+    },
+
+    clerkReviewDocs(id, isComplete, comment = '') {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.docStatus !== 'reviewing') return { ok: false, message: '当前状态不允许审核' }
+      cur.docReviewComment = comment
+      if (isComplete) {
+        cur.docStatus = 'passed'
+        cur.status = 'processing'
+        cur.statusName = '处理中'
+        cur.currentStep = 2
+        cur.currentStepName = '跟单接单'
+        cur.updateTime = formatDateTime(new Date())
+        return { ok: true, data: cur, action: 'accepted' }
+      } else {
+        cur.docStatus = 'incomplete'
+        cur.statusName = '资料不完整'
+        cur.updateTime = formatDateTime(new Date())
+        return { ok: true, data: cur, action: 'returned' }
+      }
+    },
+
+    customerSupplementDocs(id, docs) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.docStatus !== 'incomplete') return { ok: false, message: '当前状态不允许补充资料' }
+      cur.supplementedDocs = docs
+      cur.supplementCount = (cur.supplementCount || 0) + 1
+      cur.docStatus = 'supplemented'
+      cur.statusName = '已补充'
+      cur.updateTime = formatDateTime(new Date())
+      return { ok: true, data: cur }
+    },
+
+    inkassoIntegrateDocs(id) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.docStatus !== 'supplemented') return { ok: false, message: '当前状态不允许整合' }
+      cur.preparedDocs = [...(cur.preparedDocs || []), ...(cur.supplementedDocs || [])]
+      cur.supplementedDocs = []
+      cur.docStatus = 'reviewing'
+      cur.status = 'pending_receive'
+      cur.statusName = '待接收'
+      cur.updateTime = formatDateTime(new Date())
+      return { ok: true, data: cur }
+    },
+
     submitExternalPolicyForReview(id) {
       const cur = this.externalPolicies.find(p => p.id === id)
       if (!cur) return { ok: false, message: '记录不存在' }

@@ -107,41 +107,58 @@
                     <div class="info-item"><span class="info-label">预估损失：</span><span class="info-val text-primary font-bold">${{ Number(currentClaim.estimatedLossAmount).toLocaleString() }} {{ currentClaim.lossCurrency }}</span></div>
                   </div>
 
-                  <div class="ocr-section-title">📁 贸易证明单据 OCR 智能匹配校验</div>
-                  <div class="ocr-grid mb-16">
-                    <div class="ocr-file-card">
-                      <div class="ocr-file-info">
-                        <t-icon name="file-pdf" size="24px" class="file-icon pdf" />
-                        <span class="file-name">贸易合同_ABC2025.pdf</span>
-                      </div>
-                      <t-tag v-if="scanSuccess" theme="success" size="small">匹配率 100%</t-tag>
-                      <t-tag v-else theme="default" size="small">等待识别</t-tag>
-                    </div>
-                    <div class="ocr-file-card">
-                      <div class="ocr-file-info">
-                        <t-icon name="file-pdf" size="24px" class="file-icon pdf" />
-                        <span class="file-name">商业发票_INV2026.pdf</span>
-                      </div>
-                      <t-tag v-if="scanSuccess" theme="success" size="small">匹配率 100%</t-tag>
-                      <t-tag v-else theme="default" size="small">等待识别</t-tag>
-                    </div>
-                    <div class="ocr-file-card">
-                      <div class="ocr-file-info">
-                        <t-icon name="file-pdf" size="24px" class="file-icon pdf" />
-                        <span class="file-name">海运提单_BL2026.pdf</span>
-                      </div>
-                      <t-tag v-if="scanSuccess" theme="success" size="small">匹配率 100%</t-tag>
-                      <t-tag v-else theme="default" size="small">等待识别</t-tag>
-                    </div>
-                    <div class="ocr-file-card">
-                      <div class="ocr-file-info">
-                        <t-icon name="file-pdf" size="24px" class="file-icon pdf" />
-                        <span class="file-name">出口报关单_CUSTOMS.pdf</span>
-                      </div>
-                      <t-tag v-if="scanSuccess" theme="success" size="small">已校验</t-tag>
-                      <t-tag v-else theme="default" size="small">等待识别</t-tag>
-                    </div>
-                  </div>
+                  <div class="ocr-section-title">📁 贸易证明单据上传与 OCR 智能匹配校验</div>
+
+                  <t-form label-align="top" class="mb-16">
+                    <t-row :gutter="16">
+                      <t-col :span="6">
+                        <t-form-item label="贸易合同">
+                          <t-upload v-model="ocrDocs.tradeContract" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="3">
+                            <t-button variant="outline" size="small">选择文件</t-button>
+                          </t-upload>
+                        </t-form-item>
+                      </t-col>
+                      <t-col :span="6">
+                        <t-form-item label="商业发票">
+                          <t-upload v-model="ocrDocs.commercialInvoice" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="5">
+                            <t-button variant="outline" size="small">选择文件</t-button>
+                          </t-upload>
+                        </t-form-item>
+                      </t-col>
+                    </t-row>
+                    <t-row :gutter="16">
+                      <t-col :span="6">
+                        <t-form-item label="提单/运单">
+                          <t-upload v-model="ocrDocs.billOfLading" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="3">
+                            <t-button variant="outline" size="small">选择文件</t-button>
+                          </t-upload>
+                        </t-form-item>
+                      </t-col>
+                      <t-col :span="6">
+                        <t-form-item label="出口报关单">
+                          <t-upload v-model="ocrDocs.customsDeclaration" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="3">
+                            <t-button variant="outline" size="small">选择文件</t-button>
+                          </t-upload>
+                        </t-form-item>
+                      </t-col>
+                    </t-row>
+                    <t-row :gutter="16">
+                      <t-col :span="6">
+                        <t-form-item label="损失证明">
+                          <t-upload v-model="ocrDocs.lossProof" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="3">
+                            <t-button variant="outline" size="small">选择文件</t-button>
+                          </t-upload>
+                        </t-form-item>
+                      </t-col>
+                      <t-col :span="6">
+                        <t-form-item label="追偿授权书">
+                          <t-upload v-model="ocrDocs.recourseAuth" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="1">
+                            <t-button variant="outline" size="small">选择文件</t-button>
+                          </t-upload>
+                        </t-form-item>
+                      </t-col>
+                    </t-row>
+                  </t-form>
 
                   <div v-if="isScanning" class="ocr-progress-wp mb-16">
                     <div class="progress-txt">OCR单证数据一致性校验中... {{ scanProgress }}%</div>
@@ -566,6 +583,15 @@ const isScanning = ref(false)
 const scanProgress = ref(0)
 const scanSuccess = ref(false)
 
+const ocrDocs = reactive({
+  tradeContract: [],
+  commercialInvoice: [],
+  billOfLading: [],
+  customsDeclaration: [],
+  lossProof: [],
+  recourseAuth: []
+})
+
 const serviceFeePaid = ref(true)
 const paymentDialogVisible = ref(false)
 
@@ -574,6 +600,7 @@ const calculatedLoss = ref(80000)
 const deductibleAmount = ref(2000)
 const receivingBank = ref('中国工商银行 深圳科苑支行')
 
+const isSubmitting = ref(false)
 const isSyncingRwa = ref(false)
 const rwaSyncStatus = ref('pending')
 
@@ -712,6 +739,10 @@ const showPaymentDialog = () => {
 const confirmPayment = () => {
   serviceFeePaid.value = true
   paymentDialogVisible.value = false
+  if (currentClaim.value) {
+    currentClaim.value.serviceFeePaid = true
+    syncClaimToStore()
+  }
   MessagePlugin.success('服务费通过网关预收缴支付成功！')
 }
 
@@ -721,8 +752,23 @@ const syncToRwaPlatform = () => {
   setTimeout(() => {
     isSyncingRwa.value = false
     rwaSyncStatus.value = 'synced'
+    if (currentClaim.value) {
+      const idx = store.claims.findIndex(c => c.id === currentClaim.value.id)
+      if (idx >= 0) {
+        store.claims[idx].rwaSyncStatus = 'synced'
+      }
+    }
     MessagePlugin.success('理赔收款明细已同步清算至RWA应收账款融资平台，资产额度释放成功！')
   }, 1200)
+}
+
+// Sync current claim changes back to store
+const syncClaimToStore = () => {
+  if (!currentClaim.value) return
+  const idx = store.claims.findIndex(c => c.id === currentClaim.value.id)
+  if (idx >= 0) {
+    store.claims[idx] = { ...store.claims[idx], ...currentClaim.value }
+  }
 }
 
 // Step actions
@@ -742,14 +788,29 @@ const submitStep = () => {
   isSubmitting.value = true
   setTimeout(() => {
     isSubmitting.value = false
-    MessagePlugin.success(`Step ${currentStep.value} (${stepOptions[currentStep.value - 1].label}) 审查通过，流转进入下一步`)
+    const payload = {}
     if (currentStep.value === 3) {
-      // Transition from step 3 (supplement) to 4 (processing/investigating)
       currentClaim.value.status = 'processing'
+      currentClaim.value.statusName = '处理中'
     } else if (currentStep.value === 4) {
       currentClaim.value.status = 'decided'
+      currentClaim.value.statusName = '已决定'
+      currentClaim.value.claimDecision = claimDecision.value
+      currentClaim.value.calculatedLoss = calculatedLoss.value
+      currentClaim.value.deductible = deductibleAmount.value
       currentClaim.value.claimAmount = finalCompensatedAmount.value
+      Object.assign(payload, {
+        claimDecision: claimDecision.value,
+        calculatedLoss: calculatedLoss.value,
+        deductible: deductibleAmount.value,
+        claimAmount: finalCompensatedAmount.value
+      })
     }
+    // Persist to store
+    if (currentClaim.value) {
+      store.advanceClaimStep(currentClaim.value.id, payload)
+    }
+    MessagePlugin.success(`Step ${currentStep.value} (${stepOptions[currentStep.value - 1].label}) 审查通过，流转进入下一步`)
     setStep(currentStep.value + 1)
   }, 800)
 }
@@ -758,8 +819,14 @@ const completeWorkflow = () => {
   isSubmitting.value = true
   setTimeout(() => {
     isSubmitting.value = false
-    currentClaim.value.status = 'completed'
-    currentClaim.value.statusName = '已完成'
+    if (currentClaim.value) {
+      store.completeClaim(currentClaim.value.id, {
+        receivingBank: receivingBank.value,
+        rwaSyncStatus: 'synced'
+      })
+      currentClaim.value.status = 'completed'
+      currentClaim.value.statusName = '已赔付'
+    }
     MessagePlugin.success('全案定损完毕，理赔实收归档，本案正式结案结清！')
     activeTab.value = 'task-list'
   }, 1000)
@@ -768,19 +835,29 @@ const completeWorkflow = () => {
 // Switch and Processing Claim
 const startProcessing = (row) => {
   currentClaim.value = row
-  // Map claim state to step:
-  if (row.status === 'pending') {
+  // Use currentStep from store data if available, otherwise map from status
+  if (row.currentStep) {
+    currentStep.value = row.currentStep
+  } else if (row.status === 'pending') {
     currentStep.value = 2
   } else if (row.status === 'supplement') {
     currentStep.value = 3
-    serviceFeePaid.value = false
   } else if (row.status === 'processing' || row.status === 'investigating') {
     currentStep.value = 4
   } else if (row.status === 'decided') {
     currentStep.value = 5
   } else {
     currentStep.value = 5
-    rwaSyncStatus.value = 'synced'
+  }
+  // Load step form data from claim record
+  serviceFeePaid.value = row.serviceFeePaid ?? true
+  if (row.claimDecision) {
+    claimDecision.value = row.claimDecision
+    calculatedLoss.value = row.calculatedLoss || 80000
+    deductibleAmount.value = row.deductible || 2000
+  }
+  if (row.rwaSyncStatus) {
+    rwaSyncStatus.value = row.rwaSyncStatus
   }
   setStep(currentStep.value)
   activeTab.value = 'process'

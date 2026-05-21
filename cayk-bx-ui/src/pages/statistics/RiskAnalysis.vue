@@ -36,18 +36,12 @@
     <t-row :gutter="16" class="mb-16">
       <t-col :span="12">
         <t-card title="赔付率分析">
-          <div class="chart-placeholder">
-            <t-icon name="chart" size="48px" />
-            <span>赔付率趋势分析（折线图）</span>
-          </div>
+          <div ref="payoutRateRef" class="chart-container"></div>
         </t-card>
       </t-col>
       <t-col :span="12">
         <t-card title="逾期率分析">
-          <div class="chart-placeholder">
-            <t-icon name="chart" size="48px" />
-            <span>逾期率趋势分析（折线图）</span>
-          </div>
+          <div ref="overdueRateRef" class="chart-container"></div>
         </t-card>
       </t-col>
     </t-row>
@@ -81,10 +75,90 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import * as echarts from 'echarts'
 import StatCard from '@/components/common/StatCard.vue'
 
 const dateRange = ref([])
+const payoutRateRef = ref(null)
+const overdueRateRef = ref(null)
+let payoutChart = null
+let overdueChart = null
+
+const months = ['2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05']
+const payoutRateData = [2.1, 2.5, 2.3, 2.8, 3.0, 2.9, 3.1, 2.8, 3.2, 3.5, 3.1, 3.2]
+const overdueRateData = [1.5, 1.8, 1.6, 2.0, 2.2, 2.1, 2.4, 2.0, 2.1, 2.5, 2.3, 2.1]
+
+const initPayoutChart = () => {
+  if (!payoutRateRef.value) return
+  payoutChart = echarts.init(payoutRateRef.value)
+  payoutChart.setOption({
+    tooltip: { trigger: 'axis', formatter: '{b}<br/>赔付率: {c}%' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: months },
+    yAxis: { type: 'value', name: '%', min: 0, max: 5, axisLabel: { formatter: '{value}%' } },
+    series: [{
+      name: '赔付率',
+      type: 'line',
+      smooth: true,
+      data: payoutRateData,
+      areaStyle: { opacity: 0.3 },
+      lineStyle: { color: '#E34D59', width: 3 },
+      itemStyle: { color: '#E34D59' },
+      markLine: {
+        silent: true,
+        data: [{ yAxis: 3, label: { formatter: '预警线 3%', color: '#999' } }],
+        lineStyle: { color: '#E34D59', type: 'dashed' }
+      }
+    }]
+  })
+}
+
+const initOverdueChart = () => {
+  if (!overdueRateRef.value) return
+  overdueChart = echarts.init(overdueRateRef.value)
+  overdueChart.setOption({
+    tooltip: { trigger: 'axis', formatter: '{b}<br/>逾期率: {c}%' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: months },
+    yAxis: { type: 'value', name: '%', min: 0, max: 4, axisLabel: { formatter: '{value}%' } },
+    series: [{
+      name: '逾期率',
+      type: 'line',
+      smooth: true,
+      data: overdueRateData,
+      areaStyle: { opacity: 0.3 },
+      lineStyle: { color: '#E7A500', width: 3 },
+      itemStyle: { color: '#E7A500' },
+      markLine: {
+        silent: true,
+        data: [{ yAxis: 2, label: { formatter: '预警线 2%', color: '#999' } }],
+        lineStyle: { color: '#E7A500', type: 'dashed' }
+      }
+    }]
+  })
+}
+
+const initCharts = () => {
+  initPayoutChart()
+  initOverdueChart()
+}
+
+const handleResize = () => {
+  payoutChart && payoutChart.resize()
+  overdueChart && overdueChart.resize()
+}
+
+onMounted(() => {
+  setTimeout(initCharts, 100)
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  payoutChart && payoutChart.dispose()
+  overdueChart && overdueChart.dispose()
+  window.removeEventListener('resize', handleResize)
+})
 
 const columns = [
   { colKey: 'rank', title: '排名', width: 80, align: 'center' },
@@ -124,7 +198,7 @@ const alertData = ref([
 .page-title { font-size: 18px; font-weight: 600; color: #333; }
 .page-actions { display: flex; gap: 12px; }
 .mb-16 { margin-bottom: 16px; }
-.chart-placeholder { height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #999; }
+.chart-container { height: 280px; width: 100%; }
 .breadcrumbs {
   display: flex;
   align-items: center;

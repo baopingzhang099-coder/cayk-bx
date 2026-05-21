@@ -84,7 +84,9 @@ export const useBusinessStore = defineStore('business', {
     contracts: [],
     payments: [],
     externalPolicies: [],
-    clerkList: []
+    clerkList: [],
+    claimUpdateVersion: 0,
+    insuranceUpdateVersion: 0
   }),
   getters: {
     insuranceStats(state) {
@@ -116,6 +118,12 @@ export const useBusinessStore = defineStore('business', {
     }
   },
   actions: {
+    touchClaims() {
+      this.claimUpdateVersion++
+    },
+    touchInsuranceApplications() {
+      this.insuranceUpdateVersion++
+    },
     ensureSeeded() {
       if (this.insuranceApplications.length > 0) return
       this.insuranceApplications = [
@@ -661,20 +669,114 @@ export const useBusinessStore = defineStore('business', {
       this.claims = [
         {
           id: 'CL2026001',
-          claimNo: 'CL20260508001',
+          claimNo: 'CL20260520001',
           relatedPolicyNo: 'PI2026001234',
           insuranceCompany: '人保财险',
           buyerName: 'ABC Corporation',
-          claimType: 'goods_damage',
-          claimTypeName: '货物损失',
-          lossDescription: '货物在运输过程中发生损毁',
+          claimType: 'arrears',
+          claimTypeName: '买方拖欠',
+          lossDescription: '买方ABC Corporation拖欠货款USD 50,000，逾期已超过60天，多次催收无果',
           estimatedLossAmount: 50000,
           claimAmount: null,
-          lossDate: '2026-05-05',
+          lossDate: '2026-05-01',
           lossCurrency: 'USD',
           lossLocation: '深圳港',
-          currentStep: 2,
-          currentStepName: '跟单接单',
+          currentStep: 1,
+          currentStepName: '报案提交',
+          warningLevel: 'warning',
+          clerkId: null,
+          clerkName: null,
+          delegationAgreement: [],
+          serviceFeePaid: false,
+          serviceFeeVoucher: [],
+          deductible: null,
+          claimDecision: null,
+          calculatedLoss: null,
+          payoutVoucher: [],
+          evidenceMaterials: [{ name: '催收记录.pdf', category: 'collection' }, { name: '贸易合同扫描件.pdf', category: 'contract' }],
+          relevantDocuments: [{ name: '商业发票.pdf', category: 'invoice' }, { name: '提单副本.pdf', category: 'billoflading' }],
+          rwaSyncStatus: 'pending',
+          docStatus: 'pending',
+          docReviewComment: '',
+          supplementCount: 0,
+          preparedDocs: [],
+          supplementedDocs: [],
+          clerkConfirmed: false,
+          lossNotified: false,
+          lossNotifiedTime: null,
+          insurerNotified: false,
+          insurerNotifiedTime: null,
+          status: 'pending',
+          statusName: '待接收报案',
+          createTime: '2026-05-20 09:30:00',
+          claimContact: '张三',
+          claimPhone: '13800138001',
+          claimEmail: 'zhangsan@example.com',
+          bankAccount: '中国工商银行深圳分行 6222****1234'
+        },
+        {
+          id: 'CL2026002',
+          claimNo: 'CL20260518002',
+          relatedPolicyNo: 'PI2025009876',
+          insuranceCompany: '中国信保',
+          buyerName: 'GHI Ltd',
+          claimType: 'bankruptcy',
+          claimTypeName: '破产',
+          lossDescription: '买方GHI Ltd已向当地法院申请破产保护，涉及应收账款USD 120,000',
+          estimatedLossAmount: 120000,
+          claimAmount: null,
+          lossDate: '2026-05-10',
+          lossCurrency: 'USD',
+          lossLocation: '伦敦',
+          currentStep: 1,
+          currentStepName: '报案提交',
+          warningLevel: 'danger',
+          clerkId: 'C002',
+          clerkName: '赵敏',
+          delegationAgreement: [],
+          serviceFeePaid: false,
+          serviceFeeVoucher: [],
+          deductible: null,
+          claimDecision: null,
+          calculatedLoss: null,
+          payoutVoucher: [],
+          evidenceMaterials: [{ name: '破产公告.pdf', category: 'bankruptcy' }, { name: '债权申报表.pdf', category: 'claimForm' }],
+          relevantDocuments: [{ name: '贸易合同.pdf', category: 'contract' }, { name: '应收账款明细.xlsx', category: 'receivable' }],
+          rwaSyncStatus: 'pending',
+          docStatus: 'pending',
+          docReviewComment: '',
+          supplementCount: 0,
+          preparedDocs: [],
+          supplementedDocs: [],
+          clerkConfirmed: false,
+          lossNotified: false,
+          lossNotifiedTime: null,
+          insurerNotified: true,
+          insurerNotifiedTime: '2026-05-18 15:00:00',
+          status: 'assigned',
+          statusName: '待接单',
+          createTime: '2026-05-18 10:00:00',
+          claimContact: '李四',
+          claimPhone: '13900139002',
+          claimEmail: 'lisi@example.com',
+          bankAccount: '中国建设银行深圳分行 6227****5678'
+        },
+        {
+          id: 'CL2026003',
+          claimNo: 'CL20260515003',
+          relatedPolicyNo: 'PI2025008765',
+          insuranceCompany: '太平洋保险',
+          buyerName: 'JKL Co',
+          claimType: 'rejection',
+          claimTypeName: '拒收',
+          lossDescription: '买方JKL Co以质量异议为由拒收货物，货物滞留目的港产生高额滞港费',
+          estimatedLossAmount: 35000,
+          claimAmount: null,
+          lossDate: '2026-05-08',
+          lossCurrency: 'USD',
+          lossLocation: '东京港',
+          currentStep: 1,
+          currentStepName: '报案提交',
           warningLevel: 'safe',
           clerkId: 'C001',
           clerkName: '李明',
@@ -685,75 +787,51 @@ export const useBusinessStore = defineStore('business', {
           claimDecision: null,
           calculatedLoss: null,
           payoutVoucher: [],
+          evidenceMaterials: [{ name: '拒收通知函.pdf', category: 'rejectionLetter' }, { name: '质量检验报告.pdf', category: 'inspection' }],
+          relevantDocuments: [{ name: '商业发票.pdf', category: 'invoice' }, { name: '提单.pdf', category: 'billoflading' }, { name: '滞港费清单.pdf', category: 'demurrage' }],
           rwaSyncStatus: 'pending',
-          status: 'processing',
-          statusName: '处理中',
-          createTime: '2026-05-08 10:00:00',
-          reportDeadline: '风险发生后10日',
-          investigationDeadline: '简单10工作日/复杂30日',
-          paymentDeadline: '协议后10日/最长60日',
-          claimContact: '张三',
-          claimPhone: '138****1234',
-          claimEmail: 'zhangsan@example.com',
-          bankAccount: '中国工商银行 6222****12345678'
+          docStatus: 'reviewing',
+          docReviewComment: '',
+          supplementCount: 0,
+          preparedDocs: [
+            { name: '可能损失通知书.pdf', category: 'appNotice' },
+            { name: '索赔申请书.pdf', category: 'claimForm' },
+            { name: '贸易合同.pdf', category: 'tradeContract' },
+            { name: '商业发票.pdf', category: 'invoice' }
+          ],
+          supplementedDocs: [],
+          clerkConfirmed: false,
+          lossNotified: false,
+          lossNotifiedTime: null,
+          insurerNotified: true,
+          insurerNotifiedTime: '2026-05-15 16:00:00',
+          status: 'pending_receive',
+          statusName: '待接收',
+          createTime: '2026-05-15 14:00:00',
+          claimContact: '王五',
+          claimPhone: '13700137003',
+          claimEmail: 'wangwu@example.com',
+          bankAccount: '中国农业银行广州分行 6228****9012'
         },
         {
-          id: 'CL2026002',
-          claimNo: 'CL20260505002',
-          relatedPolicyNo: 'PI2025009876',
-          insuranceCompany: '太保产险',
-          buyerName: 'GHI Ltd',
-          claimType: 'buyer_default',
+          id: 'CL2026004',
+          claimNo: 'CL20260512004',
+          relatedPolicyNo: 'PI2026004567',
+          insuranceCompany: '大地保险',
+          buyerName: 'MNO GmbH',
+          claimType: 'arrears',
           claimTypeName: '买方拖欠',
-          lossDescription: '买方拖欠货款超过90天',
-          estimatedLossAmount: 80000,
-          claimAmount: 64000,
-          lossDate: '2026-04-15',
-          lossCurrency: 'USD',
-          lossLocation: '香港',
-          currentStep: 4,
-          currentStepName: '调查定损',
-          warningLevel: 'safe',
-          clerkId: 'C002',
-          clerkName: '赵敏',
-          delegationAgreement: [{ name: '理赔委托授权书_GHI.pdf', size: 2048000 }],
-          serviceFeePaid: true,
-          serviceFeeVoucher: [{ name: '代理费水单_GHI.jpg', size: 1024000 }],
-          deductible: 2000,
-          claimDecision: 'approved',
-          calculatedLoss: 80000,
-          payoutVoucher: [],
-          rwaSyncStatus: 'pending',
-          status: 'decided',
-          statusName: '已决定',
-          createTime: '2026-05-05 14:30:00',
-          reportDeadline: '拖欠30日/其他10工作日',
-          investigationDeadline: '30工作日',
-          paymentDeadline: '核赔后10日',
-          claimContact: '李四',
-          claimPhone: '139****5678',
-          claimEmail: 'lisi@example.com',
-          bankAccount: '中国建设银行 6227****87654321'
-        },
-        {
-          id: 'CL2026003',
-          claimNo: 'CL20260428003',
-          relatedPolicyNo: 'PI2025008765',
-          insuranceCompany: '平安产险',
-          buyerName: 'JKL Co',
-          claimType: 'other',
-          claimTypeName: '政治风险',
-          lossDescription: '因政治风险导致的损失',
-          estimatedLossAmount: 30000,
+          lossDescription: '买方MNO GmbH拖欠货款USD 28,000，逾期已超90天，邮件及电话催收无效',
+          estimatedLossAmount: 28000,
           claimAmount: null,
           lossDate: '2026-04-20',
           lossCurrency: 'USD',
-          lossLocation: '',
+          lossLocation: '汉堡',
           currentStep: 1,
           currentStepName: '报案提交',
-          warningLevel: 'danger',
-          clerkId: null,
-          clerkName: null,
+          warningLevel: 'safe',
+          clerkId: 'C001',
+          clerkName: '李明',
           delegationAgreement: [],
           serviceFeePaid: false,
           serviceFeeVoucher: [],
@@ -761,30 +839,212 @@ export const useBusinessStore = defineStore('business', {
           claimDecision: null,
           calculatedLoss: null,
           payoutVoucher: [],
+          evidenceMaterials: [{ name: '催收邮件记录.pdf', category: 'collection' }],
+          relevantDocuments: [{ name: '贸易合同.pdf', category: 'contract' }, { name: '商业发票.pdf', category: 'invoice' }],
           rwaSyncStatus: 'pending',
-          status: 'pending',
-          statusName: '待接收报案',
-          createTime: '2026-04-28 09:15:00',
-          reportDeadline: '按保单条款',
-          investigationDeadline: '按保单条款',
-          paymentDeadline: '按保单条款',
-          claimContact: '王五',
-          claimPhone: '137****9012',
-          claimEmail: 'wangwu@example.com',
-          bankAccount: '中国农业银行 6228****24680135'
+          docStatus: 'passed',
+          docReviewComment: '资料完整，初审通过',
+          supplementCount: 0,
+          preparedDocs: [
+            { name: '可能损失通知书.pdf', category: 'appNotice' },
+            { name: '索赔申请书.pdf', category: 'claimForm' },
+            { name: '贸易合同.pdf', category: 'tradeContract' },
+            { name: '商业发票.pdf', category: 'invoice' }
+          ],
+          supplementedDocs: [],
+          clerkConfirmed: true,
+          lossNotified: true,
+          lossNotifiedTime: '2026-05-13 10:30:00',
+          insurerNotified: true,
+          insurerNotifiedTime: '2026-05-12 16:30:00',
+          status: 'pending_contract_sign',
+          statusName: '待签署委托合同',
+          createTime: '2026-05-12 09:00:00',
+          claimContact: '赵六',
+          claimPhone: '13600136004',
+          claimEmail: 'zhaoliu@example.com',
+          bankAccount: '招商银行上海分行 6214****3456'
+        },
+        {
+          id: 'CL2026005',
+          claimNo: 'CL20260510005',
+          relatedPolicyNo: 'PI2026005678',
+          insuranceCompany: '中国信保',
+          buyerName: 'PQR Ltd',
+          claimType: 'arrears',
+          claimTypeName: '买方拖欠',
+          lossDescription: '买方PQR Ltd拖欠货款USD 65,000，已通过三方催收仍无进展',
+          estimatedLossAmount: 65000,
+          claimAmount: null,
+          lossDate: '2026-04-01',
+          lossCurrency: 'USD',
+          lossLocation: '新加坡',
+          currentStep: 1,
+          currentStepName: '报案提交',
+          warningLevel: 'safe',
+          clerkId: 'C003',
+          clerkName: '王芳',
+          delegationAgreement: [
+            { name: '委托追偿合同_cayk_legal_2026.pdf', signed: true },
+            { name: '授权委托书_authorization_2026.pdf', signed: true }
+          ],
+          serviceFeePaid: false,
+          serviceFeeVoucher: [],
+          deductible: null,
+          claimDecision: null,
+          calculatedLoss: null,
+          payoutVoucher: [],
+          evidenceMaterials: [{ name: '催收记录汇总.pdf', category: 'collection' }, { name: '三方催收报告.pdf', category: 'thirdParty' }],
+          relevantDocuments: [{ name: '贸易合同.pdf', category: 'contract' }, { name: '形式发票.pdf', category: 'invoice' }],
+          rwaSyncStatus: 'pending',
+          docStatus: 'passed',
+          docReviewComment: '资料完整，初审通过，合同已签署',
+          supplementCount: 0,
+          preparedDocs: [
+            { name: '可能损失通知书.pdf', category: 'appNotice' },
+            { name: '索赔申请书.pdf', category: 'claimForm' },
+            { name: '贸易合同.pdf', category: 'tradeContract' },
+            { name: '商业发票.pdf', category: 'invoice' }
+          ],
+          supplementedDocs: [],
+          clerkConfirmed: true,
+          lossNotified: true,
+          lossNotifiedTime: '2026-05-11 11:00:00',
+          insurerNotified: true,
+          insurerNotifiedTime: '2026-05-10 15:00:00',
+          status: 'pending_payment',
+          statusName: '待支付服务费',
+          createTime: '2026-05-10 11:00:00',
+          claimContact: '钱七',
+          claimPhone: '13500135005',
+          claimEmail: 'qianqi@example.com',
+          bankAccount: '中国银行杭州分行 6217****7890'
+        },
+        {
+          id: 'CL2026006',
+          claimNo: 'CL20260506006',
+          relatedPolicyNo: 'PI2026006789',
+          insuranceCompany: '大地保险',
+          buyerName: 'STV SA',
+          claimType: 'goods_damage',
+          claimTypeName: '货物损失',
+          lossDescription: '货物在运输途中因海运事故受损，经检验损失比例约60%',
+          estimatedLossAmount: 45000,
+          claimAmount: null,
+          lossDate: '2026-04-25',
+          lossCurrency: 'USD',
+          lossLocation: '马六甲海峡',
+          currentStep: 5,
+          currentStepName: '理赔收回',
+          warningLevel: 'safe',
+          clerkId: 'C001',
+          clerkName: '李明',
+          delegationAgreement: [
+            { name: '委托追偿合同_cayk_legal_2026.pdf', signed: true },
+            { name: '授权委托书_authorization_2026.pdf', signed: true }
+          ],
+          serviceFeePaid: true,
+          serviceFeeVoucher: [{ name: '服务费支付凭证_20260507.png', size: 512000 }],
+          deductible: 1500,
+          claimDecision: 'approved',
+          calculatedLoss: 45000,
+          claimAmount: 34500,
+          payoutVoucher: [{ name: '赔付到账水单_20260509.pdf', size: 1024000 }],
+          evidenceMaterials: [{ name: '货损检验报告.pdf', category: 'surveyReport' }, { name: '海事声明.pdf', category: 'seaProtests' }],
+          relevantDocuments: [{ name: '提单.pdf', category: 'billoflading' }, { name: '商业发票.pdf', category: 'invoice' }, { name: '装箱单.pdf', category: 'packingList' }],
+          rwaSyncStatus: 'pending',
+          docStatus: 'passed',
+          docReviewComment: '资料完整，损失核定确认',
+          supplementCount: 0,
+          preparedDocs: [
+            { name: '可能损失通知书.pdf', category: 'appNotice' },
+            { name: '索赔申请书.pdf', category: 'claimForm' },
+            { name: '贸易合同.pdf', category: 'tradeContract' },
+            { name: '商业发票.pdf', category: 'invoice' },
+            { name: '货损检验报告.pdf', category: 'surveyReport' }
+          ],
+          supplementedDocs: [],
+          clerkConfirmed: true,
+          lossNotified: true,
+          lossNotifiedTime: '2026-05-07 09:00:00',
+          insurerNotified: true,
+          insurerNotifiedTime: '2026-05-06 16:00:00',
+          status: 'payment_received',
+          statusName: '赔付到账',
+          createTime: '2026-05-06 14:00:00',
+          claimContact: '孙八',
+          claimPhone: '13400134006',
+          claimEmail: 'sunba@example.com',
+          bankAccount: '中国工商银行成都分行 6222****2345'
+        },
+        {
+          id: 'CL2026007',
+          claimNo: 'CL20260425007',
+          relatedPolicyNo: 'PI2026001234',
+          insuranceCompany: '人保财险',
+          buyerName: 'ABC Corporation',
+          claimType: 'arrears',
+          claimTypeName: '买方拖欠',
+          lossDescription: '买方ABC Corporation拖欠货款已全额赔付，案件结清',
+          estimatedLossAmount: 80000,
+          claimAmount: 64000,
+          lossDate: '2026-03-15',
+          lossCurrency: 'USD',
+          lossLocation: '深圳',
+          currentStep: 5,
+          currentStepName: '理赔收回',
+          warningLevel: 'safe',
+          clerkId: 'C001',
+          clerkName: '李明',
+          delegationAgreement: [
+            { name: '委托追偿合同_cayk_legal_2026.pdf', signed: true },
+            { name: '授权委托书_authorization_2026.pdf', signed: true }
+          ],
+          serviceFeePaid: true,
+          serviceFeeVoucher: [{ name: '服务费支付凭证_20260426.png', size: 480000 }],
+          deductible: 2000,
+          claimDecision: 'approved',
+          calculatedLoss: 80000,
+          payoutVoucher: [{ name: '赔付到账水单_20260430.pdf', size: 2048000 }],
+          evidenceMaterials: [{ name: '催收记录.pdf', category: 'collection' }],
+          relevantDocuments: [{ name: '贸易合同.pdf', category: 'contract' }, { name: '商业发票.pdf', category: 'invoice' }],
+          rwaSyncStatus: 'synced',
+          docStatus: 'passed',
+          docReviewComment: '资料完整，已全额赔付',
+          supplementCount: 0,
+          preparedDocs: [
+            { name: '可能损失通知书.pdf', category: 'appNotice' },
+            { name: '索赔申请书.pdf', category: 'claimForm' },
+            { name: '贸易合同.pdf', category: 'tradeContract' },
+            { name: '商业发票.pdf', category: 'invoice' }
+          ],
+          supplementedDocs: [],
+          clerkConfirmed: true,
+          lossNotified: true,
+          lossNotifiedTime: '2026-04-26 10:00:00',
+          insurerNotified: true,
+          insurerNotifiedTime: '2026-04-25 15:00:00',
+          status: 'completed',
+          statusName: '已完成',
+          createTime: '2026-04-25 10:00:00',
+          claimContact: '张三',
+          claimPhone: '13800138001',
+          claimEmail: 'zhangsan@example.com',
+          bankAccount: '中国工商银行深圳分行 6222****1234'
         }
       ]
       this.processTasks = [
         {
-          id: 'PT20260520001',
-          policyNo: 'PI2026001234',
-          companyName: '深圳XX国际贸易有限公司',
+          id: 'PT20260522001',
+          policyNo: 'PI2026008901',
+          companyName: '广州AA进出口公司',
           taskType: '投保流程',
-          startTime: '2026-05-18 09:00:00',
-          endTime: '2026-05-20 15:30:00',
-          stepsCompleted: 7,
-          status: 'completed',
-          statusName: '已完成',
+          status: 'pending',
+          statusName: '待处理',
+          currentStep: 1,
+          stepsCompleted: 0,
+          startTime: '2026-05-22 09:00:00',
+          endTime: '',
           stepOptions: [
             { label: '提交投保申请', value: 1 },
             { label: '资料审核', value: 2 },
@@ -794,55 +1054,28 @@ export const useBusinessStore = defineStore('business', {
             { label: '缴费生效', value: 6 }
           ],
           stepInfo: [
-            { handler: '张三', startTime: '2026-05-18 09:00:00', endTime: '2026-05-18 10:30:00' },
-            { handler: '李四', startTime: '2026-05-18 10:30:00', endTime: '2026-05-18 14:00:00' },
-            { handler: '王五', startTime: '2026-05-19 09:00:00', endTime: '2026-05-19 11:00:00' },
-            { handler: '赵六', startTime: '2026-05-19 11:00:00', endTime: '2026-05-19 16:00:00' },
-            { handler: '钱七', startTime: '2026-05-20 09:00:00', endTime: '2026-05-20 11:30:00' },
-            { handler: '孙八', startTime: '2026-05-20 13:00:00', endTime: '2026-05-20 14:30:00' }
+            { handler: '张经理(广州AA)', startTime: '2026-05-22 09:00:00', endTime: '2026-05-22 09:30:00' },
+            { handler: '', startTime: '', endTime: '' },
+            { handler: '', startTime: '', endTime: '' },
+            { handler: '', startTime: '', endTime: '' },
+            { handler: '', startTime: '', endTime: '' },
+            { handler: '', startTime: '', endTime: '' }
           ],
           formData: {
             step1: {
               insurancePlan: 'planA',
               insuranceCompany: 'company1',
-              matchRule: '根据各保险公司行业风险清单、国家（地区）分类表设定匹配规则，结合买方资质、贸易背景等因素综合评估后推荐此方案。',
-              approvalResult: 'approved',
-              auditOpinion: '方案符合客户需求，风险等级可控，同意通过。'
+              matchRule: '根据买方资信评估结果推荐短期出口信用保险方案。',
+              approvalResult: '',
+              auditOpinion: ''
             },
-            step2: {
-              approvalResult: 'approved',
-              auditOpinion: '申请资料齐全，同意提交。'
-            },
-            step3: {
-              approvalResult: 'approved',
-              auditOpinion: '投保申请材料完整，同意提交审核。'
-            },
-            step4: {
-              checkedItems: ['basicInfo', 'documentCheck', 'riskAssessment'],
-              approvalResult: 'approved',
-              auditOpinion: '基本信息校验通过，资料完整，风险评估为低风险，同意流转。'
-            },
-            step5: {
-              policyNo: 'POL20260602001',
-              issueDate: '2026-05-20',
-              policyFile: [{ name: '保单文件.pdf' }],
-              approvalResult: 'approved',
-              auditOpinion: '保单已签发，信息无误。'
-            },
-            step6: {
-              premiumAmount: '¥12,500.00',
-              paymentStatus: 'paid',
-              paymentReceipt: [{ name: '支付凭证.pdf' }],
-              policyDetailFile: [{ name: '保单明细表.pdf' }],
-              rateFile: [{ name: '费率表.pdf' }],
-              approvalResult: 'approved',
-              auditOpinion: '保费已支付，流程完成。'
-            }
+            step2: { approvalResult: '', auditOpinion: '' },
+            step3: { approvalResult: '', auditOpinion: '' },
+            step4: { checkedItems: [], approvalResult: '', auditOpinion: '' },
+            step5: { policyNo: '', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
+            step6: { premiumAmount: '', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
           },
-          step2Docs: {
-            applicationForm: true,
-            buyerInfoForm: true
-          },
+          step2Docs: { applicationForm: false, buyerInfoForm: false },
           planLabels: {
             planA: '方案A - 短期出口信用保险',
             planB: '方案B - 中长期出口信用保险',
@@ -855,15 +1088,16 @@ export const useBusinessStore = defineStore('business', {
           }
         },
         {
-          id: 'PT20260519002',
-          policyNo: 'PI2026005678',
-          companyName: '北京ZZ贸易集团',
+          id: 'PT20260521002',
+          policyNo: 'PI2026005679',
+          companyName: '杭州BB科技有限公司',
           taskType: '投保流程',
-          startTime: '2026-05-10 09:00:00',
-          endTime: '2026-05-19 17:00:00',
-          stepsCompleted: 7,
-          status: 'completed',
-          statusName: '已完成',
+          status: 'processing',
+          statusName: '处理中',
+          currentStep: 2,
+          stepsCompleted: 1,
+          startTime: '2026-05-21 10:00:00',
+          endTime: '',
           stepOptions: [
             { label: '提交投保申请', value: 1 },
             { label: '资料审核', value: 2 },
@@ -873,12 +1107,243 @@ export const useBusinessStore = defineStore('business', {
             { label: '缴费生效', value: 6 }
           ],
           stepInfo: [
-            { handler: '陈经理', startTime: '2026-05-10 09:00:00', endTime: '2026-05-10 11:00:00' },
-            { handler: '刘主管', startTime: '2026-05-11 10:00:00', endTime: '2026-05-11 15:00:00' },
-            { handler: '王五', startTime: '2026-05-12 09:00:00', endTime: '2026-05-12 12:00:00' },
-            { handler: '赵六', startTime: '2026-05-13 09:00:00', endTime: '2026-05-14 11:00:00' },
-            { handler: '钱七', startTime: '2026-05-15 09:00:00', endTime: '2026-05-15 16:30:00' },
-            { handler: '孙八', startTime: '2026-05-18 09:00:00', endTime: '2026-05-18 15:00:00' }
+            { handler: '李敏(杭州BB)', startTime: '2026-05-21 10:00:00', endTime: '2026-05-21 10:30:00' },
+            { handler: '刘主管(跟单员)', startTime: '2026-05-21 14:00:00', endTime: '' },
+            { handler: '', startTime: '', endTime: '' },
+            { handler: '', startTime: '', endTime: '' },
+            { handler: '', startTime: '', endTime: '' },
+            { handler: '', startTime: '', endTime: '' }
+          ],
+          formData: {
+            step1: {
+              insurancePlan: 'planB',
+              insuranceCompany: 'company2',
+              matchRule: '根据买方资信评估结果，推荐中长期出口信用保险方案。',
+              approvalResult: 'approved',
+              auditOpinion: '方案合理，同意提交。'
+            },
+            step2: { approvalResult: '', auditOpinion: '' },
+            step3: { approvalResult: '', auditOpinion: '' },
+            step4: { checkedItems: [], approvalResult: '', auditOpinion: '' },
+            step5: { policyNo: '', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
+            step6: { premiumAmount: '', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
+          },
+          step2Docs: { applicationForm: true, buyerInfoForm: false },
+          planLabels: {
+            planA: '方案A - 短期出口信用保险',
+            planB: '方案B - 中长期出口信用保险',
+            planC: '方案C - 国内贸易信用保险'
+          },
+          companyLabels: {
+            company1: '中国出口信用保险公司',
+            company2: '平安财产保险',
+            company3: '太平洋财产保险'
+          }
+        },
+        {
+          id: 'PT20260520003',
+          policyNo: 'PI2026001234',
+          companyName: '深圳XX国际贸易有限公司',
+          taskType: '投保流程',
+          status: 'processing',
+          statusName: '处理中',
+          currentStep: 3,
+          stepsCompleted: 2,
+          startTime: '2026-05-20 09:00:00',
+          endTime: '',
+          stepOptions: [
+            { label: '提交投保申请', value: 1 },
+            { label: '资料审核', value: 2 },
+            { label: '资信调查', value: 3 },
+            { label: '信用限额审批', value: 4 },
+            { label: '核保出单', value: 5 },
+            { label: '缴费生效', value: 6 }
+          ],
+          stepInfo: [
+            { handler: '张经理(深圳XX)', startTime: '2026-05-20 09:00:00', endTime: '2026-05-20 09:45:00' },
+            { handler: '刘主管(跟单员)', startTime: '2026-05-20 10:00:00', endTime: '2026-05-20 14:00:00' },
+            { handler: '王五(资信调查)', startTime: '2026-05-21 09:00:00', endTime: '' },
+            { handler: '', startTime: '', endTime: '' },
+            { handler: '', startTime: '', endTime: '' },
+            { handler: '', startTime: '', endTime: '' }
+          ],
+          formData: {
+            step1: {
+              insurancePlan: 'planA',
+              insuranceCompany: 'company1',
+              matchRule: '根据各保险公司行业风险清单、国家（地区）分类表设定匹配规则，结合买方资质、贸易背景等因素综合评估后推荐此方案。',
+              approvalResult: 'approved',
+              auditOpinion: '方案符合客户需求，风险等级可控，同意通过。'
+            },
+            step2: {
+              approvalResult: 'approved',
+              auditOpinion: '申请资料齐全，同意提交资信调查。'
+            },
+            step3: { approvalResult: '', auditOpinion: '' },
+            step4: { checkedItems: [], approvalResult: '', auditOpinion: '' },
+            step5: { policyNo: '', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
+            step6: { premiumAmount: '', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
+          },
+          step2Docs: { applicationForm: true, buyerInfoForm: true },
+          planLabels: {
+            planA: '方案A - 短期出口信用保险',
+            planB: '方案B - 中长期出口信用保险',
+            planC: '方案C - 国内贸易信用保险'
+          },
+          companyLabels: {
+            company1: '中国出口信用保险公司',
+            company2: '平安财产保险',
+            company3: '太平洋财产保险'
+          }
+        },
+        {
+          id: 'PT20260519004',
+          policyNo: 'PI2026003456',
+          companyName: '成都CC贸易有限公司',
+          taskType: '投保流程',
+          status: 'processing',
+          statusName: '处理中',
+          currentStep: 4,
+          stepsCompleted: 3,
+          startTime: '2026-05-19 09:00:00',
+          endTime: '',
+          stepOptions: [
+            { label: '提交投保申请', value: 1 },
+            { label: '资料审核', value: 2 },
+            { label: '资信调查', value: 3 },
+            { label: '信用限额审批', value: 4 },
+            { label: '核保出单', value: 5 },
+            { label: '缴费生效', value: 6 }
+          ],
+          stepInfo: [
+            { handler: '王芳(成都CC)', startTime: '2026-05-19 09:00:00', endTime: '2026-05-19 09:30:00' },
+            { handler: '刘主管(跟单员)', startTime: '2026-05-19 10:00:00', endTime: '2026-05-19 15:00:00' },
+            { handler: '王五(资信调查)', startTime: '2026-05-20 09:00:00', endTime: '2026-05-20 17:00:00' },
+            { handler: '赵六(限额审批)', startTime: '2026-05-21 09:00:00', endTime: '' },
+            { handler: '', startTime: '', endTime: '' },
+            { handler: '', startTime: '', endTime: '' }
+          ],
+          formData: {
+            step1: {
+              insurancePlan: 'planA',
+              insuranceCompany: 'company1',
+              matchRule: '根据买方资信评估结果推荐短期出口信用保险方案。',
+              approvalResult: 'approved',
+              auditOpinion: '方案合理，同意。'
+            },
+            step2: {
+              approvalResult: 'approved',
+              auditOpinion: '资料齐全，审核通过。'
+            },
+            step3: {
+              approvalResult: 'approved',
+              auditOpinion: '资信调查完成，买方信用评级为A级，建议通过。'
+            },
+            step4: { checkedItems: ['basicInfo', 'documentCheck', 'riskAssessment'], approvalResult: '', auditOpinion: '' },
+            step5: { policyNo: '', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
+            step6: { premiumAmount: '', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
+          },
+          step2Docs: { applicationForm: true, buyerInfoForm: true },
+          planLabels: {
+            planA: '方案A - 短期出口信用保险',
+            planB: '方案B - 中长期出口信用保险',
+            planC: '方案C - 国内贸易信用保险'
+          },
+          companyLabels: {
+            company1: '中国出口信用保险公司',
+            company2: '平安财产保险',
+            company3: '太平洋财产保险'
+          }
+        },
+        {
+          id: 'PT20260517005',
+          policyNo: 'PI2026007788',
+          companyName: '武汉DD工贸有限公司',
+          taskType: '投保流程',
+          status: 'processing',
+          statusName: '处理中',
+          currentStep: 5,
+          stepsCompleted: 4,
+          startTime: '2026-05-17 09:00:00',
+          endTime: '',
+          stepOptions: [
+            { label: '提交投保申请', value: 1 },
+            { label: '资料审核', value: 2 },
+            { label: '资信调查', value: 3 },
+            { label: '信用限额审批', value: 4 },
+            { label: '核保出单', value: 5 },
+            { label: '缴费生效', value: 6 }
+          ],
+          stepInfo: [
+            { handler: '李敏(武汉DD)', startTime: '2026-05-17 09:00:00', endTime: '2026-05-17 09:30:00' },
+            { handler: '刘主管(跟单员)', startTime: '2026-05-17 10:00:00', endTime: '2026-05-17 14:00:00' },
+            { handler: '王五(资信调查)', startTime: '2026-05-18 09:00:00', endTime: '2026-05-18 16:00:00' },
+            { handler: '赵六(限额审批)', startTime: '2026-05-19 09:00:00', endTime: '2026-05-19 15:00:00' },
+            { handler: '钱七(核保出单)', startTime: '2026-05-20 09:00:00', endTime: '' },
+            { handler: '', startTime: '', endTime: '' }
+          ],
+          formData: {
+            step1: {
+              insurancePlan: 'planC',
+              insuranceCompany: 'company3',
+              matchRule: '根据国内贸易信用保险方案评估推荐。',
+              approvalResult: 'approved',
+              auditOpinion: '方案合理，同意。'
+            },
+            step2: {
+              approvalResult: 'approved',
+              auditOpinion: '资料审核通过。'
+            },
+            step3: {
+              approvalResult: 'approved',
+              auditOpinion: '资信调查完成，买方信用评级为AA级。'
+            },
+            step4: {
+              checkedItems: ['basicInfo', 'documentCheck', 'riskAssessment'],
+              approvalResult: 'approved',
+              auditOpinion: '信息校验通过，风险评估为低风险，同意审批。'
+            },
+            step5: { policyNo: 'POL20260602005', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
+            step6: { premiumAmount: '¥18,000.00', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
+          },
+          step2Docs: { applicationForm: true, buyerInfoForm: true },
+          planLabels: {
+            planA: '方案A - 短期出口信用保险',
+            planB: '方案B - 中长期出口信用保险',
+            planC: '方案C - 国内贸易信用保险'
+          },
+          companyLabels: {
+            company1: '中国出口信用保险公司',
+            company2: '平安财产保险',
+            company3: '太平洋财产保险'
+          }
+        },
+        {
+          id: 'PT20260510006',
+          policyNo: 'PI2026009900',
+          companyName: '上海EE国际贸易有限公司',
+          taskType: '投保流程',
+          status: 'completed',
+          statusName: '已完成',
+          currentStep: 6,
+          stepsCompleted: 6,
+          startTime: '2026-05-10 09:00:00',
+          endTime: '2026-05-18 17:00:00',
+          stepOptions: [
+            { label: '提交投保申请', value: 1 },
+            { label: '资料审核', value: 2 },
+            { label: '资信调查', value: 3 },
+            { label: '信用限额审批', value: 4 },
+            { label: '核保出单', value: 5 },
+            { label: '缴费生效', value: 6 }
+          ],
+          stepInfo: [
+            { handler: '陈经理(上海EE)', startTime: '2026-05-10 09:00:00', endTime: '2026-05-10 11:00:00' },
+            { handler: '刘主管(跟单员)', startTime: '2026-05-11 10:00:00', endTime: '2026-05-11 15:00:00' },
+            { handler: '王五(资信调查)', startTime: '2026-05-12 09:00:00', endTime: '2026-05-12 12:00:00' },
+            { handler: '赵六(限额审批)', startTime: '2026-05-13 09:00:00', endTime: '2026-05-14 11:00:00' },
+            { handler: '钱七(核保出单)', startTime: '2026-05-15 09:00:00', endTime: '2026-05-15 16:30:00' },
+            { handler: '孙八(缴费处理)', startTime: '2026-05-18 09:00:00', endTime: '2026-05-18 15:00:00' }
           ],
           formData: {
             step1: {
@@ -918,10 +1383,84 @@ export const useBusinessStore = defineStore('business', {
               auditOpinion: '已支付。'
             }
           },
-          step2Docs: {
-            applicationForm: true,
-            buyerInfoForm: true
+          step2Docs: { applicationForm: true, buyerInfoForm: true },
+          planLabels: {
+            planA: '方案A - 短期出口信用保险',
+            planB: '方案B - 中长期出口信用保险',
+            planC: '方案C - 国内贸易信用保险'
           },
+          companyLabels: {
+            company1: '中国出口信用保险公司',
+            company2: '平安财产保险',
+            company3: '太平洋财产保险'
+          }
+        },
+        {
+          id: 'PT20260508007',
+          policyNo: 'PI2026005678',
+          companyName: '北京ZZ贸易集团',
+          taskType: '投保流程',
+          status: 'completed',
+          statusName: '已完成',
+          currentStep: 6,
+          stepsCompleted: 6,
+          startTime: '2026-05-08 09:00:00',
+          endTime: '2026-05-16 17:00:00',
+          stepOptions: [
+            { label: '提交投保申请', value: 1 },
+            { label: '资料审核', value: 2 },
+            { label: '资信调查', value: 3 },
+            { label: '信用限额审批', value: 4 },
+            { label: '核保出单', value: 5 },
+            { label: '缴费生效', value: 6 }
+          ],
+          stepInfo: [
+            { handler: '赵经理(北京ZZ)', startTime: '2026-05-08 09:00:00', endTime: '2026-05-08 10:30:00' },
+            { handler: '刘主管(跟单员)', startTime: '2026-05-09 10:00:00', endTime: '2026-05-09 14:00:00' },
+            { handler: '王五(资信调查)', startTime: '2026-05-10 09:00:00', endTime: '2026-05-10 16:00:00' },
+            { handler: '赵六(限额审批)', startTime: '2026-05-13 09:00:00', endTime: '2026-05-14 11:00:00' },
+            { handler: '钱七(核保出单)', startTime: '2026-05-15 09:00:00', endTime: '2026-05-15 16:30:00' },
+            { handler: '孙八(缴费处理)', startTime: '2026-05-16 09:00:00', endTime: '2026-05-16 17:00:00' }
+          ],
+          formData: {
+            step1: {
+              insurancePlan: 'planA',
+              insuranceCompany: 'company1',
+              matchRule: '根据买方资信评估结果，推荐短期出口信用保险方案。',
+              approvalResult: 'approved',
+              auditOpinion: '方案合理，同意。'
+            },
+            step2: {
+              approvalResult: 'approved',
+              auditOpinion: '资料齐全，审核通过。'
+            },
+            step3: {
+              approvalResult: 'approved',
+              auditOpinion: '资信调查完成，买方信用评级为A+级。'
+            },
+            step4: {
+              checkedItems: ['basicInfo', 'documentCheck', 'riskAssessment'],
+              approvalResult: 'approved',
+              auditOpinion: '所有校验通过，同意审批。'
+            },
+            step5: {
+              policyNo: 'POL20260602007',
+              issueDate: '2026-05-15',
+              policyFile: [{ name: '保单文件.pdf' }],
+              approvalResult: 'approved',
+              auditOpinion: '保单已签发。'
+            },
+            step6: {
+              premiumAmount: '¥15,000.00',
+              paymentStatus: 'paid',
+              paymentReceipt: [{ name: '支付凭证.pdf' }],
+              policyDetailFile: [{ name: '保单明细表.pdf' }],
+              rateFile: [{ name: '费率表.pdf' }],
+              approvalResult: 'approved',
+              auditOpinion: '保费已支付，流程完成。'
+            }
+          },
+          step2Docs: { applicationForm: true, buyerInfoForm: true },
           planLabels: {
             planA: '方案A - 短期出口信用保险',
             planB: '方案B - 中长期出口信用保险',
@@ -1479,7 +2018,8 @@ export const useBusinessStore = defineStore('business', {
         taskType: '投保流程',
         startTime: task.startTime || '',
         endTime: task.endTime || '',
-        stepsCompleted: task.stepsCompleted || 7,
+        stepsCompleted: task.stepsCompleted || 6,
+        currentStep: 6,
         status: 'completed',
         statusName: '已完成',
         stepOptions: task.stepOptions || [],
@@ -1489,6 +2029,56 @@ export const useBusinessStore = defineStore('business', {
         planLabels: task.planLabels || {},
         companyLabels: task.companyLabels || {}
       })
+    },
+    approveInsuranceTaskStep(taskId, { handler, approvalResult, auditOpinion }) {
+      const task = this.processTasks.find(t => t.id === taskId)
+      if (!task) return { ok: false, message: '任务不存在' }
+      const stepNum = task.currentStep || 1
+      const idx = stepNum - 1
+      // Record current step completion
+      if (task.stepInfo[idx]) {
+        task.stepInfo[idx].endTime = formatDateTime(new Date())
+        if (handler) task.stepInfo[idx].handler = handler
+      }
+      if (task.formData['step' + stepNum]) {
+        task.formData['step' + stepNum].approvalResult = approvalResult || 'approved'
+        task.formData['step' + stepNum].auditOpinion = auditOpinion || ''
+      }
+      if (stepNum >= 6) {
+        task.status = 'completed'
+        task.statusName = '已完成'
+        task.currentStep = 6
+        task.stepsCompleted = 6
+        task.endTime = formatDateTime(new Date())
+      } else {
+        const nextStep = stepNum + 1
+        task.status = 'processing'
+        task.statusName = '处理中'
+        task.currentStep = nextStep
+        task.stepsCompleted = stepNum
+        if (task.stepInfo[nextStep - 1]) {
+          task.stepInfo[nextStep - 1].startTime = formatDateTime(new Date())
+        }
+      }
+      this.touchInsuranceApplications()
+      return { ok: true, data: task, advancedTo: task.currentStep }
+    },
+    rejectInsuranceTaskStep(taskId, { handler, auditOpinion }) {
+      const task = this.processTasks.find(t => t.id === taskId)
+      if (!task) return { ok: false, message: '任务不存在' }
+      const stepNum = task.currentStep || 1
+      const idx = stepNum - 1
+      if (task.formData['step' + stepNum]) {
+        task.formData['step' + stepNum].approvalResult = 'rejected'
+        task.formData['step' + stepNum].auditOpinion = auditOpinion || '退回修改'
+      }
+      if (task.stepInfo[idx]) {
+        if (handler) task.stepInfo[idx].handler = handler
+      }
+      task.status = 'pending'
+      task.statusName = '待处理'
+      this.touchInsuranceApplications()
+      return { ok: true, data: task }
     },
     // ===== Contract Signing & Payment =====
     getContractsForCustomer(companyName) {
@@ -1731,9 +2321,15 @@ export const useBusinessStore = defineStore('business', {
         supplementCount: payload.supplementCount || 0,
         preparedDocs: payload.preparedDocs || [],
         supplementedDocs: payload.supplementedDocs || [],
+        clerkConfirmed: payload.clerkConfirmed || false,
+        lossNotified: payload.lossNotified || false,
+        lossNotifiedTime: payload.lossNotifiedTime || null,
+        insurerNotified: payload.insurerNotified || false,
+        insurerNotifiedTime: payload.insurerNotifiedTime || null,
         createTime: payload.createTime || formatDateTime(now)
       }
       this.claims.unshift(item)
+      this.touchClaims()
       return { ok: true, data: item }
     },
 
@@ -1751,6 +2347,7 @@ export const useBusinessStore = defineStore('business', {
         updateTime: formatDateTime(new Date())
       })
       if (newStep === 5) cur.rwaSyncStatus = 'pending'
+      this.touchClaims()
       return { ok: true, data: cur }
     },
 
@@ -1764,6 +2361,7 @@ export const useBusinessStore = defineStore('business', {
         ...payload,
         updateTime: formatDateTime(new Date())
       })
+      this.touchClaims()
       return { ok: true, data: cur }
     },
 
@@ -1775,10 +2373,16 @@ export const useBusinessStore = defineStore('business', {
       cur.clerkName = clerkName
       cur.status = 'assigned'
       cur.statusName = '待接单'
+      cur.clerkConfirmed = false
+      cur.lossNotified = false
+      cur.lossNotifiedTime = null
+      cur.insurerNotified = false
+      cur.insurerNotifiedTime = null
       cur.docStatus = 'pending'
       cur.docReviewComment = ''
       cur.supplementCount = 0
       cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
       return { ok: true, data: cur }
     },
 
@@ -1790,8 +2394,101 @@ export const useBusinessStore = defineStore('business', {
       cur.statusName = '处理中'
       cur.currentStep = 2
       cur.currentStepName = '跟单接单'
+      cur.clerkConfirmed = true
       cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
       return { ok: true, data: cur }
+    },
+
+    clerkConfirmReceive(id) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.status !== 'pending_receive' || cur.docStatus !== 'reviewing') {
+        return { ok: false, message: '当前状态不允许确认接单' }
+      }
+      if (cur.clerkConfirmed) return { ok: false, message: '已确认接单，请勿重复操作' }
+      cur.clerkConfirmed = true
+      cur.status = 'processing'
+      cur.statusName = '处理中'
+      cur.currentStep = 2
+      cur.currentStepName = '跟单接单'
+      cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
+      return { ok: true, data: cur }
+    },
+
+    notifyInsurerLoss(id) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (!cur.clerkConfirmed) return { ok: false, message: '请先确认接单' }
+      if (cur.lossNotified) return { ok: false, message: '已发送可损申报通知' }
+      cur.lossNotified = true
+      cur.lossNotifiedTime = formatDateTime(new Date())
+      cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
+      return { ok: true, data: cur }
+    },
+
+    inkassoNotifyInsurer(id) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.status !== 'assigned') return { ok: false, message: '当前状态不允许通知' }
+      if (cur.insurerNotified) return { ok: false, message: '已发送通知' }
+      cur.insurerNotified = true
+      cur.insurerNotifiedTime = formatDateTime(new Date())
+      cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
+      return { ok: true, data: cur }
+    },
+
+    pushDelegationContract(id) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.status !== 'pending_contract_sign') return { ok: false, message: '当前状态不允许推送合同' }
+      cur.delegationAgreement = [
+        { name: '委托追偿合同_cayk_legal_2026.pdf', signed: false },
+        { name: '授权委托书_authorization_2026.pdf', signed: false }
+      ]
+      cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
+      return { ok: true, data: cur }
+    },
+
+    customerSignContract(id) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.status !== 'pending_contract_sign') return { ok: false, message: '当前状态不允许签署' }
+      cur.delegationAgreement = (cur.delegationAgreement || []).map(d => ({ ...d, signed: true }))
+      cur.status = 'pending_payment'
+      cur.statusName = '待支付服务费'
+      cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
+      return { ok: true, data: cur }
+    },
+
+    processServiceFee(id) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.status !== 'pending_payment') return { ok: false, message: '当前状态不允许支付' }
+      cur.serviceFeePaid = true
+      cur.status = 'payment_received'
+      cur.statusName = '赔付到账'
+      cur.currentStep = 5
+      cur.currentStepName = '理赔收回'
+      cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
+      return { ok: true, data: cur }
+    },
+
+    confirmPaymentReceived(id) {
+      const cur = this.claims.find(c => c.id === id)
+      if (!cur) return { ok: false, message: '理赔记录不存在' }
+      if (cur.status !== 'payment_received') return { ok: false, message: '当前状态不允许确认到账' }
+      cur.status = 'completed'
+      cur.statusName = '已完成'
+      cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
+      return { ok: true, data: cur, action: 'confirmed' }
     },
 
     // ===== 理赔资料管理 =====
@@ -1805,6 +2502,7 @@ export const useBusinessStore = defineStore('business', {
       cur.docStatus = 'prepared'
       cur.statusName = '资料已准备'
       cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
       return { ok: true, data: cur }
     },
 
@@ -1816,6 +2514,7 @@ export const useBusinessStore = defineStore('business', {
       cur.status = 'pending_receive'
       cur.statusName = '待接收'
       cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
       return { ok: true, data: cur }
     },
 
@@ -1826,16 +2525,16 @@ export const useBusinessStore = defineStore('business', {
       cur.docReviewComment = comment
       if (isComplete) {
         cur.docStatus = 'passed'
-        cur.status = 'processing'
-        cur.statusName = '处理中'
-        cur.currentStep = 2
-        cur.currentStepName = '跟单接单'
+        cur.status = 'pending_contract_sign'
+        cur.statusName = '待签署委托合同'
         cur.updateTime = formatDateTime(new Date())
+        this.touchClaims()
         return { ok: true, data: cur, action: 'accepted' }
       } else {
         cur.docStatus = 'incomplete'
         cur.statusName = '资料不完整'
         cur.updateTime = formatDateTime(new Date())
+        this.touchClaims()
         return { ok: true, data: cur, action: 'returned' }
       }
     },
@@ -1849,6 +2548,7 @@ export const useBusinessStore = defineStore('business', {
       cur.docStatus = 'supplemented'
       cur.statusName = '已补充'
       cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
       return { ok: true, data: cur }
     },
 
@@ -1862,6 +2562,7 @@ export const useBusinessStore = defineStore('business', {
       cur.status = 'pending_receive'
       cur.statusName = '待接收'
       cur.updateTime = formatDateTime(new Date())
+      this.touchClaims()
       return { ok: true, data: cur }
     },
 

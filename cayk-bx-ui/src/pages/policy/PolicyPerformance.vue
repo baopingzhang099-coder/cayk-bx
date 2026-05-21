@@ -32,6 +32,14 @@
       </t-col>
     </t-row>
 
+    <t-row :gutter="16" class="mb-16">
+      <t-col :span="12">
+        <t-card title="履约率趋势">
+          <div ref="performanceTrendRef" class="chart-container"></div>
+        </t-card>
+      </t-col>
+    </t-row>
+
     <t-card>
       <t-table :data="tableData" :columns="columns" row-key="id" hover stripe>
         <template #status="{ row }">
@@ -46,7 +54,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import * as echarts from 'echarts'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
 
@@ -54,6 +63,44 @@ const statusMap = {
   normal: '正常履约',
   overdue: '逾期未决',
   closed: '已结案'
+}
+
+const performanceTrendRef = ref(null)
+let perfChart = null
+
+const months = ['2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05']
+const normalRates = [94, 94.5, 95, 95.2, 95.8, 96, 96.2, 96.5, 96.3, 96.8, 97, 96.5]
+const overdueRates = [6, 5.5, 5, 4.8, 4.2, 4, 3.8, 3.5, 3.7, 3.2, 3, 3.5]
+
+const initPerfChart = () => {
+  if (!performanceTrendRef.value) return
+  perfChart = echarts.init(performanceTrendRef.value)
+  perfChart.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['正常履约率', '逾期率'], bottom: 0 },
+    grid: { left: '3%', right: '4%', bottom: '22%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: months },
+    yAxis: { type: 'value', name: '%', axisLabel: { formatter: '{value}%' } },
+    series: [
+      {
+        name: '正常履约率',
+        type: 'line',
+        smooth: true,
+        data: normalRates,
+        areaStyle: { opacity: 0.3 },
+        lineStyle: { color: '#00A870', width: 3 },
+        itemStyle: { color: '#00A870' }
+      },
+      {
+        name: '逾期率',
+        type: 'line',
+        smooth: true,
+        data: overdueRates,
+        lineStyle: { color: '#E34D59', width: 2, type: 'dashed' },
+        itemStyle: { color: '#E34D59' }
+      }
+    ]
+  })
 }
 
 const columns = [
@@ -77,13 +124,24 @@ const tableData = ref([
 
 const handleView = (row) => console.log('view:', row)
 
-onMounted(() => {})
+const handleResize = () => { perfChart && perfChart.resize() }
+
+onMounted(() => {
+  setTimeout(initPerfChart, 100)
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  perfChart && perfChart.dispose()
+  window.removeEventListener('resize', handleResize)
+})
 </script>
 
 <style lang="scss" scoped>
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .page-title { font-size: 18px; font-weight: 600; color: #333; }
 .mb-16 { margin-bottom: 16px; }
+.chart-container { height: 280px; width: 100%; }
 .breadcrumbs {
   display: flex;
   align-items: center;

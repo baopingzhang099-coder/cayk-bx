@@ -144,7 +144,7 @@ const allMenuItems = [
     icon: 'error-circle', 
     children: [
       { key: 'claim-list', title: '理赔信息管理', path: '/claim/list', roles: ['customer', 'inkasso', 'clerk'], icon: 'first-aid-kit' },
-      { key: 'claim-process', title: '理赔流程管理', path: '/claim/process', roles: ['inkasso', 'clerk'], icon: 'route' },
+      { key: 'claim-process', title: '理赔流程管理', path: '/claim/process', roles: ['customer', 'inkasso', 'clerk'], icon: 'route' },
       { key: 'claim-report', title: '理赔报表管理', path: '/claim/report', roles: ['inkasso'], icon: 'chart' }
     ]
   },

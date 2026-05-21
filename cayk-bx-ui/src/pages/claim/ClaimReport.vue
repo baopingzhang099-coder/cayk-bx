@@ -36,18 +36,12 @@
     <t-row :gutter="16">
       <t-col :span="12">
         <t-card title="理赔案件趋势图" class="mb-16">
-          <div class="chart-placeholder">
-            <t-icon name="chart" size="48px" />
-            <span>理赔案件数量趋势（折线图）</span>
-          </div>
+          <div ref="caseTrendRef" class="chart-container"></div>
         </t-card>
       </t-col>
       <t-col :span="12">
         <t-card title="理赔金额趋势图" class="mb-16">
-          <div class="chart-placeholder">
-            <t-icon name="chart" size="48px" />
-            <span>理赔金额趋势（柱状图）</span>
-          </div>
+          <div ref="amountTrendRef" class="chart-container"></div>
         </t-card>
       </t-col>
     </t-row>
@@ -61,17 +55,31 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import * as echarts from 'echarts'
 import StatCard from '@/components/common/StatCard.vue'
 
 const dateRange = ref([])
-const tableData = ref([
-  { id: 1, month: '2026-01', caseCount: 8, claimAmount: 320000, closedCount: 6, closedRate: '75%' },
-  { id: 2, month: '2026-02', caseCount: 10, claimAmount: 450000, closedCount: 8, closedRate: '80%' },
-  { id: 3, month: '2026-03', caseCount: 15, claimAmount: 580000, closedCount: 12, closedRate: '80%' },
-  { id: 4, month: '2026-04', caseCount: 12, claimAmount: 420000, closedCount: 10, closedRate: '83%' },
-  { id: 5, month: '2026-05', caseCount: 12, claimAmount: 456000, closedCount: 9, closedRate: '75%' }
-])
+
+const caseTrendRef = ref(null)
+const amountTrendRef = ref(null)
+let caseChart = null
+let amountChart = null
+
+const months = ['2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05']
+const caseData = [5, 7, 6, 8, 10, 9, 11, 8, 10, 15, 12, 12]
+const amountData = [180000, 250000, 220000, 320000, 380000, 350000, 420000, 320000, 450000, 580000, 420000, 456000]
+
+const tableData = ref(
+  months.map((month, i) => ({
+    id: i + 1,
+    month,
+    caseCount: caseData[i],
+    claimAmount: amountData[i],
+    closedCount: Math.round(caseData[i] * 0.75),
+    closedRate: `${Math.round(70 + Math.random() * 15)}%`
+  }))
+)
 
 const columns = [
   { colKey: 'month', title: '月份', width: 100 },
@@ -80,6 +88,64 @@ const columns = [
   { colKey: 'closedCount', title: '已结案', align: 'center' },
   { colKey: 'closedRate', title: '结案率', align: 'center' }
 ]
+
+const initCaseTrendChart = () => {
+  if (!caseTrendRef.value) return
+  caseChart = echarts.init(caseTrendRef.value)
+  caseChart.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: months },
+    yAxis: { type: 'value', name: '件数' },
+    series: [{
+      name: '理赔案件',
+      type: 'line',
+      smooth: true,
+      data: caseData,
+      areaStyle: { opacity: 0.3 },
+      itemStyle: { color: '#E34D59' },
+      lineStyle: { color: '#E34D59' }
+    }]
+  })
+}
+
+const initAmountTrendChart = () => {
+  if (!amountTrendRef.value) return
+  amountChart = echarts.init(amountTrendRef.value)
+  amountChart.setOption({
+    tooltip: { trigger: 'axis', formatter: '{b}<br/>理赔金额: ¥{c}' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: months, axisLabel: { rotate: 30 } },
+    yAxis: { type: 'value', name: '金额(元)', axisLabel: { formatter: (v) => v >= 10000 ? v / 10000 + '万' : v } },
+    series: [{
+      name: '理赔金额',
+      type: 'bar',
+      data: amountData,
+      itemStyle: { color: '#E34D59', borderRadius: [4, 4, 0, 0] }
+    }]
+  })
+}
+
+const initCharts = () => {
+  initCaseTrendChart()
+  initAmountTrendChart()
+}
+
+const handleResize = () => {
+  caseChart && caseChart.resize()
+  amountChart && amountChart.resize()
+}
+
+onMounted(() => {
+  setTimeout(initCharts, 100)
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  caseChart && caseChart.dispose()
+  amountChart && amountChart.dispose()
+  window.removeEventListener('resize', handleResize)
+})
 </script>
 
 <style lang="scss" scoped>
@@ -87,7 +153,7 @@ const columns = [
 .page-title { font-size: 18px; font-weight: 600; color: #333; }
 .page-actions { display: flex; gap: 12px; }
 .mb-16 { margin-bottom: 16px; }
-.chart-placeholder { height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #999; }
+.chart-container { height: 250px; width: 100%; }
 .breadcrumbs {
   display: flex;
   align-items: center;

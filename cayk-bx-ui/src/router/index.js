@@ -107,7 +107,7 @@ const routes = [
         path: '/claim/process',
         name: 'ClaimProcess',
         component: () => import('@/pages/claim/ClaimProcess.vue'),
-        meta: { title: '理赔流程管理', menuKey: 'claim-process', roles: ['inkasso', 'clerk'] }
+        meta: { title: '理赔流程管理', menuKey: 'claim-process', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/claim/report',

@@ -236,10 +236,19 @@
             @page-change="onPageChange"
           >
             <template #status="{ row }">
-              <t-tag theme="success" variant="light">{{ row.statusName }}</t-tag>
+              <t-tag v-if="row.status === 'completed'" theme="success" variant="light">{{ row.statusName }}</t-tag>
+              <t-tag v-else-if="row.status === 'processing'" theme="primary" variant="light">{{ row.statusName }}</t-tag>
+              <t-tag v-else theme="warning" variant="light">{{ row.statusName }}</t-tag>
+            </template>
+            <template #currentStepDisplay="{ row }">
+              <span v-if="row.status === 'completed'">已完成</span>
+              <span v-else>{{ stepLabelMap[row.currentStep] || '未开始' }}</span>
             </template>
             <template #operation="{ row }">
-              <t-link theme="primary" @click="handleView(row)">查看详情</t-link>
+              <t-space>
+                <t-link theme="primary" @click="handleView(row)">查看详情</t-link>
+                <t-link v-if="canProcessTask(row)" theme="success" @click="handleProcessStep(row)">{{ getStepActionLabel(row) }}</t-link>
+              </t-space>
             </template>
           </t-table>
         </t-card>
@@ -263,7 +272,7 @@
           </div>
           <div class="summary-item">
             <span class="summary-label">完成时间</span>
-            <span class="summary-value">{{ currentTask.endTime }}</span>
+            <span class="summary-value">{{ currentTask.endTime || (currentTask.status === 'completed' ? '已完成' : '处理中') }}</span>
           </div>
         </div>
         <t-divider />
@@ -368,6 +377,41 @@
         </div>
       </div>
     </t-dialog>
+
+    <t-dialog v-model:visible="processVisible" :header="processTitle" width="600px" :confirm-btn="processConfirmText" @confirm="handleProcessConfirm" @cancel="processVisible = false">
+      <div v-if="processTask" class="detail-body">
+        <div class="detail-summary">
+          <div class="summary-item">
+            <span class="summary-label">任务编号</span>
+            <span class="summary-value">{{ processTask.id }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">客户名称</span>
+            <span class="summary-value">{{ processTask.companyName }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">当前步骤</span>
+            <span class="summary-value">{{ stepLabelMap[processTask.currentStep] || '未开始' }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">处理角色</span>
+            <span class="summary-value">{{ stepRoles[processTask.currentStep - 1]?.label || '-' }}</span>
+          </div>
+        </div>
+        <t-divider />
+        <t-form :data="processForm" label-width="80">
+          <t-form-item label="操作">
+            <t-radio-group v-model="processForm.approvalResult">
+              <t-radio value="approved">通过</t-radio>
+              <t-radio value="rejected">退回</t-radio>
+            </t-radio-group>
+          </t-form-item>
+          <t-form-item label="处理意见">
+            <t-textarea v-model="processForm.auditOpinion" placeholder="请输入处理意见" :autosize="{ minRows: 3, maxRows: 5 }" />
+          </t-form-item>
+        </t-form>
+      </div>
+    </t-dialog>
   </div>
 </template>
 
@@ -396,9 +440,9 @@ const stepOptions = [
 const stepRoles = [
   { role: 'customer', label: '客户' },
   { role: 'clerk', label: '跟单员' },
-  { role: 'insurance', label: '保险公司' },
-  { role: 'insurance', label: '保险公司' },
-  { role: 'insurance', label: '保险公司' },
+  { role: 'inkasso', label: '长安银科' },
+  { role: 'inkasso', label: '长安银科' },
+  { role: 'inkasso', label: '长安银科' },
   { role: 'customer', label: '客户' }
 ]
 
@@ -553,13 +597,13 @@ const currentTask = ref(null)
 const taskColumns = [
   { colKey: 'id', title: '任务编号', width: 160 },
   { colKey: 'policyNo', title: '保单号', width: 150 },
-  { colKey: 'companyName', title: '客户名称', minWidth: 200 },
+  { colKey: 'companyName', title: '客户名称', minWidth: 180 },
   { colKey: 'taskType', title: '任务类型', width: 100 },
+  { colKey: 'currentStepDisplay', title: '当前步骤', width: 110, slot: 'currentStepDisplay' },
   { colKey: 'startTime', title: '开始时间', width: 170 },
-  { colKey: 'endTime', title: '完成时间', width: 170 },
-  { colKey: 'stepsCompleted', title: '完成步骤', width: 100 },
-  { colKey: 'status', title: '状态', width: 100, slot: 'status' },
-  { colKey: 'operation', title: '操作', width: 120, slot: 'operation' }
+  { colKey: 'stepsCompleted', title: '已完步骤', width: 90 },
+  { colKey: 'status', title: '状态', width: 90, slot: 'status' },
+  { colKey: 'operation', title: '操作', width: 180, slot: 'operation' }
 ]
 
 const pagination = ref({
@@ -568,7 +612,10 @@ const pagination = ref({
   defaultCurrent: 1
 })
 
-const processTasks = computed(() => businessStore.processTasks)
+const processTasks = computed(() => {
+  void businessStore.insuranceUpdateVersion
+  return businessStore.processTasks
+})
 
 const onPageChange = (pageInfo) => {
   pagination.value.defaultCurrent = pageInfo.current
@@ -578,6 +625,85 @@ const onPageChange = (pageInfo) => {
 const handleView = (row) => {
   currentTask.value = row
   detailVisible.value = true
+}
+
+// Step label map
+const stepLabelMap = {
+  0: '未开始',
+  1: '提交投保申请',
+  2: '资料审核',
+  3: '资信调查',
+  4: '信用限额审批',
+  5: '核保出单',
+  6: '缴费生效'
+}
+
+// Role-based process actions
+const canProcessTask = (task) => {
+  if (!task || task.status === 'completed') return false
+  const role = userStore.role
+  const step = task.currentStep || 1
+  if (role === 'customer' && step === 1 && task.status === 'pending') return true
+  if (role === 'customer' && step === 6 && task.status === 'processing') return true
+  if (role === 'clerk' && step === 2 && task.status === 'processing') return true
+  if (role === 'inkasso' && step >= 3 && step <= 5 && task.status === 'processing') return true
+  return false
+}
+
+const getStepActionLabel = (task) => {
+  if (!task) return '处理'
+  const labels = { 1: '提交申请', 2: '资料审核', 3: '资信调查', 4: '限额审批', 5: '核保出单', 6: '缴费' }
+  return labels[task.currentStep] || '处理'
+}
+
+// Process dialog state
+const processVisible = ref(false)
+const processTask = ref(null)
+const processForm = reactive({
+  approvalResult: 'approved',
+  auditOpinion: ''
+})
+const processTitle = computed(() => {
+  if (!processTask.value) return '处理任务'
+  return `处理任务 - ${processTask.value.companyName} [${stepLabelMap[processTask.value.currentStep] || ''}]`
+})
+const processConfirmText = computed(() => processForm.approvalResult === 'approved' ? '确认通过' : '确认退回')
+
+const handleProcessStep = (row) => {
+  processTask.value = row
+  processForm.approvalResult = 'approved'
+  processForm.auditOpinion = ''
+  processVisible.value = true
+}
+
+const handleProcessConfirm = () => {
+  if (!processTask.value) return
+  const task = processTask.value
+  if (processForm.approvalResult === 'rejected') {
+    businessStore.rejectInsuranceTaskStep(task.id, {
+      handler: userStore.userName,
+      auditOpinion: processForm.auditOpinion
+    })
+    MessagePlugin.warning('任务已退回')
+  } else {
+    const result = businessStore.approveInsuranceTaskStep(task.id, {
+      handler: userStore.userName,
+      approvalResult: 'approved',
+      auditOpinion: processForm.auditOpinion
+    })
+    if (result.ok) {
+      const stepName = stepLabelMap[result.advancedTo] || ''
+      if (result.advancedTo > (task.currentStep || 1)) {
+        MessagePlugin.success(`已通过，流程推进至「${stepName}」`)
+      } else {
+        MessagePlugin.success('流程已完成！')
+      }
+    } else {
+      MessagePlugin.error(result.message || '操作失败')
+    }
+  }
+  processVisible.value = false
+  processTask.value = null
 }
 </script>
 

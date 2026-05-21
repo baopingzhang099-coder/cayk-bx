@@ -51,18 +51,12 @@
     <t-row :gutter="16" class="mb-16">
       <t-col :span="12">
         <t-card title="投保趋势图">
-          <div class="chart-placeholder">
-            <t-icon name="chart" size="48px" />
-            <span>投保数量趋势（折线图）</span>
-          </div>
+          <div ref="insuranceTrendRef" class="chart-container"></div>
         </t-card>
       </t-col>
       <t-col :span="12">
         <t-card title="出运走势图">
-          <div class="chart-placeholder">
-            <t-icon name="chart" size="48px" />
-            <span>出运金额趋势（柱状图）</span>
-          </div>
+          <div ref="shipmentTrendRef" class="chart-container"></div>
         </t-card>
       </t-col>
     </t-row>
@@ -70,18 +64,12 @@
     <t-row :gutter="16" class="mb-16">
       <t-col :span="12">
         <t-card title="买方地区分布">
-          <div class="chart-placeholder">
-            <t-icon name="chart" size="48px" />
-            <span>买方国家/地区分布（饼图）</span>
-          </div>
+          <div ref="buyerRegionRef" class="chart-container"></div>
         </t-card>
       </t-col>
       <t-col :span="12">
         <t-card title="保险方案占比">
-          <div class="chart-placeholder">
-            <t-icon name="chart" size="48px" />
-            <span>方案A/B/C占比（饼图）</span>
-          </div>
+          <div ref="planRatioRef" class="chart-container"></div>
         </t-card>
       </t-col>
     </t-row>
@@ -96,13 +84,27 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import * as echarts from 'echarts'
 import StatCard from '@/components/common/StatCard.vue'
 import { useBusinessStore } from '@/stores/business'
 
 const dateRange = ref([])
 const store = useBusinessStore()
 const kpis = computed(() => store.businessKpis)
+
+const insuranceTrendRef = ref(null)
+const shipmentTrendRef = ref(null)
+const buyerRegionRef = ref(null)
+const planRatioRef = ref(null)
+let insuranceTrendChart = null
+let shipmentTrendChart = null
+let buyerRegionChart = null
+let planRatioChart = null
+
+const months = ['2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05']
+const insuranceCountData = [20, 25, 22, 28, 32, 30, 35, 38, 35, 42, 48, 45]
+const shipmentAmountData = [800000, 950000, 880000, 1200000, 1500000, 1350000, 1600000, 1850000, 1680000, 2100000, 2350000, 2200000]
 
 const columns = [
   { colKey: 'month', title: '月份', width: 100 },
@@ -123,7 +125,116 @@ const tableData = computed(() => {
   ]
 })
 
-onMounted(() => store.ensureSeeded())
+const initInsuranceTrendChart = () => {
+  if (!insuranceTrendRef.value) return
+  insuranceTrendChart = echarts.init(insuranceTrendRef.value)
+  insuranceTrendChart.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: months },
+    yAxis: { type: 'value', name: '份数' },
+    series: [{
+      name: '投保数量',
+      type: 'line',
+      smooth: true,
+      data: insuranceCountData,
+      areaStyle: { opacity: 0.3 },
+      itemStyle: { color: '#0052D9' },
+      lineStyle: { color: '#0052D9' }
+    }]
+  })
+}
+
+const initShipmentTrendChart = () => {
+  if (!shipmentTrendRef.value) return
+  shipmentTrendChart = echarts.init(shipmentTrendRef.value)
+  shipmentTrendChart.setOption({
+    tooltip: { trigger: 'axis', formatter: '{b}<br/>出运金额: ¥{c}' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: months, axisLabel: { rotate: 30 } },
+    yAxis: { type: 'value', name: '金额(元)', axisLabel: { formatter: (v) => v >= 10000 ? v / 10000 + '万' : v } },
+    series: [{
+      name: '出运金额',
+      type: 'bar',
+      data: shipmentAmountData,
+      itemStyle: { color: '#00A870', borderRadius: [4, 4, 0, 0] }
+    }]
+  })
+}
+
+const initBuyerRegionChart = () => {
+  if (!buyerRegionRef.value) return
+  buyerRegionChart = echarts.init(buyerRegionRef.value)
+  buyerRegionChart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}% ({d}%)' },
+    legend: { orient: 'vertical', left: 'left' },
+    series: [{
+      type: 'pie', radius: ['40%', '70%'], center: ['60%', '50%'],
+      avoidLabelOverlap: false,
+      itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      emphasis: { label: { show: true, fontSize: 20, fontWeight: 'bold' } },
+      labelLine: { show: false },
+      data: [
+        { value: 30, name: '北美', itemStyle: { color: '#0052D9' } },
+        { value: 25, name: '欧洲', itemStyle: { color: '#00A870' } },
+        { value: 20, name: '东南亚', itemStyle: { color: '#E34D59' } },
+        { value: 15, name: '日韩', itemStyle: { color: '#E7A500' } },
+        { value: 10, name: '其他', itemStyle: { color: '#666666' } }
+      ]
+    }]
+  })
+}
+
+const initPlanRatioChart = () => {
+  if (!planRatioRef.value) return
+  planRatioChart = echarts.init(planRatioRef.value)
+  planRatioChart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}% ({d}%)' },
+    legend: { orient: 'vertical', left: 'left' },
+    series: [{
+      type: 'pie', radius: ['40%', '70%'], center: ['60%', '50%'],
+      avoidLabelOverlap: false,
+      itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      emphasis: { label: { show: true, fontSize: 20, fontWeight: 'bold' } },
+      labelLine: { show: false },
+      data: [
+        { value: 35, name: '方案A', itemStyle: { color: '#0052D9' } },
+        { value: 40, name: '方案B', itemStyle: { color: '#00A870' } },
+        { value: 25, name: '方案C', itemStyle: { color: '#E34D59' } }
+      ]
+    }]
+  })
+}
+
+const initCharts = () => {
+  initInsuranceTrendChart()
+  initShipmentTrendChart()
+  initBuyerRegionChart()
+  initPlanRatioChart()
+}
+
+const handleResize = () => {
+  insuranceTrendChart && insuranceTrendChart.resize()
+  shipmentTrendChart && shipmentTrendChart.resize()
+  buyerRegionChart && buyerRegionChart.resize()
+  planRatioChart && planRatioChart.resize()
+}
+
+onMounted(() => {
+  store.ensureSeeded()
+  setTimeout(initCharts, 100)
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  insuranceTrendChart && insuranceTrendChart.dispose()
+  shipmentTrendChart && shipmentTrendChart.dispose()
+  buyerRegionChart && buyerRegionChart.dispose()
+  planRatioChart && planRatioChart.dispose()
+  window.removeEventListener('resize', handleResize)
+})
 </script>
 
 <style lang="scss" scoped>
@@ -131,7 +242,7 @@ onMounted(() => store.ensureSeeded())
 .page-title { font-size: 18px; font-weight: 600; color: #333; }
 .page-actions { display: flex; gap: 12px; }
 .mb-16 { margin-bottom: 16px; }
-.chart-placeholder { height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #999; }
+.chart-container { height: 250px; width: 100%; }
 .breadcrumbs {
   display: flex;
   align-items: center;

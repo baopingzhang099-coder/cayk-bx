@@ -73,7 +73,7 @@
               <span class="timeline-hint">点击步骤标题可展开/收起详情</span>
             </div>
 
-            <!-- Step 1: 报案提交 -->
+            <!-- Step 1: 报案 -->
             <div class="timeline-node" :class="getStepNodeClass(1)">
               <div class="node-header" @click="toggleCollapse(0)">
                 <div class="node-marker">
@@ -84,7 +84,7 @@
                 <div class="node-info">
                   <div class="node-title">
                     <span class="node-step-num">Step 1</span>
-                    <span class="node-step-name">报案提交与OCR识别</span>
+                    <span class="node-step-name">报案</span>
                     <t-tag theme="default" variant="light" size="small" class="role-tag">客户</t-tag>
                     <span class="node-handler">处理人：{{ currentClaim.claimContact }}</span>
                   </div>
@@ -100,86 +100,68 @@
 
               <div v-show="expandedSteps[0]" class="node-body">
                 <div class="node-content">
-                  <div class="card-grid mb-16">
+                  <div class="section-title">报案渠道</div>
+                  <div class="channel-grid">
+                    <div class="channel-item">
+                      <div class="channel-label">线上渠道（官网/APP/单一窗口）</div>
+                      <div class="channel-companies">
+                        <t-tag v-for="company in ['中国信保', '人保财险', '太平洋保险', '大地保险']" :key="company" theme="success" variant="light" size="small">{{ company }} ✓</t-tag>
+                      </div>
+                      <div class="channel-note">信保主要通过"单一窗口"或"信通通"</div>
+                    </div>
+                    <div class="channel-item">
+                      <div class="channel-label">电话热线</div>
+                      <div class="channel-companies">
+                        <t-tag v-for="company in ['中国信保', '人保财险', '太平洋保险', '大地保险']" :key="company" theme="success" variant="light" size="small">{{ company }} ✓</t-tag>
+                      </div>
+                      <div class="channel-note">通用方式：95387/95518/95500/95590</div>
+                    </div>
+                  </div>
+
+                  <div class="section-title mt-16">报案时限要求</div>
+                  <div class="deadline-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>时限类型</th>
+                          <th>中国信保</th>
+                          <th>人保财险</th>
+                          <th>太平洋保险</th>
+                          <th>大地保险</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>拖欠风险报案时限</td>
+                          <td><t-tag theme="success" variant="light">≤ 30天</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">不支持</t-tag></td>
+                          <td><t-tag theme="success" variant="light">≤ 30天</t-tag></td>
+                          <td><t-tag theme="success" variant="light">≤ 30天</t-tag></td>
+                        </tr>
+                        <tr>
+                          <td>破产/拒收等风险时限</td>
+                          <td><t-tag theme="success" variant="light">≤ 10工作日</t-tag></td>
+                          <td><t-tag theme="success" variant="light">≤ 10工作日</t-tag></td>
+                          <td><t-tag theme="success" variant="light">≤ 10工作日</t-tag></td>
+                          <td><t-tag theme="success" variant="light">≤ 10工作日</t-tag></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="deadline-note">人保要求最严，所有风险均需10日内报案</div>
+
+                  <div class="section-title mt-16">报案信息</div>
+                  <div class="card-grid">
                     <div class="info-item"><span class="info-label">出险买方：</span><span class="info-val font-semibold">{{ currentClaim.buyerName }}</span></div>
                     <div class="info-item"><span class="info-label">理赔类型：</span><span class="info-val">{{ currentClaim.claimTypeName }}</span></div>
                     <div class="info-item"><span class="info-label">出险日期：</span><span class="info-val">{{ currentClaim.lossDate }}</span></div>
                     <div class="info-item"><span class="info-label">预估损失：</span><span class="info-val text-primary font-bold">${{ Number(currentClaim.estimatedLossAmount).toLocaleString() }} {{ currentClaim.lossCurrency }}</span></div>
                   </div>
-
-                  <div class="ocr-section-title">📁 贸易证明单据上传与 OCR 智能匹配校验</div>
-
-                  <t-form label-align="top" class="mb-16">
-                    <t-row :gutter="16">
-                      <t-col :span="6">
-                        <t-form-item label="贸易合同">
-                          <t-upload v-model="ocrDocs.tradeContract" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="3">
-                            <t-button variant="outline" size="small">选择文件</t-button>
-                          </t-upload>
-                        </t-form-item>
-                      </t-col>
-                      <t-col :span="6">
-                        <t-form-item label="商业发票">
-                          <t-upload v-model="ocrDocs.commercialInvoice" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="5">
-                            <t-button variant="outline" size="small">选择文件</t-button>
-                          </t-upload>
-                        </t-form-item>
-                      </t-col>
-                    </t-row>
-                    <t-row :gutter="16">
-                      <t-col :span="6">
-                        <t-form-item label="提单/运单">
-                          <t-upload v-model="ocrDocs.billOfLading" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="3">
-                            <t-button variant="outline" size="small">选择文件</t-button>
-                          </t-upload>
-                        </t-form-item>
-                      </t-col>
-                      <t-col :span="6">
-                        <t-form-item label="出口报关单">
-                          <t-upload v-model="ocrDocs.customsDeclaration" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="3">
-                            <t-button variant="outline" size="small">选择文件</t-button>
-                          </t-upload>
-                        </t-form-item>
-                      </t-col>
-                    </t-row>
-                    <t-row :gutter="16">
-                      <t-col :span="6">
-                        <t-form-item label="损失证明">
-                          <t-upload v-model="ocrDocs.lossProof" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="3">
-                            <t-button variant="outline" size="small">选择文件</t-button>
-                          </t-upload>
-                        </t-form-item>
-                      </t-col>
-                      <t-col :span="6">
-                        <t-form-item label="追偿授权书">
-                          <t-upload v-model="ocrDocs.recourseAuth" theme="file" accept=".pdf,.jpg,.png" :auto-upload="false" :max="1">
-                            <t-button variant="outline" size="small">选择文件</t-button>
-                          </t-upload>
-                        </t-form-item>
-                      </t-col>
-                    </t-row>
-                  </t-form>
-
-                  <div v-if="isScanning" class="ocr-progress-wp mb-16">
-                    <div class="progress-txt">OCR单证数据一致性校验中... {{ scanProgress }}%</div>
-                    <t-progress theme="line" :percentage="scanProgress" status="active" />
-                  </div>
-
-                  <div v-if="scanSuccess" class="ocr-result-wp mb-16">
-                    <t-alert theme="success" title="OCR 识别匹配成功" message="[智能校验结论]：合同号、发票金额、收货人与本案申报信息 100% 结构化一致，未检出关联交易风险。" />
-                  </div>
-
-                  <div class="ocr-actions">
-                    <t-button variant="outline" :loading="isScanning" :disabled="scanSuccess" @click="startOCRScan">
-                      <template #icon><t-icon name="search" /></template>
-                      启动理赔单证 OCR 识别校验
-                    </t-button>
-                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Step 2: 跟单接单 -->
+            <!-- Step 2: 资料准备 -->
             <div class="timeline-node" :class="getStepNodeClass(2)">
               <div class="node-header" @click="toggleCollapse(1)">
                 <div class="node-marker">
@@ -190,7 +172,7 @@
                 <div class="node-info">
                   <div class="node-title">
                     <span class="node-step-num">Step 2</span>
-                    <span class="node-step-name">跟单自动派单与时限预警</span>
+                    <span class="node-step-name">资料准备</span>
                     <t-tag theme="primary" variant="light" size="small" class="role-tag">跟单员</t-tag>
                     <span class="node-handler">处理人：跟单员李明 (C001)</span>
                   </div>
@@ -206,25 +188,114 @@
 
               <div v-show="expandedSteps[1]" class="node-body">
                 <div class="node-content">
-                  <div class="alert-box-warn mb-16">
-                    <div class="warning-title">⌛ 报案时限预警监测</div>
-                    <div class="warning-desc">对应保险公司规则：{{ currentClaim.reportDeadline }}。</div>
-                    <div class="warning-countdown">
-                      理赔报案截止死线倒计时：<t-tag theme="success" variant="light" class="mr-8">剩余 18 天</t-tag>
-                      时限状态检测：<t-tag theme="success">安全 🟢</t-tag>
+                  <div class="section-title">基础贸易单据（四家必审）</div>
+                  <div class="document-grid">
+                    <div class="document-item required">
+                      <div class="doc-icon">📄</div>
+                      <div class="doc-info">
+                        <div class="doc-name">贸易合同</div>
+                        <div class="doc-desc">证明贸易真实性</div>
+                      </div>
+                      <t-tag theme="success" variant="light">四家必审</t-tag>
+                    </div>
+                    <div class="document-item required">
+                      <div class="doc-icon">📊</div>
+                      <div class="doc-info">
+                        <div class="doc-name">商业发票</div>
+                        <div class="doc-desc">核心理赔依据</div>
+                      </div>
+                      <t-tag theme="success" variant="light">四家必审</t-tag>
+                    </div>
+                    <div class="document-item required">
+                      <div class="doc-icon">📦</div>
+                      <div class="doc-info">
+                        <div class="doc-name">提单/运单</div>
+                        <div class="doc-desc">证明货物运输</div>
+                      </div>
+                      <t-tag theme="success" variant="light">四家必审</t-tag>
+                    </div>
+                    <div class="document-item">
+                      <div class="doc-icon">📋</div>
+                      <div class="doc-info">
+                        <div class="doc-name">买方违约/拒付证明</div>
+                        <div class="doc-desc">核心理赔依据</div>
+                      </div>
+                      <t-tag theme="success" variant="light">四家必审</t-tag>
                     </div>
                   </div>
 
-                  <div class="card-grid">
-                    <div class="info-item"><span class="info-label">承接跟单员：</span><span class="info-val">李明 (业务部一队)</span></div>
-                    <div class="info-item"><span class="info-label">当前负载：</span><span class="info-val">3 个处理中理赔案件 (正常)</span></div>
-                    <div class="info-item"><span class="info-label">派单模式：</span><span class="info-val">专属客户经理自动分派</span></div>
+                  <div class="section-title mt-16">专项证明文件</div>
+                  <div class="document-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>文件名称</th>
+                          <th>中国信保</th>
+                          <th>人保财险</th>
+                          <th>太平洋保险</th>
+                          <th>大地保险</th>
+                          <th>备注</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>《可能损失通知书》/《索赔书》</td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td>各家名称略有差异，<span class="text-danger">需盖公章</span></td>
+                        </tr>
+                        <tr>
+                          <td>减损措施记录（如滞港费协商等）</td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td>信保明确要求，作为理赔审核加分项</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
+
+                  <div class="section-title mt-16">资料上传</div>
+                  <t-form label-align="top" class="document-upload">
+                    <t-row :gutter="16">
+                      <t-col :span="6">
+                        <t-form-item label="贸易合同">
+                          <t-upload v-model="ocrDocs.tradeContract" theme="file" :auto-upload="false" :max="3">
+                            <t-button variant="outline" size="small">选择文件</t-button>
+                          </t-upload>
+                        </t-form-item>
+                      </t-col>
+                      <t-col :span="6">
+                        <t-form-item label="商业发票">
+                          <t-upload v-model="ocrDocs.commercialInvoice" theme="file" :auto-upload="false" :max="5">
+                            <t-button variant="outline" size="small">选择文件</t-button>
+                          </t-upload>
+                        </t-form-item>
+                      </t-col>
+                      <t-col :span="6">
+                        <t-form-item label="提单/运单">
+                          <t-upload v-model="ocrDocs.billOfLading" theme="file" :auto-upload="false" :max="3">
+                            <t-button variant="outline" size="small">选择文件</t-button>
+                          </t-upload>
+                        </t-form-item>
+                      </t-col>
+                      <t-col :span="6">
+                        <t-form-item label="索赔书（需盖章）">
+                          <t-upload v-model="ocrDocs.lossProof" theme="file" :auto-upload="false" :max="2">
+                            <t-button variant="outline" size="small">选择文件</t-button>
+                          </t-upload>
+                        </t-form-item>
+                      </t-col>
+                    </t-row>
+                  </t-form>
                 </div>
               </div>
             </div>
 
-            <!-- Step 3: 审核补件 -->
+            <!-- Step 3: 定损核赔 -->
             <div class="timeline-node" :class="getStepNodeClass(3)">
               <div class="node-header" @click="toggleCollapse(2)">
                 <div class="node-marker">
@@ -235,13 +306,13 @@
                 <div class="node-info">
                   <div class="node-title">
                     <span class="node-step-num">Step 3</span>
-                    <span class="node-step-name">委托书盖章与代理服务费缴纳</span>
-                    <t-tag theme="primary" variant="light" size="small" class="role-tag">跟单员</t-tag>
-                    <span class="node-handler">处理人：跟单员李明 (C001)</span>
+                    <span class="node-step-name">定损核赔</span>
+                    <t-tag theme="warning" variant="light" size="small" class="role-tag">保险公司</t-tag>
+                    <span class="node-handler">处理人：{{ currentClaim.insuranceCompany }}理赔核算员</span>
                   </div>
                   <div class="node-meta">
                     <span class="meta-status" :class="'status-' + getStepStatusText(3)">{{ getStepStatusText(3) }}</span>
-                    <span v-if="3 < currentStep" class="meta-time">提交核保时间：2026-05-21 10:20:00</span>
+                    <span v-if="3 < currentStep" class="meta-time">出具定损函时间：2026-05-21 11:30:00</span>
                   </div>
                 </div>
                 <div class="node-toggle">
@@ -251,86 +322,61 @@
 
               <div v-show="expandedSteps[2]" class="node-body">
                 <div class="node-content">
-                  <t-alert theme="info" class="mb-16">
-                    <template #message>
-                      由于涉及海外大额贸易风险催收，需签署正式《理赔代理委托授权书》授权长银平台，并缴纳理赔代理服务费。
-                    </template>
-                  </t-alert>
-
-                  <div class="row-flex mb-16">
-                    <div class="flex-1 mr-16">
-                      <div class="sub-card">
-                        <div class="sub-card-title">✍️ 平台理赔委托书签署</div>
-                        <div class="sign-status mb-12">
-                          签署状态：<t-tag theme="success" variant="light">已盖章上传</t-tag>
-                        </div>
-                        <div class="file-wp mb-12">
-                          <t-icon name="file" size="20px" />
-                          <span class="file-name font-12 ml-4">理赔委托授权书_深圳XX国贸_盖章.pdf</span>
-                        </div>
-                        <t-space>
-                          <t-button variant="outline" size="small">📥 下载模板</t-button>
-                          <t-button variant="outline" size="small">📤 重新上传</t-button>
-                        </t-space>
-                      </div>
-                    </div>
-                    <div class="flex-1">
-                      <div class="sub-card">
-                        <div class="sub-card-title">💳 理赔代理服务费收取 (费率 0.5%)</div>
-                        <div class="fee-row mb-8">
-                          预估代理费：<span class="fee-amount">${{ (currentClaim.estimatedLossAmount * 0.005).toFixed(2) }} USD</span>
-                        </div>
-                        <div class="fee-row mb-12">
-                          缴纳状态：
-                          <t-tag v-if="serviceFeePaid" theme="success" variant="light">已缴费 ✅</t-tag>
-                          <t-tag v-else theme="danger" variant="light">未缴费 ❌</t-tag>
-                        </div>
-                        <t-button v-if="!serviceFeePaid" theme="primary" size="small" @click="showPaymentDialog">
-                          💳 扫码支付代理服务费
-                        </t-button>
-                        <div v-else class="file-wp font-12">
-                          <t-icon name="check-circle" class="text-success" />
-                          <span class="ml-4 text-success">已关联银行到账水单: PAY_CL2026.jpg</span>
-                        </div>
-                      </div>
-                    </div>
+                  <div class="section-title">赔付比例规则</div>
+                  <div class="ratio-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>特性</th>
+                          <th>中国信保</th>
+                          <th>人保财险</th>
+                          <th>太平洋保险</th>
+                          <th>大地保险</th>
+                          <th>备注</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>赔付比例 (80%-90%)</td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td>信保/太保通常固定比例；人保/大地保单约定</td>
+                        </tr>
+                        <tr>
+                          <td>小额快审 (≤3000元)</td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td>仅大地支持3000元以下小额极速处理</td>
+                        </tr>
+                        <tr>
+                          <td>审核周期 (≤15工作日)</td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td>仅大地简单案件支持30日；复杂案件约30-45日</td>
+                        </tr>
+                        <tr>
+                          <td>主动追偿提高赔付比例 (+5%-10%)</td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td>仅大地鼓励客户自行追讨，给予奖励</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
-                </div>
-              </div>
-            </div>
 
-            <!-- Step 4: 调查定损 -->
-            <div class="timeline-node" :class="getStepNodeClass(4)">
-              <div class="node-header" @click="toggleCollapse(3)">
-                <div class="node-marker">
-                  <span v-if="4 < currentStep" class="node-check">✓</span>
-                  <span v-else-if="4 === currentStep" class="node-dot"></span>
-                  <span v-else class="node-pending-dot"></span>
-                </div>
-                <div class="node-info">
-                  <div class="node-title">
-                    <span class="node-step-num">Step 4</span>
-                    <span class="node-step-name">保险公司海外调查与定损决定</span>
-                    <t-tag theme="warning" variant="light" size="small" class="role-tag">保险公司</t-tag>
-                    <span class="node-handler">处理人：{{ currentClaim.insuranceCompany }}理赔核算员</span>
-                  </div>
-                  <div class="node-meta">
-                    <span class="meta-status" :class="'status-' + getStepStatusText(4)">{{ getStepStatusText(4) }}</span>
-                    <span v-if="4 < currentStep" class="meta-time">出具定损函时间：2026-05-21 11:30:00</span>
-                  </div>
-                </div>
-                <div class="node-toggle">
-                  <t-icon :name="expandedSteps[3] ? 'chevron-up' : 'chevron-down'" class="toggle-icon" />
-                </div>
-              </div>
-
-              <div v-show="expandedSteps[3]" class="node-body">
-                <div class="node-content">
+                  <div class="section-title mt-16">定损核算</div>
                   <div class="alert-box mb-16">
                     <strong>承保条款参考</strong>：约定赔偿比例：<strong>80%</strong>，预计最高赔付：${{ (currentClaim.estimatedLossAmount * 0.8).toLocaleString() }} USD。
                   </div>
 
-                  <div class="form-title">📝 保险公司定损决定录入</div>
                   <t-form label-align="top" class="mb-16">
                     <t-row :gutter="16">
                       <t-col :span="4">
@@ -361,14 +407,116 @@
                     </div>
 
                     <t-form-item label="官方理赔定损通知书上传">
-                      <t-upload theme="file" accept=".pdf,.png,.jpg" :auto-upload="false" />
+                      <t-upload theme="file" :auto-upload="false" />
                     </t-form-item>
                   </t-form>
                 </div>
               </div>
             </div>
 
-            <!-- Step 5: 理赔收回 -->
+            <!-- Step 4: 赔付到账 -->
+            <div class="timeline-node" :class="getStepNodeClass(4)">
+              <div class="node-header" @click="toggleCollapse(3)">
+                <div class="node-marker">
+                  <span v-if="4 < currentStep" class="node-check">✓</span>
+                  <span v-else-if="4 === currentStep" class="node-dot"></span>
+                  <span v-else class="node-pending-dot"></span>
+                </div>
+                <div class="node-info">
+                  <div class="node-title">
+                    <span class="node-step-num">Step 4</span>
+                    <span class="node-step-name">赔付到账</span>
+                    <t-tag theme="warning" variant="light" size="small" class="role-tag">保险公司</t-tag>
+                    <span class="node-handler">处理人：{{ currentClaim.insuranceCompany }}理赔专员</span>
+                  </div>
+                  <div class="node-meta">
+                    <span class="meta-status" :class="'status-' + getStepStatusText(4)">{{ getStepStatusText(4) }}</span>
+                    <span v-if="4 < currentStep" class="meta-time">到账时间：2026-05-21 11:45:00</span>
+                  </div>
+                </div>
+                <div class="node-toggle">
+                  <t-icon :name="expandedSteps[3] ? 'chevron-up' : 'chevron-down'" class="toggle-icon" />
+                </div>
+              </div>
+
+              <div v-show="expandedSteps[3]" class="node-body">
+                <div class="node-content">
+                  <div class="section-title">支付方式支持</div>
+                  <div class="payment-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>支付方式</th>
+                          <th>中国信保</th>
+                          <th>人保财险</th>
+                          <th>太平洋保险</th>
+                          <th>大地保险</th>
+                          <th>备注</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>银行转账</td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td>通用方式</td>
+                        </tr>
+                        <tr>
+                          <td>支票支付</td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td>仅人保支持</td>
+                        </tr>
+                        <tr>
+                          <td>第三方支付（微信/支付宝）</td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td>仅大地支持，适合小微企业</td>
+                        </tr>
+                        <tr>
+                          <td>10日内到账</td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td>核赔通过后的法定常规时限</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="section-title mt-16">收款信息录入</div>
+                  <t-form label-align="top" class="mb-16">
+                    <t-row :gutter="16">
+                      <t-col :span="6">
+                        <t-form-item label="理赔收款到账银行">
+                          <t-input v-model="receivingBank" placeholder="请输入到账银行及分行名称" />
+                        </t-form-item>
+                      </t-col>
+                      <t-col :span="6">
+                        <t-form-item label="到账参考号/收款水单上传">
+                          <t-upload theme="file" :auto-upload="false" />
+                        </t-form-item>
+                      </t-col>
+                    </t-row>
+                  </t-form>
+
+                  <div class="section-title">支持签署《赔款转让协议》</div>
+                  <div class="agreement-info">
+                    <t-tag v-for="company in ['中国信保', '人保财险', '太平洋保险', '大地保险']" :key="company" theme="success" variant="light" size="small">{{ company }} ✓</t-tag>
+                    <span class="agreement-desc">四家均支持，用于追索权融资</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 5: 权益转让与融资 -->
             <div class="timeline-node" :class="getStepNodeClass(5)">
               <div class="node-header" @click="toggleCollapse(4)">
                 <div class="node-marker">
@@ -379,9 +527,9 @@
                 <div class="node-info">
                   <div class="node-title">
                     <span class="node-step-num">Step 5</span>
-                    <span class="node-step-name">赔款划拨收回与 RWA 金融清算</span>
-                    <t-tag theme="primary" variant="light" size="small" class="role-tag">跟单员</t-tag>
-                    <span class="node-handler">处理人：跟单员李明 (C001)</span>
+                    <span class="node-step-name">权益转让与融资</span>
+                    <t-tag theme="default" variant="light" size="small" class="role-tag">客户/平台</t-tag>
+                    <span class="node-handler">处理人：{{ currentClaim.claimContact }} / 长安银科平台</span>
                   </div>
                   <div class="node-meta">
                     <span class="meta-status" :class="'status-' + getStepStatusText(5)">{{ getStepStatusText(5) }}</span>
@@ -395,26 +543,70 @@
 
               <div v-show="expandedSteps[4]" class="node-body">
                 <div class="node-content">
+                  <div class="section-title">权益转让支持</div>
+                  <div class="transfer-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>特性</th>
+                          <th>中国信保</th>
+                          <th>人保财险</th>
+                          <th>太平洋保险</th>
+                          <th>大地保险</th>
+                          <th>备注</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>支持直接作为赔偿申请人（无追索权）</td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td>四家均支持应收账款融资业务</td>
+                        </tr>
+                        <tr>
+                          <td>出具《承保情况通知书》</td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td>银行放款的核心凭证</td>
+                        </tr>
+                        <tr>
+                          <td>赔款直付银行指定账户</td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td>融资模式下的标准操作</td>
+                        </tr>
+                        <tr>
+                          <td>操作模式：单一窗口全线上化</td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td>信保实现了与海关数据的深度打通</td>
+                        </tr>
+                        <tr>
+                          <td>操作模式：应收账款质押融资</td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="danger" variant="light">×</t-tag></td>
+                          <td><t-tag theme="success" variant="light">✓</t-tag></td>
+                          <td>仅大地针对小额高频业务特色</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="section-title mt-16">RWA 金融清算</div>
                   <t-alert theme="warning" class="mb-16">
                     <template #message>
                       收到保险公司理赔款项后，请录入收款银行明细并一键同步清算 RWA 融资资产大屏，进行销账冲账。
                     </template>
                   </t-alert>
-
-                  <t-form label-align="top" class="mb-16">
-                    <t-row :gutter="16">
-                      <t-col :span="6">
-                        <t-form-item label="理赔收款到账银行">
-                          <t-input v-model="receivingBank" placeholder="请输入到账银行及分行名称" />
-                        </t-form-item>
-                      </t-col>
-                      <t-col :span="6">
-                        <t-form-item label="到账参考号/收款水单上传">
-                          <t-upload theme="file" accept=".jpg,.png,.pdf" :auto-upload="false" />
-                        </t-form-item>
-                      </t-col>
-                    </t-row>
-                  </t-form>
 
                   <div class="rwa-sync-panel">
                     <div class="rwa-sync-status mb-16">
@@ -422,7 +614,7 @@
                       <t-tag v-if="rwaSyncStatus === 'synced'" theme="success" variant="light">已完成清算销账 ✅</t-tag>
                       <t-tag v-else theme="warning" variant="light">等待金融同步 ⏳</t-tag>
                     </div>
-                    <t-button theme="warning" :loading="isSyncingRwa" :disabled="rwaSyncStatus === 'synced'" @click="syncToRwaPlatform">
+                    <t-button v-if="userStore.role !== 'customer'" theme="warning" :loading="isSyncingRwa" :disabled="rwaSyncStatus === 'synced'" @click="syncToRwaPlatform">
                       <template #icon><t-icon name="refresh" /></template>
                       一键同步并清算 RWA 金融资产融资平台
                     </t-button>
@@ -433,7 +625,7 @@
           </div>
 
           <!-- Approval Decisions Card -->
-          <div class="approval-card mt-24 mb-24">
+          <div v-if="userStore.role !== 'customer'" class="approval-card mt-24 mb-24">
             <div class="approval-title">✍️ 长安银科跟单员审核结论</div>
             <t-form label-align="left" label-width="100px">
               <t-form-item label="审批结论">
@@ -449,7 +641,7 @@
           </div>
 
           <!-- Bottom Nav buttons -->
-          <div class="bottom-actions">
+          <div v-if="userStore.role !== 'customer'" class="bottom-actions">
             <t-space>
               <t-button variant="outline" :disabled="currentStep === 1" @click="prevStep">上一步</t-button>
               <t-button v-if="currentStep < 5" theme="primary" :loading="isSubmitting" @click="submitStep">
@@ -479,11 +671,16 @@
             <t-form-item label="理赔状态">
               <t-select v-model="filters.status" placeholder="全部状态" style="width: 150px">
                 <t-option value="all" label="全部状态" />
-                <t-option value="pending" label="待处理" />
-                <t-option value="supplement" label="补充材料" />
+                <t-option value="pending" label="待接收报案" />
+                <t-option value="assigned" label="待接单" />
+                <t-option value="pending_receive" label="待接收资料" />
+                <t-option value="pending_contract_sign" label="待签署合同" />
+                <t-option value="pending_payment" label="待支付服务费" />
                 <t-option value="processing" label="处理中" />
+                <t-option value="supplement" label="补充材料" />
                 <t-option value="decided" label="已决定" />
                 <t-option value="completed" label="已完成" />
+                <t-option value="payment_received" label="赔付到账" />
               </t-select>
             </t-form-item>
             <t-form-item>
@@ -500,7 +697,7 @@
           </div>
           <t-table :data="filteredClaims" :columns="columns" row-key="id" hover stripe>
             <template #status="{ row }">
-              <status-tag :status="row.status" :status-map="statusMap" />
+              <status-tag :status="row.status" :status-map="displayStatusMap" />
             </template>
             <template #currentStep="{ row }">
               <t-tag :theme="getStepTheme(row.currentStep || 3)">{{ getStepName(row.currentStep || 3) }}</t-tag>
@@ -511,7 +708,7 @@
             <template #operation="{ row }">
               <t-space>
                 <t-link theme="primary" @click="handleView(row)">查看</t-link>
-                <t-link theme="warning" @click="startProcessing(row)">处理</t-link>
+                <t-link v-if="userStore.role !== 'customer'" theme="warning" @click="startProcessing(row)">处理</t-link>
               </t-space>
             </template>
           </t-table>
@@ -620,11 +817,11 @@ const finalCompensatedAmount = computed(() => {
 })
 
 const stepOptions = [
-  { value: 1, label: '报案提交' },
-  { value: 2, label: '跟单接单' },
-  { value: 3, label: '审核补件' },
-  { value: 4, label: '调查定损' },
-  { value: 5, label: '理赔收回' }
+  { value: 1, label: '报案', companies: ['中国信保', '人保财险', '太平洋保险', '大地保险'] },
+  { value: 2, label: '资料准备', companies: ['中国信保', '人保财险', '太平洋保险', '大地保险'] },
+  { value: 3, label: '定损核赔', companies: ['中国信保', '太平洋保险', '大地保险'] },
+  { value: 4, label: '赔付到账', companies: ['中国信保', '人保财险', '太平洋保险', '大地保险'] },
+  { value: 5, label: '权益转让与融资', companies: ['中国信保', '人保财险', '太平洋保险', '大地保险'] }
 ]
 
 const stepRoles = [
@@ -636,14 +833,27 @@ const stepRoles = [
 ]
 
 const statusMap = {
-  pending: '待处理',
+  pending: '待接收报案',
+  assigned: '待接单',
+  pending_receive: '待接收资料',
+  pending_contract_sign: '待签署委托合同',
+  pending_payment: '待支付服务费',
   processing: '处理中',
   investigating: '调查中',
   supplement: '补充材料',
   decided: '已决定',
   completed: '已完成',
+  payment_received: '赔付到账',
   rejected: '已拒赔'
 }
+
+const displayStatusMap = computed(() => {
+  const map = { ...statusMap }
+  if (userStore.role === 'customer') {
+    map.payment_received = '已完成'
+  }
+  return map
+})
 
 const columns = [
   { colKey: 'claimNo', title: '理赔单号', width: 140 },
@@ -674,6 +884,7 @@ const detailColumns = [
 
 // Filter logic
 const filteredClaims = computed(() => {
+  void store.claimUpdateVersion
   return (store.claims || []).filter(c => {
     if (filters.claimNo && !c.claimNo.includes(filters.claimNo)) return false
     if (filters.relatedPolicyNo && !c.relatedPolicyNo.includes(filters.relatedPolicyNo)) return false
@@ -788,28 +999,30 @@ const submitStep = () => {
   isSubmitting.value = true
   setTimeout(() => {
     isSubmitting.value = false
-    const payload = {}
+    if (!currentClaim.value) return
+
     if (currentStep.value === 3) {
-      currentClaim.value.status = 'processing'
-      currentClaim.value.statusName = '处理中'
-    } else if (currentStep.value === 4) {
-      currentClaim.value.status = 'decided'
-      currentClaim.value.statusName = '已决定'
-      currentClaim.value.claimDecision = claimDecision.value
-      currentClaim.value.calculatedLoss = calculatedLoss.value
-      currentClaim.value.deductible = deductibleAmount.value
-      currentClaim.value.claimAmount = finalCompensatedAmount.value
-      Object.assign(payload, {
+      // 定损核赔 → store decision in claim record
+      store.advanceClaimStep(currentClaim.value.id, {
         claimDecision: claimDecision.value,
         calculatedLoss: calculatedLoss.value,
         deductible: deductibleAmount.value,
         claimAmount: finalCompensatedAmount.value
       })
+    } else if (currentStep.value === 4) {
+      // 赔付到账 → complete claim
+      store.completeClaim(currentClaim.value.id, {
+        receivingBank: receivingBank.value
+      })
+    } else {
+      // Generic step advance
+      store.advanceClaimStep(currentClaim.value.id, {})
     }
-    // Persist to store
-    if (currentClaim.value) {
-      store.advanceClaimStep(currentClaim.value.id, payload)
-    }
+
+    // Refresh from store to get updated state
+    const updated = store.claims.find(c => c.id === currentClaim.value.id)
+    if (updated) currentClaim.value = updated
+
     MessagePlugin.success(`Step ${currentStep.value} (${stepOptions[currentStep.value - 1].label}) 审查通过，流转进入下一步`)
     setStep(currentStep.value + 1)
   }, 800)
@@ -824,8 +1037,6 @@ const completeWorkflow = () => {
         receivingBank: receivingBank.value,
         rwaSyncStatus: 'synced'
       })
-      currentClaim.value.status = 'completed'
-      currentClaim.value.statusName = '已赔付'
     }
     MessagePlugin.success('全案定损完毕，理赔实收归档，本案正式结案结清！')
     activeTab.value = 'task-list'
@@ -835,19 +1046,24 @@ const completeWorkflow = () => {
 // Switch and Processing Claim
 const startProcessing = (row) => {
   currentClaim.value = row
-  // Use currentStep from store data if available, otherwise map from status
-  if (row.currentStep) {
-    currentStep.value = row.currentStep
-  } else if (row.status === 'pending') {
-    currentStep.value = 2
-  } else if (row.status === 'supplement') {
-    currentStep.value = 3
-  } else if (row.status === 'processing' || row.status === 'investigating') {
-    currentStep.value = 4
-  } else if (row.status === 'decided') {
-    currentStep.value = 5
+  // Map claim status to process step (1-5)
+  const stepByStatus = {
+    pending: 1,
+    assigned: 1,
+    pending_receive: 2,
+    pending_contract_sign: 2,
+    pending_payment: 2,
+    supplement: 3,
+    investigating: 3,
+    decided: 4,
+    payment_received: 5,
+    completed: 5
+  }
+  // processing with step=2 is still 资料准备; step≥3 is 定损核赔
+  if (row.status === 'processing') {
+    currentStep.value = (row.currentStep && row.currentStep >= 3) ? 3 : 2
   } else {
-    currentStep.value = 5
+    currentStep.value = stepByStatus[row.status] || 3
   }
   // Load step form data from claim record
   serviceFeePaid.value = row.serviceFeePaid ?? true
@@ -1553,6 +1769,135 @@ $gray-800: #2c2c2c;
   &.top-right { top: -2px; right: -2px; }
   &.bottom-left { bottom: -2px; left: -2px; }
   &.bottom-right { bottom: -2px; right: -2px; }
+}
+
+// New styles for claim process redesign
+.channel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.channel-item {
+  background: #fff;
+  border: 1px solid $gray-200;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.channel-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: $gray-800;
+  margin-bottom: 8px;
+}
+
+.channel-companies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.channel-note {
+  font-size: 12px;
+  color: $gray-500;
+}
+
+.deadline-table,
+.document-table,
+.ratio-table,
+.payment-table,
+.transfer-table {
+  overflow-x: auto;
+  margin-bottom: 12px;
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid $gray-100;
+    }
+    
+    th {
+      background: #fafbfc;
+      font-weight: 700;
+      color: $gray-800;
+    }
+    
+    tr:hover {
+      background: #fafbfc;
+    }
+  }
+}
+
+.deadline-note {
+  font-size: 12px;
+  color: $gray-500;
+  margin-bottom: 16px;
+  font-style: italic;
+}
+
+.document-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.document-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid $gray-200;
+  border-radius: 8px;
+  padding: 12px;
+  
+  &.required {
+    border-left: 3px solid $primary;
+  }
+}
+
+.doc-icon {
+  font-size: 24px;
+}
+
+.doc-info {
+  flex: 1;
+}
+
+.doc-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: $gray-800;
+}
+
+.doc-desc {
+  font-size: 11px;
+  color: $gray-500;
+}
+
+.document-upload {
+  background: #fff;
+  border: 1px solid $gray-200;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.agreement-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.agreement-desc {
+  font-size: 12px;
+  color: $gray-500;
 }
 
 .payment-note {

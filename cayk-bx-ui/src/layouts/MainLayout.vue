@@ -113,14 +113,14 @@ const notificationCount = ref(5)
 const currentRole = ref(userStore.role)
 
 const allMenuItems = [
-  { key: 'insurance', 
-    title: '保险购买', 
-    icon: 'document-popular', 
-    roles: ['customer', 'clerk'],
+  { key: 'insurance',
+    title: '保险购买',
+    icon: 'document-popular',
+    roles: ['customer', 'inkasso'],
     children: [
-      { key: 'insurance-purchase', title: '投保信息管理', path: '/insurance/purchase', roles: ['customer', 'inkasso', 'clerk'], icon: 'clipboard' },
-      { key: 'insurance-report', title: '投保数据报表', path: '/insurance/report', roles: ['customer', 'inkasso', 'clerk'], icon: 'chart' },
-      { key: 'insurance-apply', title: '投保流程管理', path: '/insurance/apply', roles: ['customer', 'inkasso', 'clerk'], icon: 'switch' }
+      { key: 'insurance-purchase', title: '投保信息管理', path: '/insurance/purchase', roles: ['customer', 'inkasso'], icon: 'clipboard' },
+      { key: 'insurance-report', title: '投保数据报表', path: '/insurance/report', roles: ['customer', 'inkasso'], icon: 'chart' },
+      { key: 'insurance-apply', title: '投保流程管理', path: '/insurance/apply', roles: ['customer', 'inkasso'], icon: 'switch' }
     ]
   },
   { 
@@ -134,7 +134,8 @@ const allMenuItems = [
       { key: 'policy-shipment', title: '出运申报管理', path: '/policy/shipment', roles: ['customer', 'inkasso', 'clerk'], icon: 'airplane' },
       { key: 'policy-process', title: '流程管理', path: '/policy/process', roles: ['inkasso', 'clerk'], icon: 'fork' },
       { key: 'policy-subsidy', title: '保费补贴管理', path: '/policy/subsidy', roles: ['inkasso'], icon: 'wallet' },
-      { key: 'policy-performance', title: '保单履约报表', path: '/policy/performance', roles: ['inkasso'], icon: 'chart' }
+      { key: 'policy-performance', title: '保单履约报表', path: '/policy/performance', roles: ['inkasso'], icon: 'chart' },
+      { key: 'policy-contract', title: '合同签署', path: '/policy/contract', roles: ['customer', 'inkasso', 'clerk'], icon: 'edit-1' }
     ]
   },
   { 
@@ -195,6 +196,7 @@ const menuConfig = {
   'policy-process': { parent: '保单管理', current: '流程管理' },
   'policy-subsidy': { parent: '保单管理', current: '保费补贴管理' },
   'policy-performance': { parent: '保单管理', current: '保单履约报表' },
+  'policy-contract': { parent: '保单管理', current: '合同签署' },
   'claim-list': { parent: '保险理赔', current: '理赔信息管理' },
   'claim-process': { parent: '保险理赔', current: '理赔流程管理' },
   'claim-report': { parent: '保险理赔', current: '理赔报表管理' },
@@ -238,7 +240,6 @@ const findPathByMenuKey = (key) => {
 
 const getDefaultPathByRole = (role) => {
   if (role === 'customer') return '/insurance/purchase'
-  if (role === 'clerk') return '/insurance/apply'
   return '/policy/list'
 }
 

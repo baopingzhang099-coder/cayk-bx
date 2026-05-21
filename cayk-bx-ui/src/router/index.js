@@ -11,49 +11,55 @@ const routes = [
         path: '/insurance/purchase/new',
         name: 'InsurancePurchaseCreate',
         component: () => import('@/pages/insurance/InsurancePurchaseFormPage.vue'),
-        meta: { title: '新增投保', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso', 'clerk'] }
+        meta: { title: '新增投保', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso'] }
       },
       {
         path: '/insurance/purchase/:id/edit',
         name: 'InsurancePurchaseEdit',
         component: () => import('@/pages/insurance/InsurancePurchaseFormPage.vue'),
-        meta: { title: '编辑投保', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso', 'clerk'] }
+        meta: { title: '编辑投保', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso'] }
       },
       {
         path: '/insurance/purchase/:id',
         name: 'InsurancePurchaseDetail',
         component: () => import('@/pages/insurance/InsurancePurchaseFormPage.vue'),
-        meta: { title: '投保详情', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso', 'clerk'] }
+        meta: { title: '投保详情', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso'] }
       },
       {
         path: '/insurance/questionnaire',
         name: 'InsuranceQuestionnaire',
         component: () => import('@/pages/insurance/InsuranceQuestionnaire.vue'),
-        meta: { title: '客户投保需求问卷', menuKey: 'insurance-questionnaire', roles: ['customer', 'inkasso', 'clerk'] }
+        meta: { title: '客户投保需求问卷', menuKey: 'insurance-questionnaire', roles: ['customer', 'inkasso'] }
       },
       {
         path: '/insurance/purchase',
         name: 'InsurancePurchase',
         component: () => import('@/pages/insurance/InsurancePurchase.vue'),
-        meta: { title: '投保信息管理', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso', 'clerk'] }
+        meta: { title: '投保信息管理', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso'] }
       },
       {
         path: '/insurance/apply',
         name: 'InsuranceApply',
         component: () => import('@/pages/insurance/InsuranceApply.vue'),
-        meta: { title: '投保流程管理', menuKey: 'insurance-apply', roles: ['customer', 'inkasso', 'clerk'] }
+        meta: { title: '投保流程管理', menuKey: 'insurance-apply', roles: ['customer', 'inkasso'] }
       },
       {
         path: '/insurance/report',
         name: 'InsuranceReport',
         component: () => import('@/pages/insurance/InsuranceReport.vue'),
-        meta: { title: '投保数据报表', menuKey: 'insurance-report', roles: ['customer', 'inkasso', 'clerk'] }
+        meta: { title: '投保数据报表', menuKey: 'insurance-report', roles: ['customer', 'inkasso'] }
       },
       {
         path: '/policy/list',
         name: 'PolicyList',
         component: () => import('@/pages/policy/PolicyList.vue'),
         meta: { title: '保单信息管理', menuKey: 'policy-list', roles: ['customer', 'inkasso', 'clerk'] }
+      },
+      {
+        path: '/policy/contract',
+        name: 'ContractSigning',
+        component: () => import('@/pages/policy/ContractSigning.vue'),
+        meta: { title: '合同签署', menuKey: 'policy-contract', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/policy/trade',
@@ -162,9 +168,7 @@ router.beforeEach((to, from, next) => {
   if (Array.isArray(roles) && roles.length > 0 && !roles.includes(role)) {
     const fallback = role === 'customer'
       ? '/insurance/purchase'
-      : role === 'clerk'
-        ? '/insurance/apply'
-        : '/policy/list'
+      : '/policy/list'
     next(fallback)
     return
   }

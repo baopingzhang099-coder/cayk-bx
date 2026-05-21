@@ -80,7 +80,9 @@ export const useBusinessStore = defineStore('business', {
     creditLimits: [],
     shipments: [],
     claims: [],
-    processTasks: []
+    processTasks: [],
+    contracts: [],
+    payments: []
   }),
   getters: {
     insuranceStats(state) {
@@ -183,7 +185,8 @@ export const useBusinessStore = defineStore('business', {
           declarationDate: '2026-05-01',
           companySeal: [{ name: '公章文件.pdf' }],
           // 状态
-          status: 'draft',
+          status: 'rejected',
+          rejectReason: '缺少贸易合同和报关单等核心证明文件，请补充后重新提交。',
           createTime: '2026-05-01',
           updateTime: '2026-05-01 10:30:00'
         },
@@ -418,8 +421,7 @@ export const useBusinessStore = defineStore('business', {
           declarationSignature: '陈志强',
           declarationDate: '2026-05-10',
           companySeal: [{ name: '公章文件.pdf' }],
-          status: 'pending_review',
-          rejectReason: '缺少贸易合同和报关单等核心证明文件，请补充后重新提交。',
+          status: 'clerk_review',
           createTime: '2026-05-10',
           updateTime: '2026-05-12 16:30:00'
         },
@@ -585,7 +587,7 @@ export const useBusinessStore = defineStore('business', {
           effectiveDate: '2026-05-20',
           expiryDate: '2027-05-20',
           status: 'approved',
-          statusName: '确认通过',
+          statusName: '已确认',
           usedQuota: 0,
           remainingQuota: 450000
         }
@@ -970,7 +972,7 @@ export const useBusinessStore = defineStore('business', {
       if (idx < 0) return { ok: false, message: '投保记录不存在' }
       const now = new Date()
       const cur = this.insuranceApplications[idx]
-      if (!['draft'].includes(cur.status)) {
+      if (!['draft', 'rejected'].includes(cur.status)) {
         return { ok: false, message: '当前状态不允许提交' }
       }
       const missing = []
@@ -981,13 +983,24 @@ export const useBusinessStore = defineStore('business', {
       this.insuranceApplications[idx] = { ...cur, status: 'pending_review', updateTime: formatDateTime(now) }
       return { ok: true, data: this.insuranceApplications[idx] }
     },
-    approveInsuranceApplication(id) {
+    submitToClerkReview(id) {
       const idx = this.insuranceApplications.findIndex(it => it.id === id)
       if (idx < 0) return { ok: false, message: '投保记录不存在' }
       const now = new Date()
       const cur = this.insuranceApplications[idx]
       if (cur.status !== 'pending_review') {
-        return { ok: false, message: '仅”待确认”状态允许确认通过' }
+        return { ok: false, message: '仅"待确认"状态允许申请跟单员确认' }
+      }
+      this.insuranceApplications[idx] = { ...cur, status: 'clerk_review', updateTime: formatDateTime(now) }
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
+    approveInsuranceApplication(id) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const now = new Date()
+      const cur = this.insuranceApplications[idx]
+      if (!['pending_review', 'clerk_review'].includes(cur.status)) {
+        return { ok: false, message: '当前状态不允许确认完成' }
       }
       const policyNo = `PI${String(now.getFullYear())}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
       const next = { ...cur, status: 'approved', updateTime: formatDateTime(now),
@@ -1043,17 +1056,27 @@ export const useBusinessStore = defineStore('business', {
       if (idx < 0) return { ok: false, message: '投保记录不存在' }
       const now = new Date()
       const cur = this.insuranceApplications[idx]
-      if (cur.status !== 'pending_review') {
-        return { ok: false, message: '仅”待确认”状态允许驳回' }
+      if (!['pending_review', 'clerk_review'].includes(cur.status)) {
+        return { ok: false, message: '当前状态不允许驳回' }
       }
       if (!rejectReason || rejectReason.trim() === '') {
         return { ok: false, message: '驳回原因不能为空' }
       }
-      this.insuranceApplications[idx] = { 
-        ...cur, 
-        status: 'pending_review',
-        updateTime: formatDateTime(now),
-        rejectReason 
+      if (cur.status === 'clerk_review') {
+        // 跟单员驳回 → 退回客户重新提交
+        this.insuranceApplications[idx] = {
+          ...cur,
+          status: 'rejected',
+          updateTime: formatDateTime(now),
+          rejectReason
+        }
+      } else {
+        this.insuranceApplications[idx] = {
+          ...cur,
+          status: 'pending_review',
+          updateTime: formatDateTime(now),
+          rejectReason
+        }
       }
       return { ok: true, data: this.insuranceApplications[idx] }
     },
@@ -1122,6 +1145,204 @@ export const useBusinessStore = defineStore('business', {
         planLabels: task.planLabels || {},
         companyLabels: task.companyLabels || {}
       })
+    },
+    // ===== Contract Signing & Payment =====
+    getContractsForCustomer(companyName) {
+      return this.contracts.filter(c => c.companyName === companyName)
+    },
+    initContractFromPolicy(policy) {
+      const exists = this.contracts.some(c => c.policyNo === policy.policyNo)
+      if (exists) return
+      const now = new Date()
+      const contract = {
+        id: `CT${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 1000))}`,
+        policyNo: policy.policyNo,
+        companyName: policy.policyholder,
+        insuredName: policy.insured,
+        insuranceCompany: policy.insuranceCompany,
+        coverageAmount: policy.coverageAmount,
+        premium: policy.premium,
+        policyStartDate: policy.effectiveDate,
+        policyEndDate: policy.expiryDate,
+        status: 'pending_inkasso_sign',
+        paymentStatus: 'unpaid',
+        paymentMethod: '',
+        paymentDate: '',
+        createdAt: formatDateTime(now)
+      }
+      this.contracts.unshift(contract)
+      return contract
+    },
+    inkassoSignContract(policyNo, signatory) {
+      const idx = this.contracts.findIndex(c => c.policyNo === policyNo)
+      if (idx < 0) return { ok: false, message: '合同不存在' }
+      const cur = this.contracts[idx]
+      if (cur.status !== 'pending_inkasso_sign') return { ok: false, message: '当前状态不允许签署' }
+      const now = new Date()
+      this.contracts[idx] = {
+        ...cur,
+        status: 'inkasso_signed',
+        signDate: formatDateTime(now),
+        signatory: signatory || '长安银科',
+        updatedAt: formatDateTime(now)
+      }
+      return { ok: true, data: this.contracts[idx] }
+    },
+    processPayment(policyNo, paymentMethod) {
+      const idx = this.contracts.findIndex(c => c.policyNo === policyNo)
+      if (idx < 0) return { ok: false, message: '合同不存在' }
+      const cur = this.contracts[idx]
+      if (!['inkasso_signed', 'underwriting_submitted'].includes(cur.status)) return { ok: false, message: '请等待平台签署完成后支付' }
+      if (cur.paymentStatus === 'paid') return { ok: false, message: '已支付，无需重复支付' }
+      const now = new Date()
+      // Simulate payment processing
+      this.contracts[idx] = {
+        ...cur,
+        status: 'paid',
+        paymentStatus: 'paid',
+        paymentMethod,
+        paymentDate: formatDateTime(now),
+        updatedAt: formatDateTime(now)
+      }
+      // Update the corresponding policy to active
+      const pIdx = this.policies.findIndex(p => p.policyNo === policyNo)
+      if (pIdx >= 0) {
+        this.policies[pIdx] = {
+          ...this.policies[pIdx],
+          status: 'active',
+          statusName: '有效'
+        }
+      }
+      // Add payment record
+      this.payments.unshift({
+        id: `PAY${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`,
+        policyNo,
+        companyName: cur.companyName,
+        amount: cur.premium,
+        method: paymentMethod,
+        status: 'success',
+        paidAt: formatDateTime(now)
+      })
+      return { ok: true, data: this.contracts[idx] }
+    },
+    // ===== Contract Template (simulated API) =====
+    getContractTemplate(policyType) {
+      // Simulates API call to fetch configurable contract template
+      const templates = {
+        default: {
+          title: '短期出口信用保险合同',
+          version: 'v2025.1',
+          clauses: [
+            { id: 1, title: '一、保险责任范围', content: '本保单承保被保险人在保险期间内按贸易合同约定出口货物后，因买方商业风险（包括买方破产、拖欠货款、拒绝接收货物）或政治风险（包括汇兑限制、战争、征收）导致的直接损失。保险责任自货物出运之日起计算。' },
+            { id: 2, title: '二、赔偿比例', content: '本保单下单一买方最高赔偿比例为90%，单笔最高赔偿限额为保险金额的10%。对于已获批信用限额的买方，在信用限额范围内的出口损失，保险人按约定比例承担赔偿责任。' },
+            { id: 3, title: '三、免赔额', content: '每笔损失免赔额为2,000美元或损失金额的10%，以高者为准。同一买方项下连续多笔损失视为同一事件，合并计算免赔额。' },
+            { id: 4, title: '四、申报义务', content: '被保险人应按月度向保险人申报出口贸易情况，于次月15日前完成申报。未按时申报的出口业务，保险人有权不予赔付。申报内容应包括买方名称、发票金额、出运日期、支付条件等基本信息。' },
+            { id: 5, title: '五、保费支付', content: '被保险人应在保单生效前一次性支付全部保费。保费金额根据保险金额及费率表计算确定。逾期未支付的，保单自动终止，保险人不承担保险责任。' },
+            { id: 6, title: '六、信用限额', content: '被保险人应就每一买方申请信用限额。保险人在核准的信用限额内承担赔偿责任。未经保险人核准信用限额而先行出运的，保险人不承担赔偿责任。' },
+            { id: 7, title: '七、损失通知与索赔', content: '被保险人获悉可能发生损失后，应在10个工作日内向保险人提交损失通知书。索赔时应提供贸易合同、发票、提单、报关单、往来函电等证明文件。索赔时效为自损失发生之日起两年。' },
+            { id: 8, title: '八、合同变更与终止', content: '本合同的任何变更应以书面形式作出，并经双方签字盖章后生效。任何一方提前终止合同，应提前30日书面通知对方。合同终止前已出运的业务仍适用本合同条款。' },
+            { id: 9, title: '九、争议解决', content: '本协议适用中华人民共和国法律。因本合同引起的或与本合同有关的任何争议，双方应首先友好协商解决；协商不成的，提交保险人所在地有管辖权的人民法院诉讼解决。' },
+            { id: 10, title: '十、保密条款', content: '双方对本合同的内容及履行过程中知悉的对方商业秘密负有保密义务。未经对方书面同意，不得向第三方披露，法律法规另有规定的除外。' }
+          ]
+        },
+        short_term: {
+          title: '短期出口信用保险标准合同',
+          version: 'v2025.2',
+          clauses: [
+            { id: 1, title: '一、保险责任范围', content: '本保单承保被保险人在保险期间内按贸易合同约定出口货物后，因买方商业风险或政治风险导致的直接损失。' },
+            { id: 2, title: '二、赔偿比例', content: '本保单下单一买方最高赔偿比例为80%，单笔最高赔偿限额为保险金额的15%。' },
+            { id: 3, title: '三、免赔额', content: '每笔损失免赔额为3,000美元或损失金额的15%，以高者为准。' },
+            { id: 4, title: '四、申报义务', content: '被保险人应按月向保险人申报出口贸易情况，于次月15日前完成申报。' },
+            { id: 5, title: '五、保费支付', content: '被保险人应在保单生效前一次性支付全部保费。逾期未付则保单自动终止。' },
+            { id: 6, title: '六、争议解决', content: '本协议适用中华人民共和国法律，提交保险人所在地人民法院诉讼解决。' }
+          ]
+        }
+      }
+      return templates[policyType] || templates.default
+    },
+    getApprovedPoliciesForContract(companyName) {
+      // Find approved policies without existing contracts
+      return this.policies.filter(p =>
+        p.policyholder === companyName &&
+        ['active', 'approved'].includes(p.status) &&
+        !this.contracts.some(c => c.policyNo === p.policyNo)
+      )
+    },
+    submitUnderwriting(policyNo, clerkName) {
+      const idx = this.contracts.findIndex(c => c.policyNo === policyNo)
+      if (idx < 0) return { ok: false, message: '合同不存在' }
+      const cur = this.contracts[idx]
+      if (!['inkasso_signed', 'paid'].includes(cur.status)) return { ok: false, message: '当前状态不允许提交核保' }
+      const now = new Date()
+      this.contracts[idx] = {
+        ...cur,
+        status: 'underwriting_submitted',
+        underwritingDate: formatDateTime(now),
+        underwritingSubmittedBy: clerkName || '跟单员',
+        updatedAt: formatDateTime(now)
+      }
+      return { ok: true, data: this.contracts[idx] }
+    },
+    // ===== Post-Underwriting: Policy Issuance & Activation =====
+    confirmPolicyIssued(policyNo) {
+      const idx = this.contracts.findIndex(c => c.policyNo === policyNo)
+      if (idx < 0) return { ok: false, message: '合同不存在' }
+      const cur = this.contracts[idx]
+      if (cur.status !== 'underwriting_submitted') return { ok: false, message: '当前状态不允许确认保单出具' }
+      const now = new Date()
+      this.contracts[idx] = {
+        ...cur,
+        status: 'policy_issued',
+        policyIssuedDate: formatDateTime(now),
+        updatedAt: formatDateTime(now)
+      }
+      return { ok: true, data: this.contracts[idx] }
+    },
+    uploadPolicyInfo(policyNo, policyData) {
+      const idx = this.contracts.findIndex(c => c.policyNo === policyNo)
+      if (idx < 0) return { ok: false, message: '合同不存在' }
+      const cur = this.contracts[idx]
+      if (cur.status !== 'policy_issued') return { ok: false, message: '请先确认保单已出具' }
+      const now = new Date()
+      this.contracts[idx] = {
+        ...cur,
+        status: 'policy_info_uploaded',
+        policyInfo: { ...(policyData || {}) },
+        policyInfoUploadDate: formatDateTime(now),
+        updatedAt: formatDateTime(now)
+      }
+      return { ok: true, data: this.contracts[idx] }
+    },
+    uploadPaymentReceipt(policyNo, receiptData) {
+      const idx = this.contracts.findIndex(c => c.policyNo === policyNo)
+      if (idx < 0) return { ok: false, message: '合同不存在' }
+      const cur = this.contracts[idx]
+      if (cur.status !== 'policy_info_uploaded') return { ok: false, message: '请等待保单信息上传完成' }
+      const now = new Date()
+      this.contracts[idx] = {
+        ...cur,
+        status: 'offline_paid',
+        offlinePaymentReceipt: receiptData?.files || [],
+        offlinePaymentDate: formatDateTime(now),
+        offlinePaymentMethod: receiptData?.paymentMethod || 'bank_transfer',
+        offlinePaymentAmount: receiptData?.amount || cur.premium,
+        updatedAt: formatDateTime(now)
+      }
+      return { ok: true, data: this.contracts[idx] }
+    },
+    activateInsurance(policyNo) {
+      const idx = this.contracts.findIndex(c => c.policyNo === policyNo)
+      if (idx < 0) return { ok: false, message: '合同不存在' }
+      const cur = this.contracts[idx]
+      if (cur.status !== 'offline_paid') return { ok: false, message: '请先确认客户已完成线下支付' }
+      const now = new Date()
+      this.contracts[idx] = {
+        ...cur,
+        status: 'insurance_active',
+        insuranceActiveDate: formatDateTime(now),
+        updatedAt: formatDateTime(now)
+      }
+      return { ok: true, data: this.contracts[idx] }
     },
     createClaim(payload) {
       const now = new Date()

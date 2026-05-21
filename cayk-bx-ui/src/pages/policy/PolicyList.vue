@@ -21,8 +21,7 @@
         />
 
         <div class="stats-grid mb-24">
-          <stat-card title="确认通过" :value="activePolicyCount" icon="check-circle" color="success" />
-          <stat-card title="待确认" :value="pendingReviewCount" icon="clock" color="warning" />
+          <stat-card title="已确认" :value="activePolicyCount" icon="check-circle" color="success" />
           <stat-card title="总申请数" :value="store.insuranceApplications.length" icon="file" color="primary" />
           <stat-card title="总投保金额" :value="`$${totalInsuranceAmount.toLocaleString()}`" icon="credit-card" color="danger" />
         </div>
@@ -47,9 +46,10 @@
           <template #operation="{ row }">
             <t-space>
               <t-link @click="handleView(row)">查看</t-link>
-              <t-link v-if="isInkasso && row.status === 'pending_review'" theme="primary" @click="handleApprove(row)">确认</t-link>
-              <t-link v-if="isInkasso && row.status === 'pending_review'" theme="danger" @click="handleReject(row)">驳回</t-link>
-              <t-link v-if="!isInkasso && row.status === 'rejected'" theme="primary" @click="handleSubmit(row)">重新提交</t-link>
+              <t-link v-if="isInkasso && row.status === 'pending_review'" theme="primary" @click="handleApprove(row)">申请跟单员确认</t-link>
+              <t-link v-if="isClerk && row.status === 'clerk_review'" theme="primary" @click="handleClerkApprove(row)">确认完成</t-link>
+              <t-link v-if="isClerk && row.status === 'clerk_review'" theme="danger" @click="handleClerkReject(row)">驳回</t-link>
+              <t-link v-if="!isInkasso && !isClerk && row.status === 'rejected'" theme="primary" @click="handleSubmit(row)">重新提交</t-link>
             </t-space>
           </template>
         </data-table>
@@ -219,9 +219,65 @@
           </t-checkbox>
         </div>
 
+        <!-- Section 4: Generated Documents -->
+        <div class="modal-section-title">📎 自动生成投保文件</div>
+        <div class="attachment-section mb-16">
+          <div class="attachment-row">
+            <div class="attachment-info" style="display: flex; align-items: center; gap: 8px;">
+              <t-icon name="file-excel" style="color: #2ca471; font-size: 18px;" />
+              <span class="attachment-label">短期出口信用保险 投保单 (保单申请书)</span>
+            </div>
+            <t-space>
+              <t-button variant="outline" size="small" @click="showPreview('policy')">
+                <template #icon><t-icon name="browse" /></template>
+                预览
+              </t-button>
+              <t-button variant="outline" size="small" theme="primary" @click="downloadDirect('policy')">
+                <template #icon><t-icon name="download" /></template>
+                下载
+              </t-button>
+            </t-space>
+          </div>
+          <div class="attachment-row">
+            <div class="attachment-info" style="display: flex; align-items: center; gap: 8px;">
+              <t-icon name="file-excel" style="color: #2ca471; font-size: 18px;" />
+              <span class="attachment-label">短期出口信用保险 投保买方信息采集表</span>
+            </div>
+            <t-space>
+              <t-button variant="outline" size="small" @click="showPreview('buyer')">
+                <template #icon><t-icon name="browse" /></template>
+                预览
+              </t-button>
+              <t-button variant="outline" size="small" theme="primary" @click="downloadDirect('buyer')">
+                <template #icon><t-icon name="download" /></template>
+                下载
+              </t-button>
+            </t-space>
+          </div>
+        </div>
+
+        <!-- Reject reason (resubmit mode) -->
+        <div v-if="detailMode === 'resubmit' && currentRow?.rejectReason" class="reject-reason-box">
+          <t-icon name="info-circle-filled" size="20px" style="color: #dc2626; flex-shrink: 0; margin-top: 1px;" />
+          <div>
+            <div style="font-weight: 600; color: #991b1b; margin-bottom: 6px; font-size: 14px;">
+              {{ currentRow?.companyName }}，您好！
+            </div>
+            <div style="color: #b91c1c; font-size: 13px; line-height: 1.7;">
+              您的投保申请已被驳回，请您重新补充相关投保资料后再次提交。
+              <div style="margin-top: 6px; padding: 8px 10px; background: #fef2f2; border-radius: 4px; font-size: 12px; color: #991b1b;">
+                <span style="font-weight: 600;">驳回说明：</span>{{ currentRow?.rejectReason }}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Modal Footer -->
         <div class="modal-footer">
           <t-button variant="outline" @click="detailVisible = false">关闭</t-button>
+          <t-button v-if="detailMode === 'apply'" theme="primary" @click="handleDetailApply">申请跟单员确认</t-button>
+          <t-button v-if="detailMode === 'clerk_approve'" theme="primary" @click="handleDetailApply">确认完成</t-button>
+          <t-button v-if="detailMode === 'resubmit'" theme="primary" @click="handleDetailApply">重新提交</t-button>
         </div>
       </div>
       <div v-else class="no-data">暂无数据</div>
@@ -302,45 +358,28 @@
       </div>
     </t-dialog>
 
-    <!-- 确认弹窗 -->
-    <t-dialog v-model:visible="confirmVisible" :header="confirmTitle" width="800px">
-      <div class="confirm-content">
-        <detail-panel v-if="confirmRow" title="基础信息" :columns="detailColumns" :data="confirmRow || {}" />
-        <detail-panel v-if="confirmRow" title="业务信息" :columns="businessColumns" :data="confirmRow || {}" />
-        <detail-panel v-if="confirmRow" title="投保需求" :columns="insuranceColumns" :data="confirmRow || {}" />
-
-        <t-form v-if="confirmAction === 'reject'" label-width="100px">
-          <t-form-item label="驳回原因">
-            <t-textarea v-model="rejectReason" placeholder="请输入驳回原因" :autosize="{ minRows: 3, maxRows: 6 }" />
-          </t-form-item>
-        </t-form>
-
-        <div class="confirm-tip" v-if="confirmAction === 'submit'">
-          <t-icon name="warning-circle" size="16px" class="tip-icon" />
-          <span class="tip-text">提交后状态将变为待确认，请确认信息无误</span>
+    <!-- 跟单员驳回弹窗 -->
+    <t-dialog v-model:visible="clerkRejectVisible" header="驳回投保申请" width="500px">
+      <div class="reject-content">
+        <div class="confirm-tip" style="margin-top: 0;">
+          <t-icon name="warning-circle" size="16px" class="tip-icon danger" />
+          <span class="tip-text">确认驳回该投保申请？驳回后申请将退回至长安银科角色重新处理。</span>
         </div>
-        <div v-if="confirmAction === 'approve'" class="attachment-section">
-          <t-divider>附件（自动生成）</t-divider>
-          <div class="attachment-row">
-            <span class="attachment-label">保单申请书</span>
-            <t-button variant="outline" size="small" @click="showPreview('policy')">查看预览</t-button>
-          </div>
-          <div class="attachment-row">
-            <span class="attachment-label">买方信息采集表</span>
-            <t-button variant="outline" size="small" @click="showPreview('buyer')">查看预览</t-button>
-          </div>
-        </div>
-        <div class="confirm-tip" v-else-if="confirmAction === 'reject'">
-          <t-icon name="close-circle" size="16px" class="tip-icon danger" />
-          <span class="tip-text">请确认是否驳回此申请，驳回后客户可重新编辑提交。</span>
+        <div class="reject-form" style="margin-top: 16px;">
+          <label class="reject-label">驳回原因 <span style="color: #dc2626;">*</span></label>
+          <t-textarea
+            v-model="clerkRejectReason"
+            placeholder="请输入驳回原因"
+            :rows="4"
+            maxlength="500"
+            show-limit-number
+          />
         </div>
       </div>
       <template #footer>
         <t-space>
-          <t-button variant="outline" @click="confirmVisible = false">取消</t-button>
-          <t-button v-if="confirmAction === 'approve'" theme="primary" @click="handleConfirm">确认</t-button>
-          <t-button v-else-if="confirmAction === 'reject'" theme="danger" @click="handleConfirm">驳回</t-button>
-          <t-button v-else-if="confirmAction === 'submit'" theme="primary" @click="handleConfirm">确认</t-button>
+          <t-button variant="outline" @click="clerkRejectVisible = false">取消</t-button>
+          <t-button theme="danger" @click="handleClerkRejectConfirm">确认驳回</t-button>
         </t-space>
       </template>
     </t-dialog>
@@ -406,6 +445,7 @@ const loading = computed(() => false)
 const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRange: [] })
 
 const isInkasso = computed(() => userStore.role === 'inkasso')
+const isClerk = computed(() => userStore.role === 'clerk')
 const mainTab = ref(route.query.tab || 'review')
 
 // ===== Application review =====
@@ -417,16 +457,16 @@ const statusTabs = [
 ]
 
 const statusOptions = [
-  { value: 'draft', label: '草稿' },
-  { value: 'pending_review', label: '待确认' },
-  { value: 'approved', label: '确认通过' },
+  { value: 'approved', label: '已确认' },
+  { value: 'clerk_review', label: '申请跟单员确认' },
   { value: 'rejected', label: '已驳回' }
 ]
 
 const statusMap = {
-  draft: '待确认',
-  pending_review: '待确认',
-  approved: '确认通过',
+  draft: '已确认',
+  pending_review: '已确认',
+  clerk_review: '申请跟单员确认',
+  approved: '已确认',
   rejected: '已驳回'
 }
 
@@ -447,9 +487,17 @@ const pagination = reactive({ total: 0, current: 1, pageSize: 20 })
 const filteredData = computed(() => {
   const list = store.insuranceApplications || []
   const p = searchParams.value
+  const isCust = userStore.role === 'customer'
   return list.filter((it) => {
-    // Only display approved/passed insurance tasks in the Insurance Confirmation List
-    if (it.status !== 'approved') return false
+    if (isCust) {
+      // Customer sees approved and rejected items
+      if (!['approved', 'rejected'].includes(it.status)) return false
+    } else {
+      // Changan Yinke (inkasso) sees pending_review and approved items
+      if (userStore.role === 'inkasso' && !['pending_review', 'approved'].includes(it.status)) return false
+      // Clerk sees clerk_review items (申请跟单员确认) and approved items
+      if (userStore.role === 'clerk' && !['clerk_review', 'approved'].includes(it.status)) return false
+    }
     if (p.enterpriseName && !String(it.companyName || '').includes(p.enterpriseName)) return false
     if (p.buyerName && !String(it.buyerName || '').includes(p.buyerName)) return false
     if (p.status && it.status !== p.status) return false
@@ -464,7 +512,6 @@ const tableData = computed(() => {
 })
 
 const activePolicyCount = computed(() => (store.insuranceApplications || []).filter(p => p.status === 'approved').length)
-const pendingReviewCount = computed(() => (store.insuranceApplications || []).filter(p => p.status === 'pending_review').length)
 const totalInsuranceAmount = computed(() => (store.insuranceApplications || []).reduce((sum, p) => sum + (Number(p.insuranceAmount) || 0), 0))
 
 // ===== Policy list =====
@@ -506,15 +553,15 @@ const totalPremium = computed(() => (store.policies || []).reduce((sum, p) => su
 
 // ===== Dialog state =====
 const detailVisible = ref(false)
+const detailMode = ref('view') // 'view' | 'apply' | 'clerk_approve'
 const currentRow = ref(null)
 const policyDetailVisible = ref(false)
 const currentPolicy = ref(null)
 
-const confirmVisible = ref(false)
-const confirmTitle = ref('')
 const confirmRow = ref(null)
-const confirmAction = ref('')
-const rejectReason = ref('')
+
+const clerkRejectVisible = ref(false)
+const clerkRejectReason = ref('')
 
 const ocrDialogVisible = ref(false)
 const renewalVisible = ref(false)
@@ -580,27 +627,17 @@ const handleReset = () => { searchParams.value = { enterpriseName: '', buyerName
 const handlePageChange = (pageInfo) => { pagination.current = pageInfo.current; pagination.pageSize = pageInfo.pageSize }
 const handlePolicyPageChange = (pageInfo) => { policyPagination.current = pageInfo.current; policyPagination.pageSize = pageInfo.pageSize }
 
-const handleView = (row) => { currentRow.value = row; detailVisible.value = true }
+const handleView = (row) => { currentRow.value = row; detailMode.value = 'view'; detailVisible.value = true }
 const handleViewPolicy = (row) => { currentPolicy.value = row; policyDetailVisible.value = true }
 
 const handleApprove = (row) => {
-  confirmTitle.value = '投保信息详情'
-  confirmRow.value = row
-  confirmAction.value = 'approve'
-  rejectReason.value = ''
-  confirmVisible.value = true
-}
-
-const handleReject = (row) => {
-  confirmTitle.value = '确认驳回'
-  confirmRow.value = row
-  confirmAction.value = 'reject'
-  rejectReason.value = ''
-  confirmVisible.value = true
+  currentRow.value = row
+  detailMode.value = 'apply'
+  detailVisible.value = true
 }
 
 const showPreview = (type) => {
-  const row = confirmRow.value
+  const row = confirmRow.value || currentRow.value
   if (!row) return
   previewType.value = type
   if (type === 'policy') {
@@ -635,36 +672,141 @@ const handlePreviewWheel = (e) => {
 
 const previewDownload = () => {
   if (!previewWb.value) return
-  const row = confirmRow.value
+  const row = confirmRow.value || currentRow.value
   const filename = previewType.value === 'policy'
     ? `保单申请书_${row?.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
     : `买方信息采集表_${row?.buyerName || row?.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
   downloadWorkbook(previewWb.value, filename)
 }
 
-const handleSubmit = (row) => {
-  confirmTitle.value = '重新提交申请'
-  confirmRow.value = row
-  confirmAction.value = 'submit'
-  confirmVisible.value = true
+const downloadDirect = (type) => {
+  const row = currentRow.value
+  if (!row) return
+  let wb
+  if (type === 'policy') {
+    wb = generatePolicyApplicationXlsx(row, statusMap)
+  } else {
+    wb = generateBuyerInfoXlsx(row)
+  }
+  const filename = type === 'policy'
+    ? `保单申请书_${row.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
+    : `买方信息采集表_${row.buyerName || row.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
+  downloadWorkbook(wb, filename)
 }
 
-const handleConfirm = () => {
-  if (confirmAction.value === 'approve' && confirmRow.value) {
-    const res = store.approveInsuranceApplication(confirmRow.value.id)
-    if (res?.ok) MessagePlugin.success('确认成功')
-    else MessagePlugin.error(res?.message || '确认失败')
-  } else if (confirmAction.value === 'reject' && confirmRow.value) {
-    if (!rejectReason.value.trim()) { MessagePlugin.warning('请输入驳回原因'); return }
-    const res = store.rejectInsuranceApplication(confirmRow.value.id, rejectReason.value)
-    if (res?.ok) MessagePlugin.success('驳回成功')
-    else MessagePlugin.error(res?.message || '驳回失败')
-  } else if (confirmAction.value === 'submit' && confirmRow.value) {
-    const res = store.submitInsuranceApplication(confirmRow.value.id)
-    if (res?.ok) MessagePlugin.success('提交申请成功')
-    else MessagePlugin.error(res?.message || '提交失败')
+const handleSubmit = (row) => {
+  currentRow.value = row
+  detailMode.value = 'resubmit'
+  detailVisible.value = true
+}
+
+const handleDetailApply = () => {
+  const row = currentRow.value
+  if (!row) return
+
+  if (detailMode.value === 'apply') {
+    // Inkasso: submit to clerk review
+    const res = store.submitToClerkReview(row.id)
+    if (!res?.ok) {
+      MessagePlugin.error(res?.message || '申请失败')
+      return
+    }
+    MessagePlugin.success('申请成功，已流转至跟单员确认')
+    detailVisible.value = false
+    // Create process task — starts at step 2 (资料审核) for clerk
+    const now = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    const fmtDt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    const stepOptions = [
+      { label: '提交投保申请', value: 1 },
+      { label: '资料审核', value: 2 },
+      { label: '资信调查', value: 3 },
+      { label: '信用限额审批', value: 4 },
+      { label: '核保出单', value: 5 },
+      { label: '缴费生效', value: 6 }
+    ]
+    store.processTasks.unshift({
+      id: row.id + '_flow',
+      policyNo: row.policyNo || `PI${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000))}`,
+      companyName: row.companyName || '',
+      taskType: '投保流程',
+      startTime: fmtDt(now),
+      endTime: '',
+      stepsCompleted: 1,
+      status: 'processing',
+      statusName: '进行中',
+      stepOptions,
+      stepInfo: [
+        { handler: row.declarationSignature || row.legalRepresentative || row.contactName || '客户', startTime: fmtDt(now), endTime: fmtDt(now) },
+        { handler: '李跟单', startTime: '', endTime: '' },
+        { handler: '', startTime: '', endTime: '' },
+        { handler: '', startTime: '', endTime: '' },
+        { handler: '', startTime: '', endTime: '' },
+        { handler: '', startTime: '', endTime: '' }
+      ],
+      formData: {
+        step1: {
+          insurancePlan: 'planA',
+          insuranceCompany: 'company1',
+          matchRule: '根据各保险公司行业风险清单、国家（地区）分类表设定匹配规则，结合买方资质、贸易背景等因素综合评估后推荐此方案。',
+          approvalResult: 'approved',
+          auditOpinion: '投保申请已通过长安银科确认，自动流转至跟单员确认。'
+        },
+        step2: { approvalResult: '', auditOpinion: '' },
+        step3: { approvalResult: '', auditOpinion: '' },
+        step4: { checkedItems: [], approvalResult: '', auditOpinion: '' },
+        step5: { policyNo: '', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
+        step6: { premiumAmount: '', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
+      },
+      step2Docs: { applicationForm: true, buyerInfoForm: true },
+      planLabels: { planA: '方案A - 短期出口信用保险', planB: '方案B - 中长期出口信用保险', planC: '方案C - 国内贸易信用保险' },
+      companyLabels: { company1: '中国出口信用保险公司', company2: '平安财产保险', company3: '太平洋财产保险' }
+    })
+  } else if (detailMode.value === 'clerk_approve') {
+    // Clerk: confirm complete (final approval, creates policy + credit limit)
+    const res = store.approveInsuranceApplication(row.id)
+    if (!res?.ok) {
+      MessagePlugin.error(res?.message || '确认失败')
+      return
+    }
+    MessagePlugin.success('确认完成')
+    detailVisible.value = false
+  } else if (detailMode.value === 'resubmit') {
+    // Customer: resubmit rejected application
+    const res = store.submitInsuranceApplication(row.id)
+    if (!res?.ok) {
+      MessagePlugin.error(res?.message || '提交失败')
+      return
+    }
+    MessagePlugin.success('提交申请成功')
+    detailVisible.value = false
   }
-  confirmVisible.value = false
+}
+
+const handleClerkApprove = (row) => {
+  currentRow.value = row
+  detailMode.value = 'clerk_approve'
+  detailVisible.value = true
+}
+
+const handleClerkReject = (row) => {
+  confirmRow.value = row
+  clerkRejectVisible.value = true
+  clerkRejectReason.value = ''
+}
+
+const handleClerkRejectConfirm = () => {
+  if (!clerkRejectReason.value.trim()) {
+    MessagePlugin.warning('请输入驳回原因')
+    return
+  }
+  const res = store.rejectInsuranceApplication(confirmRow.value.id, clerkRejectReason.value)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '驳回失败')
+    return
+  }
+  MessagePlugin.success('已驳回')
+  clerkRejectVisible.value = false
 }
 
 const handlePolicyChange = (row) => { currentPolicy.value = row; changeVisible.value = true }
@@ -760,6 +902,17 @@ onMounted(() => { store.ensureSeeded() })
 .tip-icon { color: #f59e0b; &.success { color: #16a34a; } &.danger { color: #dc2626; } }
 .tip-text { font-size: 13px; color: #92400e; }
 .confirm-tip { &:has(.tip-icon.success) .tip-text { color: #166534; } &:has(.tip-icon.danger) .tip-text { color: #991b1b; } }
+
+.reject-reason-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 12px;
+}
 
 .export-modal { padding: 16px; }
 .export-filters { margin-bottom: 20px; }

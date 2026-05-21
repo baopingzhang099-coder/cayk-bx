@@ -91,7 +91,7 @@
             <t-link @click="handleView(row)">查看</t-link>
             <t-link v-if="row.status === 'draft' || row.status === 'pending_review'" @click="handleEdit(row)">编辑</t-link>
             <t-link v-if="row.status === 'draft' || row.status === 'pending_review'" theme="danger" @click="handleShowDeleteModal(row)">删除</t-link>
-            <t-link v-if="row.status === 'approved'" theme="primary" @click="handleShowInsuranceInfo(row)">投保申请</t-link>
+            <t-link v-if="row.status === 'approved' && !row.policyNo" theme="primary" @click="handleShowInsuranceInfo(row)">投保申请</t-link>
           </t-space>
         </template>
       </t-table>
@@ -497,10 +497,13 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import { useBusinessStore } from '@/stores/business'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const store = useBusinessStore()
+const userStore = useUserStore()
 const loading = computed(() => false)
+const isCustomer = computed(() => userStore.role === 'customer')
 
 const submitVisible = ref(false)
 const currentSubmitData = ref(null)
@@ -553,7 +556,12 @@ const statusOptions = [
 const statusMap = {
   draft: '待确认',
   pending_review: '待确认',
-  approved: '已确认'
+  clerk_review: '跟单员审核',
+  approved: '已确认',
+  rejected: '已驳回',
+  ocr_pending: '待确认',
+  ocr_clerk_review: '待审核',
+  ocr_approved: '已确认'
 }
 
 const columns = [
@@ -782,13 +790,11 @@ const handleConfirmInsuranceApply = () => {
 
   MessagePlugin.success('投保申请成功！已成功应用数字化推荐方案（赔付比90%、0免赔、0.11%优惠费率），保单已同步生成并激活！')
   insuranceInfoVisible.value = false
-  
-  setTimeout(() => {
-    router.push('/policy/list?tab=policy')
-  }, 1000)
 }
 
-onMounted(() => { store.ensureSeeded() })
+onMounted(() => {
+  store.ensureSeeded()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -802,6 +808,7 @@ onMounted(() => { store.ensureSeeded() })
 .table-title { font-size: 16px; font-weight: 600; color: #333; }
 .table-count { font-size: 14px; color: #999; }
 .mb-16 { margin-bottom: 16px; }
+
 .detail-container { padding: 0 16px; }
 
 .submit-modal {

@@ -47,10 +47,10 @@
           class="flow-step"
           :class="{ active: step.active, done: step.done }"
         >
-          <div class="flow-step-icon">
+          <div class="flow-step-icon" :class="`step-icon-${step.key}`">
             <t-icon v-if="step.done" name="check-circle-filled" />
             <t-icon v-else-if="step.active" name="loading" />
-            <t-icon v-else name="circle" />
+            <t-icon v-else name="file-copy" />
           </div>
           <div class="flow-step-body">
             <div class="flow-step-title">{{ step.title }}</div>
@@ -86,7 +86,7 @@
             <t-link v-if="isClerk && row.status === 'inkasso_signed'" theme="primary" @click="handleSubmitUnderwriting(row)">提交材料</t-link>
             <t-link v-if="isClerk && row.status === 'paid'" theme="primary" @click="handleSubmitUnderwriting(row)">提交核保</t-link>
             <t-link v-if="isClerk && row.status === 'underwriting_submitted'" theme="primary" @click="handleConfirmPolicyIssued(row)">确认出具保单</t-link>
-            <t-link v-if="isClerk && row.status === 'policy_issued'" theme="primary" @click="handleUploadPolicyInfo(row)">上传保单信息</t-link>
+            <t-link v-if="isInkasso && row.status === 'policy_issued'" theme="primary" @click="handleUploadPolicyInfo(row)">上传保单信息</t-link>
             <t-link v-if="isCustomer && row.status === 'policy_info_uploaded'" theme="primary" @click="handleUploadReceipt(row)">上传缴费凭证</t-link>
             <t-link v-if="isInkasso && row.status === 'offline_paid'" theme="primary" @click="handleActivateInsurance(row)">确认保险生效</t-link>
             <t-link @click="handleViewContract(row)">查看</t-link>
@@ -253,7 +253,7 @@
       </div>
     </t-dialog>
 
-    <!-- ====== Clerk: Policy Info Upload Dialog ====== -->
+    <!-- ====== Inkasso: Policy Info Upload Dialog ====== -->
     <t-dialog
       v-model:visible="policyUploadVisible"
       header="上传保单信息 - 保单数字化整理"
@@ -262,7 +262,7 @@
       :destroy-on-close="true"
     >
       <div v-if="policyUploadContract" class="policy-upload-body">
-        <t-alert message="请将保险公司出具的保单信息录入系统，完成保单数字化整理" theme="info" class="upload-alert" />
+        <t-alert message="请将保险公司出具的保单文件上传至系统，完成保单数字化归档" theme="info" class="upload-alert" />
 
         <div class="form-section">
           <div class="section-title">保单文件上传</div>
@@ -468,7 +468,7 @@
       </div>
     </t-dialog>
 
-    <!-- ====== Clerk: Insurance Activation Dialog ====== -->
+    <!-- ====== Inkasso: Insurance Activation Dialog ====== -->
     <t-dialog
       v-model:visible="activateVisible"
       header="确认保险生效"
@@ -560,8 +560,8 @@ const isClerk = computed(() => userStore.role === 'clerk')
 
 const roleTip = computed(() => {
   if (isCustomer.value) return '当前视图：客户 — 发起签署 → 扫码支付 → 上传缴费凭证'
-  if (isInkasso.value) return '当前视图：长安银科 — 电子签章签署合同 → 确认保险生效'
-  return '当前视图：跟单员 — 提交核保 → 上传保单信息'
+  if (isInkasso.value) return '当前视图：长安银科 — 电子签章签署合同 → 上传保单信息 → 确认保险生效'
+  return '当前视图：跟单员 — 提交核保 → 确认保单出具'
 })
 
 // ====== Flow status steps ======
@@ -575,7 +575,7 @@ const flowSteps = computed(() => {
     { key: 'inkasso_sign', title: '平台签署盖章', desc: '长安银科在线签署盖章', active: c.status === 'pending_inkasso_sign', done: doneStatuses.includes(c.status), time: c.signDate || '' },
     { key: 'payment', title: '客户扫码支付', desc: '客户扫描二维码完成支付', active: c.status === 'inkasso_signed', done: ['paid', ...doneStatuses.slice(3)].includes(c.status), time: c.paymentDate || '' },
     { key: 'underwriting', title: '提交保险公司核保', desc: '跟单员提交材料至保险公司', active: c.status === 'paid', done: ['underwriting_submitted', ...doneStatuses.slice(4)].includes(c.status), time: c.underwritingDate || '' },
-    { key: 'policy_issue', title: '保单出具与上传', desc: '跟单员上传保单信息至平台', active: ['underwriting_submitted', 'policy_issued'].includes(c.status), done: ['policy_info_uploaded', 'offline_paid', 'insurance_active'].includes(c.status), time: c.policyInfoUploadDate || c.policyIssuedDate || '' },
+    { key: 'policy_issue', title: '保单出具与上传', desc: '长安银科上传保单信息与数字化保单', active: ['underwriting_submitted', 'policy_issued'].includes(c.status), done: ['policy_info_uploaded', 'offline_paid', 'insurance_active'].includes(c.status), time: c.policyInfoUploadDate || c.policyIssuedDate || '' },
     { key: 'offline_payment', title: '客户线下缴费', desc: '客户线下支付并上传缴费凭证', active: c.status === 'policy_info_uploaded', done: ['offline_paid', 'insurance_active'].includes(c.status), time: c.offlinePaymentDate || '' },
     { key: 'insurance_active_step', title: '保险生效', desc: '保险正式生效', active: c.status === 'offline_paid', done: c.status === 'insurance_active', time: c.insuranceActiveDate || '' }
   ]
@@ -654,7 +654,7 @@ const receiptForm = ref({
   remark: ''
 })
 
-// Insurance Activation (clerk)
+// Insurance Activation (inkasso)
 const activateVisible = ref(false)
 const activateContract = ref(null)
 const activateLoading = ref(false)
@@ -890,10 +890,10 @@ const handleConfirmPolicyIssued = (row) => {
     MessagePlugin.error(res?.message || '操作失败')
     return
   }
-  MessagePlugin.success('已确认保险公司出具保单，请继续上传保单信息')
+  MessagePlugin.success('已确认保险公司出具保单，保单待平台上传归档')
 }
 
-// ====== Clerk: Upload policy info ======
+// ====== Inkasso: Upload policy info ======
 const handleUploadPolicyInfo = (row) => {
   currentFlowContract.value = row
   policyUploadContract.value = row
@@ -920,7 +920,7 @@ const handlePolicyUploadSubmit = () => {
       policyUploadLoading.value = false
       return
     }
-    MessagePlugin.success('保单信息已上传至平台')
+    MessagePlugin.success('保单信息与数字化保单已上传')
     policyUploadLoading.value = false
     policyUploadVisible.value = false
   }, 1500)
@@ -993,11 +993,11 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .breadcrumbs { display: flex; align-items: center; margin-bottom: 16px; font-size: 14px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0; }
 .page-title { font-size: 20px; font-weight: 600; color: #0f172a; }
 .page-header-actions { display: flex; align-items: center; gap: 12px; }
 .lifecycle-hint { font-size: 13px; color: #94a3b8; }
-.role-badge-tip { font-size: 13px; color: #64748b; background: #f1f5f9; padding: 4px 14px; border-radius: 20px; }
+.role-badge-tip { font-size: 13px; color: #1e293b; background: linear-gradient(135deg, #eef2ff, #e0e7ff); padding: 6px 16px; border-radius: 20px; font-weight: 500; border: 1px solid #c7d2fe; }
 
 // Lifecycle bar in view dialog
 .lifecycle-bar {
@@ -1022,13 +1022,17 @@ onMounted(() => {
 // Eligible policies
 .eligible-card {
   margin-bottom: 16px;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   :deep(.t-card__header) { padding-bottom: 0; }
+  :deep(.t-card__title) { font-size: 15px; font-weight: 600; color: #1e293b; }
 }
 .eligible-list { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
 .eligible-item {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 16px; border: 1px solid #e0e0e0; border-radius: 8px; transition: all 0.2s;
-  &:hover { border-color: #0052d9; background: #f0f5ff; }
+  padding: 16px 20px; border: 1px solid #e2e8f0; border-radius: 10px;
+  transition: all 0.2s ease; background: #fafbfc;
+  &:hover { border-color: #0052d9; background: #f0f5ff; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,82,217,0.08); }
 }
 .eligible-main { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
 .eligible-policy { font-weight: 600; color: #0052d9; font-size: 14px; }
@@ -1036,32 +1040,63 @@ onMounted(() => {
 .eligible-details { display: flex; gap: 20px; font-size: 13px; color: #64748b; }
 
 // Flow steps
-.flow-card { margin-bottom: 16px; }
+.flow-card {
+  margin-bottom: 16px; border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  :deep(.t-card__title) { font-size: 15px; font-weight: 600; color: #1e293b; }
+}
 .flow-steps {
-  display: flex; gap: 0; padding: 8px 0;
-  justify-content: space-between;
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;
+  padding: 16px 8px;
 }
 .flow-step {
-  flex: 1; display: flex; gap: 10px; align-items: flex-start;
+  display: flex; flex-direction: column; gap: 8px;
+  align-items: center; text-align: center;
   position: relative;
   &:not(:last-child)::after {
-    content: ''; position: absolute; top: 12px; left: 32px;
-    right: -16px; height: 2px; background: #e2e8f0; z-index: 0;
+    content: ''; position: absolute; top: 16px;
+    left: calc(50% + 18px); right: calc(-50% + 18px);
+    height: 2px; background: #e2e8f0; z-index: 0;
   }
   &.done:not(:last-child)::after { background: #00a870; }
   &.active:not(:last-child)::after { background: #0052d9; }
 }
-.flow-step-icon { position: relative; z-index: 1; font-size: 22px; color: #cbd5e1; flex-shrink: 0; }
-.flow-step.done .flow-step-icon { color: #00a870; }
-.flow-step.active .flow-step-icon { color: #0052d9; animation: spin 1.5s linear infinite; }
-@keyframes spin { 100% { transform: rotate(360deg); } }
+.flow-step-icon {
+  position: relative; z-index: 1;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: #94a3b8;
+  background: #f1f5f9;
+  transition: all 0.3s ease;
+  &.step-icon-initiated:not(.flow-step.done) { background: #f0fdf4; color: #16a34a; }
+  &.step-icon-inkasso_sign:not(.flow-step.done) { background: #f0f5ff; color: #0052d9; }
+  &.step-icon-payment:not(.flow-step.done) { background: #fefce8; color: #ca8a04; }
+  &.step-icon-underwriting:not(.flow-step.done) { background: #fef2f2; color: #dc2626; }
+  &.step-icon-policy_issue:not(.flow-step.done) { background: #f5f3ff; color: #7c3aed; }
+  &.step-icon-offline_payment:not(.flow-step.done) { background: #fff7ed; color: #ea580c; }
+  &.step-icon-insurance_active_step:not(.flow-step.done) { background: #f0fdf4; color: #16a34a; }
+}
+.flow-step.done .flow-step-icon { background: #f0fdf4; color: #00a870; }
+.flow-step.active .flow-step-icon {
+  background: #eff6ff; color: #0052d9;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,82,217,0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(0,82,217,0); }
+}
 .flow-step-body { flex: 1; }
-.flow-step-title { font-size: 13px; font-weight: 600; color: #1e293b; }
-.flow-step-desc { font-size: 12px; color: #94a3b8; margin-top: 2px; }
-.flow-step-time { font-size: 11px; color: #cbd5e1; margin-top: 2px; }
+.flow-step-title { font-size: 12px; font-weight: 600; color: #1e293b; line-height: 1.3; }
+.flow-step-desc { font-size: 11px; color: #94a3b8; margin-top: 2px; line-height: 1.3; }
+.flow-step-time { font-size: 10px; color: #cbd5e1; margin-top: 4px; }
 
 // Contract list
-.contract-list-card { :deep(.t-card__body) { padding: 0; } }
+.contract-list-card {
+  border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;
+  :deep(.t-card__body) { padding: 0; }
+  :deep(.t-table) { font-size: 13px; }
+  :deep(.t-table__th) { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 12px; }
+}
 
 // E-sign dialog
 .esign-body { padding: 8px 0; }
@@ -1160,6 +1195,9 @@ onMounted(() => {
 
 // Policy upload dialog
 .policy-upload-body { padding: 8px 0; max-height: 65vh; overflow-y: auto; }
+.policy-upload-body::-webkit-scrollbar { width: 6px; }
+.policy-upload-body::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+.policy-upload-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 .upload-alert { margin-bottom: 16px; }
 .form-section { margin-bottom: 20px; }
 .form-section .section-title { font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 12px; padding-left: 8px; border-left: 3px solid #0052d9; }

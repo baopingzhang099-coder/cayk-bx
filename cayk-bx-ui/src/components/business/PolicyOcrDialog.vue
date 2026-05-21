@@ -1,25 +1,42 @@
 <template>
-  <t-dialog :visible="visible" @update:visible="emit('update:visible', $event)" header="保单数字化 - 新增投保" width="800px" :destroy-on-close="true">
-    <t-tabs v-model="activeTab" :disabled="ocrTabDisabled">
+  <t-dialog :visible="visible" @update:visible="emit('update:visible', $event)" header="电子保单数字化" width="800px" :destroy-on-close="true">
+    <t-tabs v-model="activeTab">
       <t-tab-panel value="upload" label="1. 上传文件">
         <div class="ocr-upload">
-          <t-upload
-            v-model="uploadFiles"
-            action="https://demo.com/upload"
-            accept="image/jpeg,image/png,application/pdf"
-            :max="5"
-            :max-size="10 * 1024 * 1024"
-            placeholder="支持 PDF/JPG/PNG，单文件 ≤ 10MB"
-            tips="上传保单/批单文件，系统将自动识别提取关键字段"
-            theme="file-flow"
-            @success="handleUploadSuccess"
-          />
-          <t-button theme="primary" class="mt-16" :disabled="uploadFiles.length === 0" @click="startOcr">
+          <div v-if="externalPolicy" class="ext-policy-info">
+            <t-alert theme="info" class="mb-16">
+              <template #message>
+                来自 <strong>{{ externalPolicy.customerCompany }}</strong> 上传的保单文件，请确认后开始OCR识别
+              </template>
+            </t-alert>
+            <div class="file-detail">
+              <div class="file-icon">
+                <t-icon name="file-pdf" style="color: #dc2626; font-size: 32px;" />
+              </div>
+              <div class="file-meta">
+                <div class="file-name">{{ externalPolicy.originalFileName }}</div>
+                <div class="file-info-text">上传时间：{{ externalPolicy.createTime }} | 文件大小：{{ externalPolicy.fileSize || '-' }}</div>
+              </div>
+            </div>
+          </div>
+          <template v-else>
+            <t-upload
+              v-model="uploadFiles"
+              accept="image/jpeg,image/png,application/pdf"
+              :max="5"
+              :max-size="10 * 1024 * 1024"
+              placeholder="选择文件"
+              tips="上传保单/批单文件，系统将自动识别提取关键字段"
+              theme="file-flow"
+              :request-method="mockUpload"
+              @success="handleUploadSuccess"
+            />
+          </template>
+          <t-button theme="primary" class="mt-16" @click="startOcr">
             <t-icon name="scan" /> 开始识别
           </t-button>
         </div>
       </t-tab-panel>
-
       <t-tab-panel value="review" label="2. 校对确认">
         <div class="ocr-review">
           <t-alert theme="info" class="mb-16">
@@ -245,23 +262,13 @@
             </t-row>
           </t-form>
 
-          <t-divider>保单文件</t-divider>
-          <t-form label-width="140px">
-            <t-form-item label="保单">
-              <t-upload action="https://demo.com/upload" accept=".pdf,.jpg,.png" :max="3" />
-            </t-form-item>
-            <t-form-item label="批单">
-              <t-upload action="https://demo.com/upload" accept=".pdf,.jpg,.png" :max="3" />
-            </t-form-item>
-          </t-form>
-
         </div>
       </t-tab-panel>
     </t-tabs>
     <template #footer>
       <t-space v-if="activeTab === 'review'">
         <t-button variant="outline" @click="emit('update:visible', false)">取消</t-button>
-        <t-button theme="primary" @click="handleSaveOcr">保存结构化结果</t-button>
+        <t-button theme="primary" @click="handleSaveOcr">确认</t-button>
       </t-space>
     </template>
   </t-dialog>
@@ -271,34 +278,36 @@
 import { ref, reactive, computed } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useBusinessStore } from '@/stores/business'
+import { useUserStore } from '@/stores/user'
 
 const props = defineProps({
-  visible: Boolean
+  visible: Boolean,
+  externalPolicyId: { type: String, default: '' }
 })
 const emit = defineEmits(['update:visible'])
 
 const store = useBusinessStore()
+const userStore = useUserStore()
+
 const activeTab = ref('upload')
 const uploadFiles = ref([])
 
-const ocrTabDisabled = computed(() => activeTab.value === 'review')
-
 const ocrData = reactive({
-  policyNo: '',
-  insuranceCompany: '',
+  policyNo: `PI${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+  insuranceCompany: '人保财险',
   insurerName: '',
   policyholder: '',
   beneficiary: '',
-  effectiveDate: '',
-  expiryDate: '',
+  effectiveDate: '2026-01-01',
+  expiryDate: '2027-01-01',
   insurancePeriod: '',
   renewalFlag: 'no',
-  coverageAmount: 0,
+  coverageAmount: 500000,
   currency: 'USD',
   countryRiskVersion: '',
   clauseVersion: '',
   businessType: '',
-  maxCompensation: 0,
+  maxCompensation: 500000,
   buyerNames: '',
   buyerCreditLimit: 0,
   riskCoverage: '',
@@ -309,13 +318,25 @@ const ocrData = reactive({
   declarationCycle: '',
   declarationDeadline: '',
   declarationCurrency: 'USD',
-  premiumRate: 0,
+  premiumRate: 0.025,
   paymentDeadline: '',
   paymentMethod: '',
-  premium: 0,
+  premium: 12500,
   surrenderFee: 0,
   recoveryPayee: ''
 })
+
+const sourceLabel = ref('')
+const externalPolicy = computed(() => {
+  if (!props.externalPolicyId) return null
+  return store.externalPolicies.find(p => p.id === props.externalPolicyId) || null
+})
+
+const mockUpload = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => resolve({ status: 'success', data: {} }), 200)
+  })
+}
 
 const handleUploadSuccess = () => {
   MessagePlugin.success('文件上传成功')
@@ -324,44 +345,101 @@ const handleUploadSuccess = () => {
 const startOcr = () => {
   MessagePlugin.loading('正在识别文档...')
   setTimeout(() => {
-    ocrData.policyNo = `PI${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
-    ocrData.insuranceCompany = '人保财险'
-    ocrData.policyholder = '深圳XX国际贸易有限公司'
-    ocrData.effectiveDate = '2026-01-01'
-    ocrData.expiryDate = '2027-01-01'
-    ocrData.coverageAmount = 500000
-    ocrData.maxCompensation = 500000
-    ocrData.premium = 12500
-    ocrData.premiumRate = 0.025
+    const ext = externalPolicy.value
+    const year = new Date().getFullYear()
+    const random4 = String(Math.floor(Math.random() * 10000)).padStart(4, '0')
+    ocrData.policyNo = `PI${year}${random4}`
+    ocrData.insuranceCompany = ext?.insuranceCompany || '人保财险'
+    ocrData.insurerName = ext?.insurerName || ''
+    ocrData.policyholder = ext?.policyholder || userStore.companyName || ''
+    ocrData.beneficiary = ext?.beneficiary || ''
+    ocrData.effectiveDate = ext?.effectiveDate || `${year}-01-01`
+    ocrData.expiryDate = ext?.expiryDate || `${year + 1}-01-01`
+    ocrData.coverageAmount = ext?.coverageAmount || 500000
+    ocrData.maxCompensation = ext?.maxCompensationLimit || 500000
+    ocrData.premium = ext?.premium || 12500
+    ocrData.premiumRate = ext?.premiumRate || 0.025
+    ocrData.buyerCreditLimit = ext?.buyerCreditLimit || 0
+    ocrData.deductible = ext?.deductible || 0
+    ocrData.insurancePeriod = ext?.insurancePeriod || '12个月'
+    ocrData.businessType = ext?.tradeBusinessType === '货物贸易' ? 'goods' : ext?.tradeBusinessType === '服务贸易' ? 'service' : ''
     MessagePlugin.closeAll()
     MessagePlugin.success('OCR识别完成，请逐项校对')
     activeTab.value = 'review'
   }, 1500)
 }
 
+const formatDateTime = (d) => {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
 const handleSaveOcr = () => {
-  const newPolicy = {
-    id: `P${new Date().getFullYear()}${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`,
-    policyNo: ocrData.policyNo,
-    insuranceCompany: ocrData.insuranceCompany,
-    policyholder: ocrData.policyholder,
-    insured: ocrData.buyerNames || '-',
-    coverageAmount: ocrData.coverageAmount,
-    premium: ocrData.premium,
-    effectiveDate: ocrData.effectiveDate,
-    expiryDate: ocrData.expiryDate,
-    status: 'pending_effect',
-    usedQuota: 0,
-    remainingQuota: ocrData.coverageAmount,
-    currency: ocrData.currency,
-    businessType: ocrData.businessType,
-    renewalFlag: ocrData.renewalFlag
+  const now = new Date()
+
+  // Coming from external policy upload flow
+  if (props.externalPolicyId) {
+    const res = store.completeExternalOcrAndCreateTask(props.externalPolicyId, {
+      policyNo: ocrData.policyNo,
+      insuranceCompany: ocrData.insuranceCompany,
+      insurerName: ocrData.insurerName,
+      policyholder: ocrData.policyholder,
+      insured: ocrData.buyerNames || '',
+      beneficiary: ocrData.beneficiary,
+      effectiveDate: ocrData.effectiveDate,
+      expiryDate: ocrData.expiryDate,
+      insurancePeriod: ocrData.insurancePeriod,
+      coverageAmount: ocrData.coverageAmount,
+      currency: ocrData.currency,
+      premiumRate: ocrData.premiumRate,
+      premium: ocrData.premium,
+      maxCompensationLimit: ocrData.maxCompensation,
+      buyerCreditLimit: ocrData.buyerCreditLimit,
+      tradeBusinessType: ocrData.businessType === 'goods' ? '货物贸易' : ocrData.businessType === 'service' ? '服务贸易' : '',
+      deductible: ocrData.deductible,
+      declarationMethod: ocrData.declarationMethod,
+      declarationCycle: ocrData.declarationCycle,
+      declarationDeadline: ocrData.declarationDeadline
+    })
+    if (!res?.ok) {
+      MessagePlugin.error(res?.message || '保存失败')
+      return
+    }
+    MessagePlugin.success('OCR识别结果已确认，任务已提交至投保确认列表')
+    emit('update:visible', false)
+    return
   }
-  store.policies.unshift(newPolicy)
-  MessagePlugin.success('保单结构化结果已保存')
+
+  // Direct OCR (standalone, not from upload)
+  const appId = `TB${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`
+  const application = {
+    id: appId,
+    companyName: userStore.companyName || ocrData.policyholder,
+    buyerName: ocrData.buyerNames || '',
+    insuranceType: '短期出口信用保险',
+    preferredInsuranceOrgType: '无偏好',
+    insuranceCurrency: ocrData.currency,
+    insuranceAmount: ocrData.coverageAmount,
+    expectedInsurancePeriod: [ocrData.effectiveDate, ocrData.expiryDate],
+    status: 'ocr_pending',
+    createTime: formatDateTime(now),
+    updateTime: formatDateTime(now),
+    ocrSource: true,
+    ocrPolicyNo: ocrData.policyNo,
+    ocrInsuranceCompany: ocrData.insuranceCompany,
+    ocrPolicyholder: ocrData.policyholder,
+    ocrInsurerName: ocrData.insurerName,
+    ocrBeneficiary: ocrData.beneficiary,
+    ocrCoverageAmount: ocrData.coverageAmount,
+    ocrPremium: ocrData.premium,
+    ocrPremiumRate: ocrData.premiumRate,
+    ocrMaxCompensation: ocrData.maxCompensation,
+    ocrBuyerCreditLimit: ocrData.buyerCreditLimit,
+    ocrBusinessType: ocrData.businessType
+  }
+  store.insuranceApplications.unshift(application)
+  MessagePlugin.success('保单识别结果已确认，已提交至保险平台')
   emit('update:visible', false)
-  activeTab.value = 'upload'
-  uploadFiles.value = []
 }
 </script>
 
@@ -373,15 +451,6 @@ const handleSaveOcr = () => {
 
 .ocr-review {
   padding: 8px;
-}
-
-.ocr-actions {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid #e0e0e0;
 }
 
 .mt-16 {
@@ -397,5 +466,42 @@ const handleSaveOcr = () => {
 .text-danger {
   color: #e34d57;
   font-weight: 600;
+}
+
+.ext-policy-info {
+  text-align: left;
+  padding: 8px 0;
+
+  .file-detail {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-top: 12px;
+
+    .file-icon {
+      flex-shrink: 0;
+    }
+
+    .file-meta {
+      .file-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 4px;
+      }
+
+      .file-info-text {
+        font-size: 12px;
+        color: #999;
+      }
+    }
+  }
+}
+
+.mb-16 {
+  margin-bottom: 16px;
 }
 </style>

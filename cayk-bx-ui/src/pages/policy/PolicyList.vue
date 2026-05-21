@@ -12,7 +12,54 @@
     </div>
 
     <t-tabs v-model="mainTab" theme="card" class="mb-16">
-      <t-tab-panel value="review" label="投保确认列表">
+      <t-tab-panel value="upload" label="电子生效保单列表">
+        <div class="table-header">
+          <span class="table-title">电子生效保单列表</span>
+          <t-space>
+            <t-button theme="primary" v-if="isCustomer" @click="externalUploadVisible = true">
+              <template #icon><t-icon name="file-pdf" /></template>
+              上传电子保单
+            </t-button>
+          </t-space>
+        </div>
+
+        <div class="stats-grid mb-24">
+          <stat-card title="总上传" :value="uploadTotalCount" icon="file" color="primary" />
+          <stat-card title="待识别" :value="uploadPendingCount" icon="search" color="warning" />
+          <stat-card title="已识别" :value="uploadCompletedCount" icon="check-circle" color="success" />
+        </div>
+
+        <data-table
+          :data="uploadTableData"
+          :columns="uploadColumns"
+          :pagination="uploadPagination"
+          :loading="uploadLoading"
+          row-key="id"
+          @page-change="handleUploadPageChange"
+        >
+          <template #status="{ row }">
+            <status-tag :status="row.status" :status-map="uploadStatusMap" />
+          </template>
+          <template #operation="{ row }">
+            <t-space>
+              <t-link @click="handleViewUpload(row)">查看</t-link>
+              <t-link v-if="isInkasso && row.status === 'pending_ocr'" theme="primary" @click="handleOcrUpload(row)">OCR识别</t-link>
+              <t-link v-if="isCustomer && row.status === 'rejected'" theme="primary" @click="handleReupload(row)">重新上传</t-link>
+            </t-space>
+          </template>
+        </data-table>
+      </t-tab-panel>
+
+      <t-tab-panel value="review" label="投保列表">
+        <div class="table-header">
+          <span class="table-title">投保列表</span>
+          <t-space>
+            <t-button theme="primary" v-if="isInkasso" @click="ocrDialogVisible = true">
+              <template #icon><t-icon name="scan" /></template>
+              电子保单数字化（OCR）识别
+            </t-button>
+          </t-space>
+        </div>
 
         <search-filter
           :status-options="statusOptions"
@@ -49,21 +96,18 @@
               <t-link v-if="isInkasso && row.status === 'pending_review'" theme="primary" @click="handleApprove(row)">申请跟单员确认</t-link>
               <t-link v-if="isClerk && row.status === 'clerk_review'" theme="primary" @click="handleClerkApprove(row)">确认完成</t-link>
               <t-link v-if="isClerk && row.status === 'clerk_review'" theme="danger" @click="handleClerkReject(row)">驳回</t-link>
+              <t-link v-if="isInkasso && row.status === 'ocr_pending'" theme="primary" @click="handleApprove(row)">申请跟单员确认</t-link>
+              <t-link v-if="isClerk && (row.status === 'ocr_pending' || row.status === 'ocr_clerk_review')" theme="primary" @click="handleClerkApprove(row)">确认完成</t-link>
+              <t-link v-if="isCustomer && row.status === 'ocr_pending'" theme="primary" @click="handleSubmitToPlatform(row)">提交平台审核</t-link>
               <t-link v-if="!isInkasso && !isClerk && row.status === 'rejected'" theme="primary" @click="handleSubmit(row)">重新提交</t-link>
             </t-space>
           </template>
         </data-table>
       </t-tab-panel>
 
-      <t-tab-panel value="policy" label="保单列表">
+      <t-tab-panel value="policy" label="生效保单列表">
         <div class="table-header">
           <span class="table-title">保单信息管理</span>
-          <t-space>
-            <t-button theme="primary" @click="ocrDialogVisible = true">
-              <template #icon><t-icon name="file-pdf" /></template>
-              新增投保（OCR）
-            </t-button>
-          </t-space>
         </div>
 
         <div class="stats-grid mb-24">
@@ -100,12 +144,151 @@
           </template>
         </data-table>
       </t-tab-panel>
+
     </t-tabs>
 
     <!-- 投保确认详情弹窗 -->
-    <!-- 投保确认详情弹窗 -->
     <t-dialog v-model:visible="detailVisible" header="投保方案确认" width="760px" :footer="false">
       <div v-if="currentRow" class="insurance-info-modal">
+        <!-- OCR来源保单 - 跟单员审核编辑模式 -->
+        <div v-if="currentRow?.ocrSource && detailMode === 'clerk_approve'">
+          <div class="modal-section-title">📄 电子保单OCR识别信息 <span class="edit-badge">可编辑</span></div>
+          <div class="edit-form-grid mb-16">
+            <div class="edit-form-row">
+              <span class="edit-form-label">保单号</span>
+              <t-input v-model="ocrEditForm.ocrPolicyNo" placeholder="请输入保单号" />
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">保险公司</span>
+              <t-input v-model="ocrEditForm.ocrInsuranceCompany" placeholder="请输入保险公司名称" />
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">被保险人名称</span>
+              <t-input v-model="ocrEditForm.ocrPolicyholder" placeholder="企业名称(不可修改)" disabled />
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">保险人名称</span>
+              <t-input v-model="ocrEditForm.ocrInsurerName" placeholder="请输入保险人名称" />
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">受益人名称</span>
+              <t-input v-model="ocrEditForm.ocrBeneficiary" placeholder="请输入受益人名称" />
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">保险起期</span>
+              <t-date-picker v-model="ocrEditForm.effectiveDate" placeholder="请选择保险起期" />
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">保险止期</span>
+              <t-date-picker v-model="ocrEditForm.expiryDate" placeholder="请选择保险止期" />
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">投保金额</span>
+              <t-input-adornment prepend="USD">
+                <t-input-number v-model="ocrEditForm.insuranceAmount" placeholder="请输入投保金额" :min="0" :step="1000" />
+              </t-input-adornment>
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">最高赔偿限额</span>
+              <t-input-adornment prepend="USD">
+                <t-input-number v-model="ocrEditForm.ocrMaxCompensation" placeholder="请输入最高赔偿限额" :min="0" :step="1000" />
+              </t-input-adornment>
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">买方名称</span>
+              <t-input v-model="ocrEditForm.buyerName" placeholder="请输入买方名称" />
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">买方信用限额</span>
+              <t-input-adornment prepend="USD">
+                <t-input-number v-model="ocrEditForm.ocrBuyerCreditLimit" placeholder="请输入买方信用限额" :min="0" :step="1000" />
+              </t-input-adornment>
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">保费</span>
+              <t-input-adornment prepend="USD">
+                <t-input-number v-model="ocrEditForm.ocrPremium" placeholder="请输入保费金额" :min="0" :step="100" />
+              </t-input-adornment>
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">费率</span>
+              <t-input-adornment append="%">
+                <t-input-number v-model="ocrEditForm.ocrPremiumRate" placeholder="请输入费率百分比" :min="0" :max="100" :step="0.01" />
+              </t-input-adornment>
+            </div>
+            <div class="edit-form-row">
+              <span class="edit-form-label">业务类型</span>
+              <t-select v-model="ocrEditForm.ocrBusinessType" placeholder="请选择业务类型" :clearable="false">
+                <t-option value="goods" label="货物贸易" />
+                <t-option value="service" label="服务贸易" />
+              </t-select>
+            </div>
+          </div>
+        </div>
+        <!-- OCR来源保单 - 查看模式 -->
+        <div v-else-if="currentRow?.ocrSource">
+          <div class="modal-section-title">📄 电子保单OCR识别信息</div>
+          <div class="info-grid mb-16">
+            <div class="info-row">
+              <span class="info-label">保单号</span>
+              <span class="info-value">{{ currentRow.ocrPolicyNo || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">保险公司</span>
+              <span class="info-value">{{ currentRow.ocrInsuranceCompany || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">被保险人名称</span>
+              <span class="info-value">{{ currentRow.companyName || currentRow.ocrPolicyholder || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">保险人名称</span>
+              <span class="info-value">{{ currentRow.ocrInsurerName || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">受益人名称</span>
+              <span class="info-value">{{ currentRow.ocrBeneficiary || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">保险起期</span>
+              <span class="info-value">{{ currentRow.expectedInsurancePeriod?.[0] || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">保险止期</span>
+              <span class="info-value">{{ currentRow.expectedInsurancePeriod?.[1] || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">投保金额</span>
+              <span class="info-value">{{ (currentRow.insuranceCurrency || 'USD') + ' ' + Number(currentRow.insuranceAmount || 0).toLocaleString() }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">最高赔偿限额</span>
+              <span class="info-value">{{ (currentRow.insuranceCurrency || 'USD') + ' ' + Number(currentRow.ocrMaxCompensation || currentRow.insuranceAmount || 0).toLocaleString() }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">买方名称</span>
+              <span class="info-value">{{ currentRow.buyerName || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">买方信用限额</span>
+              <span class="info-value">{{ (currentRow.insuranceCurrency || 'USD') + ' ' + Number(currentRow.ocrBuyerCreditLimit || 0).toLocaleString() }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">保费</span>
+              <span class="info-value">{{ (currentRow.insuranceCurrency || 'USD') + ' ' + Number(currentRow.ocrPremium || 0).toLocaleString() }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">费率</span>
+              <span class="info-value">{{ currentRow.ocrPremiumRate ? (Number(currentRow.ocrPremiumRate) * 100).toFixed(2) + '%' : '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">业务类型</span>
+              <span class="info-value">{{ currentRow.ocrBusinessType === 'goods' ? '货物贸易' : currentRow.ocrBusinessType === 'service' ? '服务贸易' : '-' }}</span>
+            </div>
+          </div>
+        </div>
+        <!-- 非OCR来源 -->
+        <template v-if="!currentRow?.ocrSource">
         <!-- Section 1: Base Information -->
         <div class="modal-section-title">📄 基础投保建议数据与出运申报</div>
         <div class="info-grid mb-16">
@@ -219,9 +402,9 @@
           </t-checkbox>
         </div>
 
-        <!-- Section 4: Generated Documents -->
-        <div class="modal-section-title">📎 自动生成投保文件</div>
-        <div class="attachment-section mb-16">
+        <!-- Section 4: Generated Documents (hidden for OCR-sourced policies) -->
+        <div v-if="!currentRow?.ocrSource" class="modal-section-title">📎 自动生成投保文件</div>
+        <div v-if="!currentRow?.ocrSource" class="attachment-section mb-16">
           <div class="attachment-row">
             <div class="attachment-info" style="display: flex; align-items: center; gap: 8px;">
               <t-icon name="file-excel" style="color: #2ca471; font-size: 18px;" />
@@ -255,6 +438,7 @@
             </t-space>
           </div>
         </div>
+        </template>
 
         <!-- Reject reason (resubmit mode) -->
         <div v-if="detailMode === 'resubmit' && currentRow?.rejectReason" class="reject-reason-box">
@@ -274,7 +458,6 @@
 
         <!-- Modal Footer -->
         <div class="modal-footer">
-          <t-button variant="outline" @click="detailVisible = false">关闭</t-button>
           <t-button v-if="detailMode === 'apply'" theme="primary" @click="handleDetailApply">申请跟单员确认</t-button>
           <t-button v-if="detailMode === 'clerk_approve'" theme="primary" @click="handleDetailApply">确认完成</t-button>
           <t-button v-if="detailMode === 'resubmit'" theme="primary" @click="handleDetailApply">重新提交</t-button>
@@ -396,7 +579,160 @@
     </t-dialog>
 
     <!-- OCR弹窗 -->
-    <policy-ocr-dialog v-model:visible="ocrDialogVisible" />
+    <policy-ocr-dialog v-model:visible="ocrDialogVisible" :external-policy-id="ocrExternalId" />
+
+    <!-- 外部保单上传弹窗 -->
+    <external-policy-upload-dialog v-model:visible="externalUploadVisible" />
+
+    <!-- 外部保单详情弹窗 -->
+    <t-dialog v-model:visible="externalDetailVisible" :header="'外部保单详情 - ' + (externalDetailRow?.policyNo || externalDetailRow?.id || '')" width="780px" :footer="false">
+      <div v-if="externalDetailRow" class="external-detail-body">
+        <!-- Section 1: 保单文件 -->
+        <div class="detail-card">
+          <div class="detail-card-title">📄 保单文件</div>
+          <div class="file-card">
+            <t-icon name="file-pdf" style="color: #dc2626; font-size: 28px; flex-shrink: 0;" />
+            <div class="file-card-body">
+              <div class="file-card-name">{{ externalDetailRow.originalFileName || '-' }}</div>
+              <div class="file-card-meta">{{ externalDetailRow.fileSize || '-' }} · 上传于 {{ externalDetailRow.createTime || '-' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: 上传信息 -->
+        <div class="detail-card">
+          <div class="detail-card-title">📋 上传信息</div>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <span class="detail-label">上传企业</span>
+              <span class="detail-value">{{ externalDetailRow.customerCompany || '-' }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">上传人</span>
+              <span class="detail-value">{{ externalDetailRow.uploadUser || '-' }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">上传时间</span>
+              <span class="detail-value">{{ externalDetailRow.createTime || '-' }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">状态</span>
+              <span class="detail-value"><status-tag :status="externalDetailRow.status" :status-map="externalPolicyStatusMap" /></span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">OCR状态</span>
+              <span class="detail-value">{{ externalDetailRow.ocrStatus === 'completed' ? '已完成' : externalDetailRow.ocrStatus === 'pending' ? '待识别' : externalDetailRow.ocrStatus === 'processing' ? '识别中' : externalDetailRow.ocrStatus || '-' }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">更新时间</span>
+              <span class="detail-value">{{ externalDetailRow.updateTime || '-' }}</span>
+            </div>
+            <div class="detail-row" v-if="externalDetailRow.rejectReason">
+              <span class="detail-label" style="color: #dc2626;">驳回原因</span>
+              <span class="detail-value" style="color: #dc2626;">{{ externalDetailRow.rejectReason }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: 基础信息 -->
+        <div class="detail-card">
+          <div class="detail-card-title">📋 基础信息</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">保单号</span><span class="detail-value">{{ externalDetailRow.policyNo || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">保险公司</span><span class="detail-value">{{ externalDetailRow.insuranceCompany || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">被保险人</span><span class="detail-value">{{ externalDetailRow.policyholder || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">投保买方</span><span class="detail-value">{{ externalDetailRow.insured || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">保险人名称</span><span class="detail-value">{{ externalDetailRow.insurerName || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">受益人</span><span class="detail-value">{{ externalDetailRow.beneficiary || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">生效日期</span><span class="detail-value">{{ externalDetailRow.effectiveDate || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">到期日期</span><span class="detail-value">{{ externalDetailRow.expiryDate || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">保险期限</span><span class="detail-value">{{ externalDetailRow.insurancePeriod || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">贸易类型</span><span class="detail-value">{{ externalDetailRow.tradeBusinessType === 'goods' ? '货物贸易' : externalDetailRow.tradeBusinessType || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">币种</span><span class="detail-value">{{ externalDetailRow.currency || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">续保</span><span class="detail-value">{{ externalDetailRow.renewalFlag === '是' || externalDetailRow.renewalFlag === true ? '是' : externalDetailRow.renewalFlag === '否' ? '否' : '-' }}</span></div>
+          </div>
+        </div>
+
+        <!-- Section 4: 责任限额 -->
+        <div class="detail-card">
+          <div class="detail-card-title">💰 责任限额</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">保险金额</span><span class="detail-value detail-value-currency">{{ (externalDetailRow.currency || 'USD') + ' ' + Number(externalDetailRow.coverageAmount || 0).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">最高赔偿限额</span><span class="detail-value detail-value-currency">{{ (externalDetailRow.currency || 'USD') + ' ' + Number(externalDetailRow.maxCompensationLimit || 0).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">买方信用限额</span><span class="detail-value detail-value-currency">{{ (externalDetailRow.currency || 'USD') + ' ' + Number(externalDetailRow.buyerCreditLimit || 0).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">免赔额</span><span class="detail-value detail-value-currency">{{ (externalDetailRow.currency || 'USD') + ' ' + Number(externalDetailRow.deductible || 0).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">等待期</span><span class="detail-value">{{ externalDetailRow.idlePeriod ? externalDetailRow.idlePeriod + ' 天' : '-' }}</span></div>
+          </div>
+        </div>
+
+        <!-- Section 5: 费用管理 -->
+        <div class="detail-card">
+          <div class="detail-card-title">💵 费用管理</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">保费金额</span><span class="detail-value detail-value-currency">{{ (externalDetailRow.currency || 'USD') + ' ' + Number(externalDetailRow.premium || 0).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">费率</span><span class="detail-value">{{ externalDetailRow.premiumRate ? (Number(externalDetailRow.premiumRate) * 100).toFixed(2) + '%' : '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">缴费方式</span><span class="detail-value">{{ externalDetailRow.premiumPaymentMethod || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">缴费截止日</span><span class="detail-value">{{ externalDetailRow.premiumPaymentDeadline || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">退保手续费</span><span class="detail-value">{{ externalDetailRow.surrenderFee || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">追偿收款人</span><span class="detail-value">{{ externalDetailRow.recoveryPayee || '-' }}</span></div>
+          </div>
+        </div>
+
+        <!-- Section 6: 申报规则 -->
+        <div class="detail-card">
+          <div class="detail-card-title">📅 申报规则</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">申报方式</span><span class="detail-value">{{ externalDetailRow.declarationMethod || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">申报周期</span><span class="detail-value">{{ externalDetailRow.declarationCycle || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">申报截止日</span><span class="detail-value">{{ externalDetailRow.declarationDeadline || '-' }}</span></div>
+          </div>
+        </div>
+
+        <!-- Section 7: 承保范围 -->
+        <div class="detail-card">
+          <div class="detail-card-title">🔒 承保范围</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">承保风险</span><span class="detail-value detail-value-long">{{ externalDetailRow.coveredRisks || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">条款版本</span><span class="detail-value">{{ externalDetailRow.clauseVersion || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">国别风险版本</span><span class="detail-value">{{ externalDetailRow.countryRiskVersion || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">自有控制限额</span><span class="detail-value">{{ externalDetailRow.selfControlledLimit || '-' }}</span></div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <template v-if="isInkasso && externalDetailRow.status === 'pending_ocr'">
+            <t-button theme="primary" @click="handleOcrUpload(externalDetailRow)">OCR识别</t-button>
+          </template>
+          <t-button variant="outline" @click="externalDetailVisible = false">关闭</t-button>
+        </div>
+      </div>
+    </t-dialog>
+
+    <!-- 外部保单驳回弹窗 -->
+    <t-dialog v-model:visible="externalClerkRejectVisible" header="驳回外部保单" width="500px">
+      <div class="reject-content">
+        <div class="confirm-tip" style="margin-top: 0;">
+          <t-icon name="warning-circle" size="16px" class="tip-icon danger" />
+          <span class="tip-text">确认驳回该外部保单？驳回后客户可重新上传。</span>
+        </div>
+        <div class="reject-form" style="margin-top: 16px;">
+          <label class="reject-label">驳回原因 <span style="color: #dc2626;">*</span></label>
+          <t-textarea
+            v-model="externalClerkRejectReason"
+            placeholder="请输入驳回原因"
+            :rows="4"
+            maxlength="500"
+            show-limit-number
+          />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="externalClerkRejectVisible = false">取消</t-button>
+          <t-button theme="danger" @click="confirmExternalClerkReject">确认驳回</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
 
     <!-- 续保弹窗 -->
     <renewal-dialog
@@ -422,7 +758,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, onMounted } from 'vue'
+import { computed, reactive, ref, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import SearchFilter from '@/components/common/SearchFilter.vue'
@@ -431,6 +767,7 @@ import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 import PolicyOcrDialog from '@/components/business/PolicyOcrDialog.vue'
+import ExternalPolicyUploadDialog from '@/components/business/ExternalPolicyUploadDialog.vue'
 import RenewalDialog from '@/components/business/RenewalDialog.vue'
 import SurrenderDialog from '@/components/business/SurrenderDialog.vue'
 import PolicyChangeDialog from '@/components/business/PolicyChangeDialog.vue'
@@ -446,6 +783,7 @@ const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRa
 
 const isInkasso = computed(() => userStore.role === 'inkasso')
 const isClerk = computed(() => userStore.role === 'clerk')
+const isCustomer = computed(() => userStore.role === 'customer')
 const mainTab = ref(route.query.tab || 'review')
 
 // ===== Application review =====
@@ -459,6 +797,9 @@ const statusTabs = [
 const statusOptions = [
   { value: 'approved', label: '已确认' },
   { value: 'clerk_review', label: '申请跟单员确认' },
+  { value: 'ocr_pending', label: '待确认' },
+  { value: 'ocr_clerk_review', label: '待审核' },
+  { value: 'ocr_approved', label: '已确认' },
   { value: 'rejected', label: '已驳回' }
 ]
 
@@ -467,6 +808,9 @@ const statusMap = {
   pending_review: '已确认',
   clerk_review: '申请跟单员确认',
   approved: '已确认',
+  ocr_pending: '待确认',
+  ocr_clerk_review: '待审核',
+  ocr_approved: '已确认',
   rejected: '已驳回'
 }
 
@@ -491,12 +835,12 @@ const filteredData = computed(() => {
   return list.filter((it) => {
     if (isCust) {
       // Customer sees approved and rejected items
-      if (!['approved', 'rejected'].includes(it.status)) return false
+      if (!['approved', 'rejected', 'ocr_pending'].includes(it.status)) return false
     } else {
-      // Changan Yinke (inkasso) sees pending_review and approved items
-      if (userStore.role === 'inkasso' && !['pending_review', 'approved'].includes(it.status)) return false
-      // Clerk sees clerk_review items (申请跟单员确认) and approved items
-      if (userStore.role === 'clerk' && !['clerk_review', 'approved'].includes(it.status)) return false
+      // Changan Yinke (inkasso) sees pending_review, approved and OCR items
+      if (userStore.role === 'inkasso' && !['pending_review', 'approved', 'ocr_pending', 'ocr_clerk_review', 'ocr_approved'].includes(it.status)) return false
+      // Clerk sees clerk_review, approved and OCR items
+      if (userStore.role === 'clerk' && !['clerk_review', 'approved', 'ocr_pending', 'ocr_clerk_review', 'ocr_approved'].includes(it.status)) return false
     }
     if (p.enterpriseName && !String(it.companyName || '').includes(p.enterpriseName)) return false
     if (p.buyerName && !String(it.buyerName || '').includes(p.buyerName)) return false
@@ -514,6 +858,84 @@ const tableData = computed(() => {
 const activePolicyCount = computed(() => (store.insuranceApplications || []).filter(p => p.status === 'approved').length)
 const totalInsuranceAmount = computed(() => (store.insuranceApplications || []).reduce((sum, p) => sum + (Number(p.insuranceAmount) || 0), 0))
 
+// ===== Upload tab (电子生效保单列表) =====
+const uploadStatusMap = {
+  pending_ocr: '待识别',
+  ocr_processing: '识别中',
+  ocr_completed: '已识别',
+  active: '已生效',
+  rejected: '已驳回'
+}
+
+const uploadPagination = reactive({ total: 0, current: 1, pageSize: 20 })
+const uploadLoading = ref(false)
+
+const uploadColumns = computed(() => {
+  const base = [
+    { colKey: 'originalFileName', title: '文件名', ellipsis: true, width: 200 },
+    { colKey: 'customerCompany', title: '上传企业', ellipsis: true, width: 140 },
+    { colKey: 'createTime', title: '上传时间', width: 160 },
+    { colKey: 'fileSize', title: '文件大小', width: 100 },
+    { colKey: 'uploadUser', title: '上传人', width: 100 },
+    { colKey: 'status', title: '状态', width: 100, slot: 'status' },
+    { colKey: 'operation', title: '操作', width: 160, fixed: 'right', slot: 'operation' }
+  ]
+  // Customer doesn't need to see their own company name
+  if (isCustomer.value) {
+    return base.filter(c => c.colKey !== 'customerCompany' && c.colKey !== 'uploadUser')
+  }
+  return base
+})
+
+const uploadFilteredData = computed(() => {
+  let list = store.externalPolicies || []
+  if (isCustomer.value) {
+    list = list.filter(p => p.customerCompany === userStore.companyName)
+  }
+  return list
+})
+
+const uploadTableData = computed(() => {
+  uploadPagination.total = uploadFilteredData.value.length
+  const start = (uploadPagination.current - 1) * uploadPagination.pageSize
+  return uploadFilteredData.value.slice(start, start + uploadPagination.pageSize)
+})
+
+const uploadTotalCount = computed(() => store.externalPolicies.length)
+const uploadPendingCount = computed(() => store.externalPolicies.filter(p => p.status === 'pending_ocr').length)
+const uploadCompletedCount = computed(() => store.externalPolicies.filter(p => p.status === 'ocr_completed' || p.status === 'active').length)
+
+const handleUploadPageChange = (pageInfo) => {
+  uploadPagination.current = pageInfo.current
+  uploadPagination.pageSize = pageInfo.pageSize
+}
+
+const handleViewUpload = (row) => {
+  externalDetailRow.value = row
+  externalDetailVisible.value = true
+}
+
+const handleOcrUpload = (row) => {
+  // Open OCR dialog with external policy pre-loaded
+  ocrExternalId.value = row.id
+  ocrDialogVisible.value = true
+}
+
+const handleReupload = (row) => {
+  externalUploadVisible.value = true
+}
+
+// ===== External policy computeds =====
+const customerExternalPolicies = computed(() => {
+  const companyName = userStore.companyName
+  if (!companyName) return []
+  return store.externalPolicies.filter(p => p.customerCompany === companyName)
+})
+
+const clerkExternalPolicies = computed(() => {
+  return store.externalPolicies.filter(p => p.status === 'pending_clerk_review')
+})
+
 // ===== Policy list =====
 const policyStatusMap = {
   pending_effect: '待生效',
@@ -522,7 +944,11 @@ const policyStatusMap = {
   expired: '已到期',
   suspended: '中止',
   cancelled: '退保',
-  terminated: '终止'
+  terminated: '终止',
+  applying: '申请中',
+  approved: '已确认',
+  pending_review: '待确认',
+  ocr_approved: '已确认'
 }
 
 const policyColumns = [
@@ -558,12 +984,32 @@ const currentRow = ref(null)
 const policyDetailVisible = ref(false)
 const currentPolicy = ref(null)
 
+const ocrEditForm = ref({
+  ocrPolicyNo: '',
+  ocrInsuranceCompany: '',
+  ocrPolicyholder: '',
+  ocrInsurerName: '',
+  ocrBeneficiary: '',
+  effectiveDate: '',
+  expiryDate: '',
+  insuranceCurrency: 'USD',
+  insuranceAmount: 0,
+  ocrMaxCompensation: 0,
+  buyerName: '',
+  ocrBuyerCreditLimit: 0,
+  ocrPremium: 0,
+  ocrPremiumRate: 0,
+  ocrBusinessType: 'goods'
+})
+
 const confirmRow = ref(null)
 
 const clerkRejectVisible = ref(false)
 const clerkRejectReason = ref('')
 
 const ocrDialogVisible = ref(false)
+const ocrExternalId = ref(null)
+watch(ocrDialogVisible, (v) => { if (!v) ocrExternalId.value = null })
 const renewalVisible = ref(false)
 const surrenderVisible = ref(false)
 const changeVisible = ref(false)
@@ -577,6 +1023,56 @@ const previewWrapperRef = ref(null)
 
 const exportVisible = ref(false)
 const exportData = ref([])
+
+// ===== External policy state =====
+const externalUploadVisible = ref(false)
+const externalDetailVisible = ref(false)
+const externalDetailRow = ref(null)
+const externalClerkRejectVisible = ref(false)
+const externalClerkRejectReason = ref('')
+const externalPagination = reactive({ total: 0, current: 1, pageSize: 20 })
+const externalLoading = ref(false)
+
+const externalPolicyStatusMap = {
+  pending_ocr: '待识别',
+  ocr_processing: '识别中',
+  ocr_completed: '已识别',
+  active: '已生效',
+  rejected: '已驳回'
+}
+
+const externalColumns = [
+  { colKey: 'id', title: '编号', width: 120 },
+  { colKey: 'customerCompany', title: '上传企业', ellipsis: true },
+  { colKey: 'policyNo', title: '保单号', width: 140 },
+  { colKey: 'insuranceCompany', title: '保险公司', width: 100 },
+  { colKey: 'coverageAmount', title: '保险金额', align: 'right', width: 120, slot: 'coverageAmount' },
+  { colKey: 'status', title: '状态', width: 110, slot: 'status' },
+  { colKey: 'createTime', title: '上传时间', width: 150 },
+  { colKey: 'operation', title: '操作', width: 160, fixed: 'right', slot: 'operation' }
+]
+
+const clerkExternalColumns = [
+  { colKey: 'id', title: '编号', width: 120 },
+  { colKey: 'customerCompany', title: '客户企业', ellipsis: true },
+  { colKey: 'policyNo', title: '保单号', width: 140 },
+  { colKey: 'insuranceCompany', title: '保险公司', width: 100 },
+  { colKey: 'coverageAmount', title: '保险金额', align: 'right', width: 120, slot: 'coverageAmount' },
+  { colKey: 'status', title: '状态', width: 110, slot: 'status' },
+  { colKey: 'createTime', title: '上传时间', width: 150 },
+  { colKey: 'operation', title: '操作', width: 140, fixed: 'right', slot: 'operation' }
+]
+
+const inkassoExternalColumns = [
+  { colKey: 'id', title: '编号', width: 120 },
+  { colKey: 'customerCompany', title: '客户企业', ellipsis: true },
+  { colKey: 'policyNo', title: '保单号', width: 140 },
+  { colKey: 'insuranceCompany', title: '保险公司', width: 100 },
+  { colKey: 'coverageAmount', title: '保险金额', align: 'right', width: 120, slot: 'coverageAmount' },
+  { colKey: 'status', title: '状态', width: 110, slot: 'status' },
+  { colKey: 'createTime', title: '上传时间', width: 150 },
+  { colKey: 'operation', title: '操作', width: 100, fixed: 'right', slot: 'operation' }
+]
 
 // ===== Column defs =====
 const detailColumns = [
@@ -763,7 +1259,30 @@ const handleDetailApply = () => {
       companyLabels: { company1: '中国出口信用保险公司', company2: '平安财产保险', company3: '太平洋财产保险' }
     })
   } else if (detailMode.value === 'clerk_approve') {
-    // Clerk: confirm complete (final approval, creates policy + credit limit)
+    // Clerk: confirm complete
+    // If OCR source, save edited fields first before approving
+    if (row?.ocrSource) {
+      const idx = store.insuranceApplications.findIndex(a => a.id === row.id)
+      if (idx >= 0) {
+        store.insuranceApplications[idx] = {
+          ...store.insuranceApplications[idx],
+          ocrPolicyNo: ocrEditForm.value.ocrPolicyNo,
+          ocrInsuranceCompany: ocrEditForm.value.ocrInsuranceCompany,
+          ocrPolicyholder: ocrEditForm.value.ocrPolicyholder,
+          ocrInsurerName: ocrEditForm.value.ocrInsurerName,
+          ocrBeneficiary: ocrEditForm.value.ocrBeneficiary,
+          buyerName: ocrEditForm.value.buyerName,
+          insuranceCurrency: ocrEditForm.value.insuranceCurrency,
+          insuranceAmount: Number(ocrEditForm.value.insuranceAmount),
+          ocrMaxCompensation: Number(ocrEditForm.value.ocrMaxCompensation),
+          ocrBuyerCreditLimit: Number(ocrEditForm.value.ocrBuyerCreditLimit),
+          ocrPremium: Number(ocrEditForm.value.ocrPremium),
+          ocrPremiumRate: Number(ocrEditForm.value.ocrPremiumRate) / 100,
+          ocrBusinessType: ocrEditForm.value.ocrBusinessType,
+          expectedInsurancePeriod: [ocrEditForm.value.effectiveDate, ocrEditForm.value.expiryDate]
+        }
+      }
+    }
     const res = store.approveInsuranceApplication(row.id)
     if (!res?.ok) {
       MessagePlugin.error(res?.message || '确认失败')
@@ -786,6 +1305,26 @@ const handleDetailApply = () => {
 const handleClerkApprove = (row) => {
   currentRow.value = row
   detailMode.value = 'clerk_approve'
+  // Populate OCR edit form if it's an OCR source record
+  if (row?.ocrSource) {
+    ocrEditForm.value = {
+      ocrPolicyNo: row.ocrPolicyNo || '',
+      ocrInsuranceCompany: row.ocrInsuranceCompany || '',
+      ocrPolicyholder: row.ocrPolicyholder || row.companyName || '',
+      ocrInsurerName: row.ocrInsurerName || '',
+      ocrBeneficiary: row.ocrBeneficiary || '',
+      effectiveDate: row.expectedInsurancePeriod?.[0] || '',
+      expiryDate: row.expectedInsurancePeriod?.[1] || '',
+      insuranceCurrency: row.insuranceCurrency || 'USD',
+      insuranceAmount: row.insuranceAmount || 0,
+      ocrMaxCompensation: row.ocrMaxCompensation || 0,
+      buyerName: row.buyerName || '',
+      ocrBuyerCreditLimit: row.ocrBuyerCreditLimit || 0,
+      ocrPremium: row.ocrPremium || 0,
+      ocrPremiumRate: (row.ocrPremiumRate || 0) * 100,
+      ocrBusinessType: row.ocrBusinessType || 'goods'
+    }
+  }
   detailVisible.value = true
 }
 
@@ -885,6 +1424,74 @@ const generateExcel = () => {
   URL.revokeObjectURL(url)
   exportVisible.value = false
   MessagePlugin.success('导出成功')
+}
+
+const handleSubmitToPlatform = (row) => {
+  const res = store.submitOcrToPlatform(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '提交失败')
+    return
+  }
+  MessagePlugin.success('已提交至平台审核')
+}
+
+const handleReuploadExternal = (row) => {
+  externalUploadVisible.value = true
+}
+
+const handleSubmitExternal = (row) => {
+  const res = store.submitExternalPolicyForReview(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '提交失败')
+    return
+  }
+  MessagePlugin.success('已提交审核，等待跟单员处理')
+}
+
+const handleDeleteExternal = (row) => {
+  const res = store.deleteExternalPolicy(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '删除失败')
+    return
+  }
+  MessagePlugin.success('已删除')
+}
+
+const handleClerkApproveExternal = (row) => {
+  const res = store.approveExternalPolicy(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '操作失败')
+    return
+  }
+  MessagePlugin.success('已通过，外部保单已生效')
+  externalDetailVisible.value = false
+}
+
+const handleClerkRejectExternal = (row) => {
+  externalClerkRejectReason.value = ''
+  externalClerkRejectVisible.value = true
+}
+
+const confirmExternalClerkReject = () => {
+  if (!externalClerkRejectReason.value.trim()) {
+    MessagePlugin.warning('请输入驳回原因')
+    return
+  }
+  const row = externalDetailRow.value
+  if (!row) return
+  const res = store.rejectExternalPolicy(row.id, externalClerkRejectReason.value)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '驳回失败')
+    return
+  }
+  MessagePlugin.success('已驳回')
+  externalClerkRejectVisible.value = false
+  externalDetailVisible.value = false
+}
+
+const handleExternalPageChange = (pageInfo) => {
+  externalPagination.current = pageInfo.current
+  externalPagination.pageSize = pageInfo.pageSize
 }
 
 onMounted(() => { store.ensureSeeded() })
@@ -1107,5 +1714,155 @@ onMounted(() => { store.ensureSeeded() })
     font-weight: 500;
     line-height: 1.6;
   }
+}
+
+.edit-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: #fafcff;
+  border: 1px solid #e0ecff;
+  border-radius: 8px;
+  padding: 4px 0;
+}
+.edit-form-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f0f5ff;
+  gap: 12px;
+}
+.edit-form-row:last-child {
+  border-bottom: none;
+}
+.edit-form-label {
+  font-size: 13px;
+  color: #333;
+  font-weight: 600;
+  flex-shrink: 0;
+  width: 110px;
+  text-align: right;
+}
+.edit-form-row :deep(.t-input),
+.edit-form-row :deep(.t-input-number),
+.edit-form-row :deep(.t-select),
+.edit-form-row :deep(.t-date-picker) {
+  flex: 1;
+}
+.edit-form-row :deep(.t-input-adornment) {
+  flex: 1;
+}
+.edit-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0052d9;
+  background: #e6f0ff;
+  padding: 1px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* ===== External Policy Detail ===== */
+.external-detail-body {
+  padding: 8px 0;
+  max-height: 68vh;
+  overflow-y: auto;
+}
+.external-detail-body::-webkit-scrollbar { width: 6px; }
+.external-detail-body::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+.external-detail-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+.detail-card {
+  margin-bottom: 20px;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 16px;
+  border: 1px solid #eef2f6;
+}
+.detail-card:last-of-type { margin-bottom: 0; }
+
+.detail-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 14px;
+  padding-left: 10px;
+  border-left: 3px solid #0052d9;
+}
+
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid #eef2f6;
+}
+.file-card-body { min-width: 0; }
+.file-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  word-break: break-all;
+}
+.file-card-meta {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #eef2f6;
+  overflow: hidden;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f5f7fa;
+  border-right: 1px solid #f5f7fa;
+}
+.detail-row:nth-child(even) { border-right: none; }
+.detail-row:nth-last-child(2):not(:nth-child(even)) { border-bottom: none; }
+.detail-row:last-child { border-bottom: none; }
+.detail-row:only-child { border-right: none; }
+/* When odd number of items, last item spans full width */
+.detail-row:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  border-right: none;
+}
+
+.detail-label {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.detail-value {
+  font-size: 13px;
+  color: #1e293b;
+  font-weight: 600;
+  text-align: right;
+  margin-left: 12px;
+  word-break: break-all;
+}
+.detail-value-currency {
+  font-family: "SF Mono", "Monaco", "Menlo", monospace;
+}
+.detail-value-long {
+  max-width: 65%;
+  line-height: 1.6;
+  word-break: break-word;
 }
 </style>

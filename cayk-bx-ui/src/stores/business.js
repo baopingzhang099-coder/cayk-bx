@@ -82,7 +82,8 @@ export const useBusinessStore = defineStore('business', {
     claims: [],
     processTasks: [],
     contracts: [],
-    payments: []
+    payments: [],
+    externalPolicies: []
   }),
   getters: {
     insuranceStats(state) {
@@ -368,62 +369,6 @@ export const useBusinessStore = defineStore('business', {
           // 保单数字化信息 - 保单文件
           policyFile: [{ name: 'PI2026005678_保单.pdf', url: '#', size: 2456789, type: 'application/pdf' }],
           endorsementFile: []
-        },
-        {
-          id: 'TB2026004',
-          companyName: '广州XX科技有限公司',
-          unifiedSocialCreditCode: '91440100XXXXXXXXXX',
-          registeredAddress: '广州市天河区科技园XX路XX号',
-          businessAddress: '广州市天河区科技园XX路XX号',
-          organizationCode: 'G401234-6',
-          establishmentYear: '2018',
-          legalRepresentative: '陈志强',
-          enterpriseNature: '民营企业',
-          businessType: '科技公司',
-          contactName: '陈经理',
-          contactPosition: '外贸主管',
-          contactPhone: '136****5555',
-          companyEmail: 'chen@gz-xx.com',
-          exportBusinessHistory: '1-3年',
-          exportMainCountries: ['韩国', '日本'],
-          mainExportIndustry: '电子',
-          expectedInsurableTurnover: 2000000,
-          turnoverCurrency: 'USD',
-          mainPaymentMethods: 'T/T',
-          mostUsedPaymentTerm: 30,
-          longestPaymentTerm: 60,
-          hasLongerCreditPeriod: '否',
-          insuranceType: '短期出口信用保险',
-          preferredInsuranceOrgType: '商业性保险机构',
-          insuranceBusinessScope: '全部适保业务',
-          insuranceCurrency: 'USD',
-          insuranceAmount: 200000,
-          expectedInsurancePeriod: ['2026-05-01', '2027-04-30'],
-          buyerName: 'Samsung Electronics',
-          buyerCountry: '韩国',
-          buyerAddress: '123 Samsung-ro, Yeongtong-gu, Suwon-si, Gyeonggi-do, Korea',
-          cooperationYearsWithBuyer: '1-3年',
-          last12MonthExportAmount: 180,
-          last12MonthCreditSalesAmount: 150,
-          expectedNext12MonthCreditSales: 200,
-          creditSalesCurrency: 'USD',
-          paymentTerms: 'T/T 30天',
-          appliedCreditLimit: 200000,
-          creditLimitCurrency: 'USD',
-          exportProductCategory: '电子元器件',
-          involvesControlledGoods: '否',
-          hasTitleRetentionClause: '否',
-          businessLicense: [{ name: '营业执照.pdf' }],
-          importExportQualification: [{ name: '进出口资质.pdf' }],
-          tradeContract: null,
-          customsDeclaration: null,
-          authorizationDocument: [{ name: '授权文件.pdf' }],
-          declarationSignature: '陈志强',
-          declarationDate: '2026-05-10',
-          companySeal: [{ name: '公章文件.pdf' }],
-          status: 'clerk_review',
-          createTime: '2026-05-10',
-          updateTime: '2026-05-12 16:30:00'
         },
         {
           id: 'TB2026005',
@@ -946,6 +891,310 @@ export const useBusinessStore = defineStore('business', {
           }
         }
       ]
+      // Seed external policies - 电子保单上传列表
+      if (this.externalPolicies.length === 0) {
+        this.externalPolicies = [
+          {
+            id: 'EP2026001',
+            customerCompany: '深圳XX国际贸易有限公司',
+            originalFileName: 'export_credit_policy_2026.pdf',
+            originalFile: [{ name: 'export_credit_policy_2026.pdf', url: '#', size: 4567890, type: 'application/pdf' }],
+            ocrStatus: 'pending',
+            status: 'pending_ocr',
+            rejectReason: '',
+            policyNo: '',
+            insuranceCompany: '',
+            insurerName: '',
+            policyholder: '深圳XX国际贸易有限公司',
+            insured: '',
+            beneficiary: '',
+            effectiveDate: '',
+            expiryDate: '',
+            insurancePeriod: '',
+            renewalFlag: '否',
+            coverageAmount: 0,
+            currency: 'USD',
+            premiumRate: 0,
+            premium: 0,
+            maxCompensationLimit: 0,
+            buyerCreditLimit: 0,
+            deductible: 0,
+            coveredRisks: '',
+            clauseVersion: '',
+            countryRiskVersion: '',
+            declarationMethod: '',
+            declarationCycle: '',
+            declarationDeadline: '',
+            tradeBusinessType: '',
+            selfControlledLimit: '',
+            idlePeriod: 0,
+            surrenderFee: '',
+            recoveryPayee: '',
+            premiumPaymentMethod: '',
+            premiumPaymentDeadline: '',
+            fileSize: '4.5 MB',
+            uploadUser: '张伟华',
+            createTime: '2026-05-20 14:30:00',
+            updateTime: '2026-05-20 14:30:00'
+          },
+          {
+            id: 'EP2026002',
+            customerCompany: '深圳XX国际贸易有限公司',
+            originalFileName: 'trade_credit_policy.pdf',
+            originalFile: [{ name: 'trade_credit_policy.pdf', url: '#', size: 2890123, type: 'application/pdf' }],
+            ocrStatus: 'completed',
+            status: 'ocr_completed',
+            rejectReason: '',
+            policyNo: 'EXTPI2025002',
+            insuranceCompany: '太保产险',
+            insurerName: '太保产险广东分公司',
+            policyholder: '深圳XX国际贸易有限公司',
+            insured: 'ABC Corporation',
+            beneficiary: '深圳XX国际贸易有限公司',
+            effectiveDate: '2026-02-01',
+            expiryDate: '2027-02-01',
+            insurancePeriod: '12个月',
+            renewalFlag: '否',
+            coverageAmount: 200000,
+            currency: 'USD',
+            premiumRate: 0.022,
+            premium: 4400,
+            maxCompensationLimit: 200000,
+            buyerCreditLimit: 150000,
+            deductible: 1500,
+            coveredRisks: '商业风险—买方破产或无力偿付债务；商业风险—买方拖欠；政治风险',
+            clauseVersion: '短期出口信用保险条款v2025',
+            countryRiskVersion: '2026版',
+            declarationMethod: '月度',
+            declarationCycle: '月度',
+            declarationDeadline: '次月15日',
+            tradeBusinessType: '货物贸易',
+            selfControlledLimit: '',
+            idlePeriod: 60,
+            surrenderFee: '',
+            recoveryPayee: '被保险人',
+            premiumPaymentMethod: '一次性',
+            premiumPaymentDeadline: '保险起期前30日',
+            fileSize: '2.8 MB',
+            uploadUser: '张伟华',
+            createTime: '2026-05-18 09:15:00',
+            updateTime: '2026-05-19 11:00:00'
+          },
+          {
+            id: 'EP2026003',
+            customerCompany: '上海YY进出口公司',
+            originalFileName: 'policy_picc_2025.pdf',
+            originalFile: [{ name: 'policy_picc_2025.pdf', url: '#', size: 3210456, type: 'application/pdf' }],
+            ocrStatus: 'completed',
+            status: 'active',
+            rejectReason: '',
+            policyNo: 'EXTPI2025003',
+            insuranceCompany: '人保财险',
+            insurerName: '人保财险上海分公司',
+            policyholder: '上海YY进出口公司',
+            insured: 'DEF GmbH',
+            beneficiary: '上海YY进出口公司',
+            effectiveDate: '2025-10-01',
+            expiryDate: '2026-10-01',
+            insurancePeriod: '12个月',
+            renewalFlag: '否',
+            coverageAmount: 300000,
+            currency: 'USD',
+            premiumRate: 0.02,
+            premium: 6000,
+            maxCompensationLimit: 300000,
+            buyerCreditLimit: 200000,
+            deductible: 2000,
+            coveredRisks: '商业风险',
+            clauseVersion: '短期出口信用保险条款v2024',
+            countryRiskVersion: '2025版',
+            declarationMethod: '月度',
+            declarationCycle: '月度',
+            declarationDeadline: '次月15日',
+            tradeBusinessType: '货物贸易',
+            selfControlledLimit: '',
+            idlePeriod: 60,
+            surrenderFee: '',
+            recoveryPayee: '被保险人',
+            premiumPaymentMethod: '一次性',
+            premiumPaymentDeadline: '保险起期前30日',
+            fileSize: '3.1 MB',
+            uploadUser: '李明辉',
+            createTime: '2026-05-15 16:45:00',
+            updateTime: '2026-05-17 09:30:00'
+          }
+        ]
+        // Add a policy entry for the active external policy (EP2026003)
+        const ep3 = this.externalPolicies[2]
+        if (!this.policies.find(p => p.policyNo === ep3.policyNo)) {
+          this.policies.unshift({
+            id: 'P_EXT_' + ep3.id,
+            policyNo: ep3.policyNo,
+            insuranceCompany: ep3.insuranceCompany,
+            policyholder: ep3.policyholder,
+            insured: ep3.insured,
+            coverageAmount: ep3.coverageAmount,
+            premium: ep3.premium,
+            effectiveDate: ep3.effectiveDate,
+            expiryDate: ep3.expiryDate,
+            status: 'active',
+            statusName: '有效',
+            usedQuota: 150000,
+            remainingQuota: 150000,
+            currency: ep3.currency
+          })
+        }
+        // For the ocr_completed external policy (EP2026002), create linked insuranceApplication
+        const ep2 = this.externalPolicies[1]
+        if (!this.insuranceApplications.some(a => a.externalPolicyId === ep2.id)) {
+          this.insuranceApplications.unshift({
+            id: `TB_EXT_${ep2.id}`,
+            companyName: ep2.customerCompany,
+            buyerName: ep2.insured,
+            insuranceType: '短期出口信用保险',
+            preferredInsuranceOrgType: '无偏好',
+            insuranceCurrency: ep2.currency,
+            insuranceAmount: ep2.coverageAmount,
+            expectedInsurancePeriod: [ep2.effectiveDate, ep2.expiryDate],
+            status: 'ocr_pending',
+            createTime: ep2.createTime,
+            updateTime: ep2.updateTime,
+            ocrSource: true,
+            externalPolicyId: ep2.id,
+            ocrPolicyNo: ep2.policyNo,
+            ocrInsuranceCompany: ep2.insuranceCompany,
+            ocrPolicyholder: ep2.policyholder,
+            ocrInsurerName: ep2.insurerName,
+            ocrBeneficiary: ep2.beneficiary,
+            ocrCoverageAmount: ep2.coverageAmount,
+            ocrPremium: ep2.premium,
+            ocrPremiumRate: ep2.premiumRate,
+            ocrMaxCompensation: ep2.maxCompensationLimit,
+            ocrBuyerCreditLimit: ep2.buyerCreditLimit,
+            ocrBusinessType: ep2.tradeBusinessType
+          })
+        }
+      }
+      // Seed OCR-based insurance applications for 长安银科 (direct OCR, not from upload)
+      if (!this.insuranceApplications.some(a => a.ocrSource && !a.externalPolicyId)) {
+        const now = new Date()
+        this.insuranceApplications.push({
+          id: `TB${now.getFullYear()}OCR01`,
+          companyName: '长安银科',
+          buyerName: 'Global Tech Inc.',
+          insuranceType: '短期出口信用保险',
+          preferredInsuranceOrgType: '无偏好',
+          insuranceCurrency: 'USD',
+          insuranceAmount: 300000,
+          expectedInsurancePeriod: ['2026-06-01', '2027-05-31'],
+          status: 'ocr_pending',
+          createTime: formatDateTime(now),
+          updateTime: formatDateTime(now),
+          ocrSource: true,
+          ocrPolicyNo: `PI${now.getFullYear()}OCR001`,
+          ocrInsuranceCompany: '人保财险',
+          ocrPolicyholder: '长安银科',
+          ocrCoverageAmount: 300000,
+          ocrPremium: 7500,
+          ocrBusinessType: 'goods'
+        })
+      }
+    },
+    // ===== External policy upload & OCR flow =====
+    uploadCustomerPolicy({ file, companyName, uploadUser }) {
+      const now = new Date()
+      const id = `EP${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+      const record = {
+        id,
+        customerCompany: companyName || '',
+        originalFileName: file?.name || 'unknown.pdf',
+        originalFile: file ? [file] : [],
+        ocrStatus: 'pending',
+        status: 'pending_ocr',
+        rejectReason: '',
+        policyNo: '',
+        insuranceCompany: '',
+        insurerName: '',
+        policyholder: companyName || '',
+        insured: '',
+        beneficiary: '',
+        effectiveDate: '',
+        expiryDate: '',
+        insurancePeriod: '12个月',
+        renewalFlag: '否',
+        coverageAmount: 0,
+        currency: 'USD',
+        premiumRate: 0,
+        premium: 0,
+        maxCompensationLimit: 0,
+        buyerCreditLimit: 0,
+        deductible: 0,
+        coveredRisks: '',
+        clauseVersion: '',
+        countryRiskVersion: '',
+        declarationMethod: '',
+        declarationCycle: '',
+        declarationDeadline: '',
+        tradeBusinessType: '',
+        selfControlledLimit: '',
+        idlePeriod: 60,
+        surrenderFee: '',
+        recoveryPayee: '',
+        premiumPaymentMethod: '',
+        premiumPaymentDeadline: '',
+        fileSize: file?.size ? `${(file.size / 1048576).toFixed(1)} MB` : '',
+        uploadUser: uploadUser || companyName || '',
+        createTime: formatDateTime(now),
+        updateTime: formatDateTime(now)
+      }
+      this.externalPolicies.unshift(record)
+      return { ok: true, data: record }
+    },
+    completeExternalOcrAndCreateTask(id, ocrFields) {
+      const epIdx = this.externalPolicies.findIndex(p => p.id === id)
+      if (epIdx < 0) return { ok: false, message: '上传记录不存在' }
+      const ep = this.externalPolicies[epIdx]
+      if (ep.status !== 'pending_ocr') return { ok: false, message: '当前状态不允许OCR识别' }
+      const now = new Date()
+      // Update external policy status
+      this.externalPolicies[epIdx] = {
+        ...ep,
+        ...ocrFields,
+        ocrStatus: 'completed',
+        status: 'ocr_completed',
+        updateTime: formatDateTime(now)
+      }
+      // Create insurance application task in 投保确认列表
+      const appId = `TB_EXT_${id}`
+      if (!this.insuranceApplications.some(a => a.id === appId)) {
+        this.insuranceApplications.unshift({
+          id: appId,
+          companyName: ep.customerCompany,
+          buyerName: ocrFields.insured || '',
+          insuranceType: '短期出口信用保险',
+          preferredInsuranceOrgType: '无偏好',
+          insuranceCurrency: ocrFields.currency || 'USD',
+          insuranceAmount: Number(ocrFields.coverageAmount) || 0,
+          expectedInsurancePeriod: [ocrFields.effectiveDate || '', ocrFields.expiryDate || ''],
+          status: 'ocr_pending',
+          createTime: formatDateTime(now),
+          updateTime: formatDateTime(now),
+          ocrSource: true,
+          externalPolicyId: id,
+          ocrPolicyNo: ocrFields.policyNo || '',
+          ocrInsuranceCompany: ocrFields.insuranceCompany || '',
+          ocrPolicyholder: ocrFields.policyholder || ep.customerCompany,
+          ocrInsurerName: ocrFields.insurerName || '',
+          ocrBeneficiary: ocrFields.beneficiary || '',
+          ocrCoverageAmount: Number(ocrFields.coverageAmount) || 0,
+          ocrPremium: Number(ocrFields.premium) || 0,
+          ocrPremiumRate: Number(ocrFields.premiumRate) || 0,
+          ocrMaxCompensation: Number(ocrFields.maxCompensationLimit) || 0,
+          ocrBuyerCreditLimit: Number(ocrFields.buyerCreditLimit) || 0,
+          ocrBusinessType: ocrFields.tradeBusinessType || ''
+        })
+      }
+      return { ok: true, data: this.externalPolicies[epIdx] }
     },
     createOrUpdateInsuranceApplication(payload) {
       const now = new Date()
@@ -967,6 +1216,20 @@ export const useBusinessStore = defineStore('business', {
       this.insuranceApplications.unshift(item)
       return item
     },
+    submitOcrToPlatform(id) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'ocr_pending') {
+        return { ok: false, message: '当前状态不允许提交' }
+      }
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'pending_review',
+        updateTime: formatDateTime(new Date())
+      }
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
     submitInsuranceApplication(id) {
       const idx = this.insuranceApplications.findIndex(it => it.id === id)
       if (idx < 0) return { ok: false, message: '投保记录不存在' }
@@ -974,6 +1237,11 @@ export const useBusinessStore = defineStore('business', {
       const cur = this.insuranceApplications[idx]
       if (!['draft', 'rejected'].includes(cur.status)) {
         return { ok: false, message: '当前状态不允许提交' }
+      }
+      // OCR records resubmitting don't need attachment validation
+      if (cur.ocrSource) {
+        this.insuranceApplications[idx] = { ...cur, status: 'pending_review', updateTime: formatDateTime(now) }
+        return { ok: true, data: this.insuranceApplications[idx] }
       }
       const missing = []
       if (!hasFile(cur.businessLicense)) missing.push('企业法人营业执照扫描件')
@@ -988,19 +1256,46 @@ export const useBusinessStore = defineStore('business', {
       if (idx < 0) return { ok: false, message: '投保记录不存在' }
       const now = new Date()
       const cur = this.insuranceApplications[idx]
-      if (cur.status !== 'pending_review') {
-        return { ok: false, message: '仅"待确认"状态允许申请跟单员确认' }
+      if (cur.status === 'pending_review') {
+        this.insuranceApplications[idx] = { ...cur, status: 'clerk_review', updateTime: formatDateTime(now) }
+        return { ok: true, data: this.insuranceApplications[idx] }
       }
-      this.insuranceApplications[idx] = { ...cur, status: 'clerk_review', updateTime: formatDateTime(now) }
-      return { ok: true, data: this.insuranceApplications[idx] }
+      if (cur.status === 'ocr_pending') {
+        this.insuranceApplications[idx] = { ...cur, status: 'ocr_clerk_review', updateTime: formatDateTime(now) }
+        return { ok: true, data: this.insuranceApplications[idx] }
+      }
+      return { ok: false, message: '当前状态不允许申请跟单员确认' }
     },
     approveInsuranceApplication(id) {
       const idx = this.insuranceApplications.findIndex(it => it.id === id)
       if (idx < 0) return { ok: false, message: '投保记录不存在' }
       const now = new Date()
       const cur = this.insuranceApplications[idx]
-      if (!['pending_review', 'clerk_review'].includes(cur.status)) {
+      if (!['pending_review', 'clerk_review', 'ocr_pending', 'ocr_clerk_review'].includes(cur.status)) {
         return { ok: false, message: '当前状态不允许确认完成' }
+      }
+      if (cur.status === 'ocr_pending' || cur.status === 'ocr_clerk_review' || (cur.ocrSource && cur.status === 'clerk_review')) {
+        this.insuranceApplications[idx] = { ...cur, status: 'ocr_approved', updateTime: formatDateTime(now) }
+        if (!this.policies.some(p => p.policyholder === cur.companyName && p.insured === cur.buyerName)) {
+          this.policies.unshift({
+            id: createId('P'),
+            policyNo: cur.ocrPolicyNo || `PI${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+            insuranceCompany: cur.ocrInsuranceCompany || '人保财险',
+            policyholder: cur.companyName,
+            insured: cur.buyerName,
+            coverageAmount: Number(cur.insuranceAmount) || 0,
+            premium: Number(cur.ocrPremium) || 0,
+            effectiveDate: cur.expectedInsurancePeriod?.[0] || formatDate(now),
+            expiryDate: cur.expectedInsurancePeriod?.[1] || addDays(formatDate(now), 365),
+            status: 'active',
+            usedQuota: 0,
+            remainingQuota: Number(cur.insuranceAmount) || 0,
+            currency: cur.insuranceCurrency || 'USD',
+            businessType: 'goods',
+            renewalFlag: 'no'
+          })
+        }
+        return { ok: true, data: this.insuranceApplications[idx] }
       }
       const policyNo = `PI${String(now.getFullYear())}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
       const next = { ...cur, status: 'approved', updateTime: formatDateTime(now),
@@ -1056,7 +1351,7 @@ export const useBusinessStore = defineStore('business', {
       if (idx < 0) return { ok: false, message: '投保记录不存在' }
       const now = new Date()
       const cur = this.insuranceApplications[idx]
-      if (!['pending_review', 'clerk_review'].includes(cur.status)) {
+      if (!['pending_review', 'clerk_review', 'ocr_pending', 'ocr_clerk_review'].includes(cur.status)) {
         return { ok: false, message: '当前状态不允许驳回' }
       }
       if (!rejectReason || rejectReason.trim() === '') {
@@ -1375,6 +1670,64 @@ export const useBusinessStore = defineStore('business', {
       }
       this.claims.unshift(item)
       return { ok: true, data: item }
+    },
+
+    // ===== External policy upload actions =====
+    submitExternalPolicyForReview(id) {
+      const cur = this.externalPolicies.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (!['pending_customer_review', 'rejected'].includes(cur.status)) return { ok: false, message: '当前状态不允许提交审核' }
+      cur.status = 'pending_clerk_review'
+      cur.rejectReason = ''
+      cur.updateTime = formatDateTime(new Date())
+      return { ok: true, data: cur }
+    },
+
+    approveExternalPolicy(id) {
+      const cur = this.externalPolicies.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'pending_clerk_review') return { ok: false, message: '当前状态不允许通过' }
+      cur.status = 'active'
+      cur.updateTime = formatDateTime(new Date())
+      // Create corresponding policy entry
+      const now = new Date()
+      if (!this.policies.find(p => p.policyNo === cur.policyNo)) {
+        this.policies.unshift({
+          id: 'P_EXT_' + cur.id,
+          policyNo: cur.policyNo,
+          insuranceCompany: cur.insuranceCompany,
+          policyholder: cur.policyholder,
+          insured: cur.insured,
+          coverageAmount: cur.coverageAmount,
+          premium: cur.premium,
+          effectiveDate: cur.effectiveDate,
+          expiryDate: cur.expiryDate,
+          status: 'active',
+          statusName: '有效',
+          usedQuota: 0,
+          remainingQuota: cur.coverageAmount,
+          currency: cur.currency
+        })
+      }
+      return { ok: true, data: cur }
+    },
+
+    rejectExternalPolicy(id, rejectReason) {
+      const cur = this.externalPolicies.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'pending_clerk_review') return { ok: false, message: '当前状态不允许驳回' }
+      if (!rejectReason?.trim()) return { ok: false, message: '请填写驳回原因' }
+      cur.status = 'rejected'
+      cur.rejectReason = rejectReason
+      cur.updateTime = formatDateTime(new Date())
+      return { ok: true, data: cur }
+    },
+
+    deleteExternalPolicy(id) {
+      const idx = this.externalPolicies.findIndex(p => p.id === id)
+      if (idx < 0) return { ok: false, message: '记录不存在' }
+      this.externalPolicies.splice(idx, 1)
+      return { ok: true }
     }
   }
 })

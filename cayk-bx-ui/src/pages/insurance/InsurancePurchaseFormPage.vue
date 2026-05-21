@@ -40,7 +40,6 @@
             <div class="file-icon">📄</div>
             <div class="file-name">{{ previewFile.name }}</div>
             <div class="file-tip">PDF文件预览</div>
-            <t-button theme="primary" class="download-btn">下载文件</t-button>
           </div>
         </div>
       </div>
@@ -1602,10 +1601,6 @@ onMounted(() => {
         font-size: 14px;
         color: #64748b;
         margin-bottom: 16px;
-      }
-      
-      .download-btn {
-        padding: 8px 24px;
       }
     }
   }

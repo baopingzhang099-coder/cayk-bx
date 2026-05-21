@@ -1,0 +1,16 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.*.local
+*.log
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea
+*.swp
+*.swo
+*~
+/cayk-bx-ui/dist
+/cayk-bx-ui/node_modules

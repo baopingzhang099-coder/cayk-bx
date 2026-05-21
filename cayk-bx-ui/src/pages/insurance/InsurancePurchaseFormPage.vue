@@ -12,7 +12,6 @@
       <div class="page-actions" v-if="mode !== 'detail'">
         <t-space>
           <t-button variant="outline" @click="handleSave">保存</t-button>
-          <t-button theme="primary" @click="handleSubmit">申请投保</t-button>
         </t-space>
       </div>
       <div class="page-actions" v-else>

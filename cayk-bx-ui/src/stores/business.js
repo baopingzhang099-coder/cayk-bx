@@ -418,7 +418,7 @@ export const useBusinessStore = defineStore('business', {
           declarationSignature: '陈志强',
           declarationDate: '2026-05-10',
           companySeal: [{ name: '公章文件.pdf' }],
-          status: 'rejected',
+          status: 'pending_review',
           rejectReason: '缺少贸易合同和报关单等核心证明文件，请补充后重新提交。',
           createTime: '2026-05-10',
           updateTime: '2026-05-12 16:30:00'
@@ -970,7 +970,7 @@ export const useBusinessStore = defineStore('business', {
       if (idx < 0) return { ok: false, message: '投保记录不存在' }
       const now = new Date()
       const cur = this.insuranceApplications[idx]
-      if (!['draft', 'rejected'].includes(cur.status)) {
+      if (!['draft'].includes(cur.status)) {
         return { ok: false, message: '当前状态不允许提交' }
       }
       const missing = []
@@ -1051,7 +1051,7 @@ export const useBusinessStore = defineStore('business', {
       }
       this.insuranceApplications[idx] = { 
         ...cur, 
-        status: 'rejected', 
+        status: 'pending_review',
         updateTime: formatDateTime(now),
         rejectReason 
       }

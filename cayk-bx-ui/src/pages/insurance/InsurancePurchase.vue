@@ -61,15 +61,13 @@
     </t-card>
 
     <div class="stats-grid mb-16">
-      <stat-card title="暂存" :value="insuranceStats.draft" icon="edit" color="danger" />
-      <stat-card title="审核中" :value="insuranceStats.pending_review" icon="search" color="warning" />
-      <stat-card title="已驳回" :value="insuranceStats.rejected" icon="alert-circle" color="error" />
-      <stat-card title="已完成" :value="insuranceStats.completed" icon="check-circle" color="success" />
+      <stat-card title="待确认" :value="pendingStats.pending_all" icon="search" color="warning" />
+      <stat-card title="已确认" :value="pendingStats.approved" icon="check-circle" color="success" />
     </div>
 
     <t-card>
       <div class="table-header">
-        <span class="table-title">投保信息列表</span>
+        <span class="table-title">投保建议方案列表</span>
         <span class="table-count">共 {{ pagination.total }} 条记录</span>
       </div>
       <t-table
@@ -91,8 +89,9 @@
         <template #operation="{ row }">
           <t-space>
             <t-link @click="handleView(row)">查看</t-link>
-            <t-link v-if="row.status === 'draft' || row.status === 'rejected'" @click="handleEdit(row)">编辑</t-link>
-            <t-link v-if="row.status === 'draft'" theme="danger" @click="handleShowDeleteModal(row)">删除</t-link>
+            <t-link v-if="row.status === 'draft' || row.status === 'pending_review'" @click="handleEdit(row)">编辑</t-link>
+            <t-link v-if="row.status === 'draft' || row.status === 'pending_review'" theme="danger" @click="handleShowDeleteModal(row)">删除</t-link>
+            <t-link v-if="row.status === 'approved'" theme="primary" @click="handleShowInsuranceInfo(row)">投保申请</t-link>
           </t-space>
         </template>
       </t-table>
@@ -365,8 +364,132 @@
       </template>
     </t-dialog>
   </div>
-</template>
+    <t-dialog v-model:visible="insuranceInfoVisible" header="投保方案确认" width="760px" :footer="false">
+      <div v-if="currentInsuranceInfo" class="insurance-info-modal">
+        <!-- Section 1: Base Information -->
+        <div class="modal-section-title">📄 基础投保建议数据与出运申报</div>
+        <div class="info-grid mb-16">
+          <div class="info-row">
+            <span class="info-label">投保建议编号</span>
+            <span class="info-value">{{ currentInsuranceInfo.id || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">投保企业</span>
+            <span class="info-value">{{ currentInsuranceInfo.companyName || currentInsuranceInfo.enterpriseName || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">出险买方</span>
+            <span class="info-value">{{ currentInsuranceInfo.buyerName || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">买方国别</span>
+            <span class="info-value">{{ currentInsuranceInfo.buyerCountry || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">申请限额额度</span>
+            <span class="info-value">{{ currentInsuranceInfo.insuranceCurrency || 'USD' }}{{ Number(currentInsuranceInfo.insuranceAmount || 0).toLocaleString() }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">预估账期与期限</span>
+            <span class="info-value">OA {{ currentInsuranceInfo.mostUsedPaymentTerm || 60 }}天 | 12个月</span>
+          </div>
+        </div>
 
+        <!-- Section 2: Digital recommendation details -->
+        <div class="digital-recommend-panel">
+          <div class="recommend-header">
+            <div class="recommend-title">
+              <t-icon name="chart-bubble" />
+              <span>💡 贸易信用数字化预审推荐方案</span>
+            </div>
+            <span class="recommend-badge">AI 算法专属推荐</span>
+          </div>
+
+          <div class="recommend-risk-info">
+            <div>买方资信评级：<span class="risk-tag">🟢 A级（极低风险）</span></div>
+            <div>国别地缘政治风险：<span class="risk-tag">🟢 极低风险</span></div>
+            <div>大数据授信审核通过率：<span class="risk-tag">🟢 100%</span></div>
+          </div>
+
+          <div class="recommend-table-wp">
+            <table class="recommend-table">
+              <thead>
+                <tr>
+                  <th>保障参数</th>
+                  <th>常规方案配置</th>
+                  <th>数字化推荐保障方案 (政策红利特惠)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>赔付比例 (Coverage Ratio)</td>
+                  <td class="regular-val">80.0%</td>
+                  <td class="recommend-val">
+                    <span>90.0%</span>
+                    <span class="highlight-icon">加保 +10% 🌟</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>免赔额 (Deductible)</td>
+                  <td class="regular-val">$2,000 USD</td>
+                  <td class="recommend-val">
+                    <span>$0.00 USD</span>
+                    <span class="highlight-icon">全额保障免赔 🌟</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>建议保费费率 (Premium Rate)</td>
+                  <td class="regular-val">0.15%</td>
+                  <td class="recommend-val">
+                    <span>0.11%</span>
+                    <span class="highlight-icon">优惠下调 -26.7% 🌟</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>最终保费结算 (Premium)</td>
+                  <td class="regular-val">
+                    ${{ Number((currentInsuranceInfo.insuranceAmount || 0) * 0.0015).toLocaleString() }} USD
+                  </td>
+                  <td class="recommend-val">
+                    <span>${{ Number((currentInsuranceInfo.insuranceAmount || 0) * 0.0011).toLocaleString() }} USD</span>
+                    <span class="highlight-icon">立省 ${{ Number((currentInsuranceInfo.insuranceAmount || 0) * 0.0004).toLocaleString() }} 🌟</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>承保审批时效 (Audit SLA)</td>
+                  <td class="regular-val">3~5 工作日</td>
+                  <td class="recommend-val">
+                    <span>秒级自动预核准</span>
+                    <span class="highlight-icon">即时生效 🌟</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="recommend-note">
+            * 提示：数字化推荐基于平台大数据贸易信用分析，针对符合低风险、高合规性的优质贸易背景自动赋能。
+          </div>
+        </div>
+
+        <!-- Section 3: Checkbox willingness -->
+        <div class="confirmation-box">
+          <t-checkbox v-model="isConfirmedSchema">
+            我已仔细核对并确认此『数字化推荐投保建议方案』符合我司本次出运要求，现正式提交投保申请并流转至出单。
+          </t-checkbox>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer">
+          <t-button variant="outline" @click="insuranceInfoVisible = false">取消</t-button>
+          <t-button theme="primary" :disabled="!isConfirmedSchema" @click="handleConfirmInsuranceApply">
+            申请投保
+          </t-button>
+        </div>
+      </div>
+      <div v-else class="no-data">暂无数据</div>
+    </t-dialog>
+</template>
 <script setup>
 import { reactive, computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -384,6 +507,10 @@ const currentSubmitData = ref(null)
 
 const deleteVisible = ref(false)
 const currentDeleteData = ref(null)
+
+const insuranceInfoVisible = ref(false)
+const currentInsuranceInfo = ref(null)
+const isConfirmedSchema = ref(false)
 
 const searchParams = reactive({
   enterpriseName: '',
@@ -418,16 +545,15 @@ const countryOptions = [
 ]
 
 const statusOptions = [
-  { value: 'draft', label: '暂存' },
-  { value: 'pending_review', label: '审核中' },
-  { value: 'rejected', label: '已驳回' }
+  { value: 'draft', label: '待确认' },
+  { value: 'pending_review', label: '待确认' },
+  { value: 'approved', label: '已确认' }
 ]
 
 const statusMap = {
-  draft: '暂存',
-  pending_review: '审核中',
-  approved: '已完成',
-  rejected: '已驳回'
+  draft: '待确认',
+  pending_review: '待确认',
+  approved: '已确认'
 }
 
 const columns = [
@@ -443,7 +569,13 @@ const columns = [
   { colKey: 'operation', title: '操作', width: 220, fixed: 'right', slot: 'operation' }
 ]
 
-const insuranceStats = computed(() => store.insuranceStats)
+const pendingStats = computed(() => {
+  const list = store.insuranceApplications || []
+  return {
+    pending_all: list.filter(it => it.status === 'draft' || it.status === 'pending_review' || it.status === 'rejected').length,
+    approved: list.filter(it => it.status === 'approved').length
+  }
+})
 
 const filteredData = computed(() => {
   const list = store.insuranceApplications || []
@@ -566,6 +698,96 @@ const handleConfirmDelete = () => {
   deleteVisible.value = false
 }
 
+const handleShowInsuranceInfo = (row) => {
+  currentInsuranceInfo.value = row
+  isConfirmedSchema.value = false
+  insuranceInfoVisible.value = true
+}
+
+const handleConfirmInsuranceApply = () => {
+  if (!isConfirmedSchema.value) {
+    MessagePlugin.warning('请先勾选确认符合数字化推荐的投保方案')
+    return
+  }
+  
+  // Real business state synchronization
+  const now = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  const formatDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const addDays = (dateStr, days) => {
+    const dt = new Date(dateStr)
+    dt.setDate(dt.getDate() + days)
+    return formatDate(dt)
+  }
+  const dateStr = formatDate(now)
+  const expireStr = addDays(dateStr, 365)
+  const policyNo = `PI2026${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
+  const currentApp = currentInsuranceInfo.value
+
+  // 1. Update the application status to 'approved' and digital data in store.insuranceApplications
+  const appIndex = store.insuranceApplications.findIndex(it => it.id === currentApp.id)
+  if (appIndex >= 0) {
+    store.insuranceApplications[appIndex] = {
+      ...store.insuranceApplications[appIndex],
+      status: 'approved',
+      policyNo,
+      insuranceCompanyName: currentApp.preferredInsuranceOrgType === '政策性保险机构' ? '中国信保' : '人保财险',
+      policyStartDate: dateStr,
+      policyEndDate: expireStr,
+      policyPeriod: '12个月',
+      maxCompensationLimit: Number(currentApp.insuranceAmount) || 0,
+      premiumRate: 1.1, // 0.11% in permil is 1.1%
+      premium: Number((currentApp.insuranceAmount || 0) * 0.0011),
+      coverageRatio: 90,
+      deductible: 0,
+      sla: 'instant'
+    }
+  }
+
+  // 2. Generate active policy record and unshift to store.policies
+  const policyId = `P2026${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
+  store.policies.unshift({
+    id: policyId,
+    policyNo,
+    insuranceCompany: currentApp.preferredInsuranceOrgType === '政策性保险机构' ? '中国信保' : '人保财险',
+    policyholder: currentApp.companyName || currentApp.enterpriseName || '深圳XX国际贸易有限公司',
+    insured: currentApp.buyerName || 'ABC Corporation',
+    coverageAmount: Number(currentApp.insuranceAmount) || 0,
+    premium: Number((currentApp.insuranceAmount || 0) * 0.0011),
+    effectiveDate: dateStr,
+    expiryDate: expireStr,
+    status: 'active',
+    statusName: '有效',
+    usedQuota: 0,
+    remainingQuota: Number(currentApp.insuranceAmount) || 0,
+    coverageRatio: 90,
+    deductible: 0,
+    premiumRate: 0.0011
+  })
+
+  // 3. Generate active credit limit record and unshift to store.creditLimits
+  const limitId = `CL2026${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
+  store.creditLimits.unshift({
+    id: limitId,
+    buyerName: currentApp.buyerName || 'ABC Corporation',
+    buyerCountry: currentApp.buyerCountry || '美国',
+    appliedLimit: Number(currentApp.insuranceAmount) || 0,
+    usedLimit: 0,
+    remainingLimit: Number(currentApp.insuranceAmount) || 0,
+    usageRate: 0,
+    status: 'active',
+    effectiveDate: dateStr,
+    expiryDate: expireStr
+  })
+
+  MessagePlugin.success('投保申请成功！已成功应用数字化推荐方案（赔付比90%、0免赔、0.11%优惠费率），保单已同步生成并激活！')
+  insuranceInfoVisible.value = false
+  
+  setTimeout(() => {
+    router.push('/policy/list?tab=policy')
+  }, 1000)
+}
+
 onMounted(() => { store.ensureSeeded() })
 </script>
 
@@ -575,7 +797,7 @@ onMounted(() => { store.ensureSeeded() })
 .page-title { font-size: 18px; font-weight: 600; color: #333; }
 .search-card { margin-bottom: 16px; :deep(.t-card__body) { display: flex; justify-content: space-between; align-items: flex-end; } }
 .search-actions { display: flex; gap: 8px; }
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
 .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .table-title { font-size: 16px; font-weight: 600; color: #333; }
 .table-count { font-size: 14px; color: #999; }
@@ -903,5 +1125,173 @@ onMounted(() => { store.ensureSeeded() })
   align-items: center;
   margin-bottom: 16px;
   font-size: 14px;
+}
+
+.insurance-info-modal {
+  padding: 16px 0;
+}
+.insurance-info-modal .info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.insurance-info-modal .info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.insurance-info-modal .info-row:last-child {
+  border-bottom: none;
+}
+.insurance-info-modal .info-label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.insurance-info-modal .info-value {
+  font-size: 13px;
+  color: #333;
+  font-weight: 600;
+  text-align: right;
+}
+
+.modal-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 16px 0 12px 0;
+  padding-left: 10px;
+  border-left: 4px solid #0052d9;
+}
+
+.digital-recommend-panel {
+  background: linear-gradient(135deg, rgba(240, 248, 255, 0.8) 0%, rgba(230, 244, 255, 0.9) 100%);
+  border: 1px solid #b3d8ff;
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 16px;
+  box-shadow: 0 4px 16px rgba(0, 82, 217, 0.05);
+  backdrop-filter: blur(4px);
+  
+  .recommend-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    border-bottom: 1px dashed #b3d8ff;
+    padding-bottom: 10px;
+    
+    .recommend-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0052d9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .recommend-badge {
+      background: #0052d9;
+      color: white;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 5px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+  }
+  
+  .recommend-risk-info {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    
+    .risk-tag {
+      font-weight: 700;
+      color: #2ba471;
+    }
+  }
+  
+  .recommend-table-wp {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #dbeafe;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 82, 217, 0.02);
+  }
+  
+  .recommend-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    
+    th, td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    
+    th {
+      background: #f8fafc;
+      color: #64748b;
+      font-weight: 600;
+    }
+    
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .regular-val {
+      color: #94a3b8;
+      text-decoration: line-through;
+    }
+    
+    .recommend-val {
+      color: #0052d9;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .highlight-icon {
+      font-size: 11px;
+      background: #e6f7ff;
+      color: #1890ff;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+  }
+  
+  .recommend-note {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.5;
+  }
+}
+
+.confirmation-box {
+  margin-top: 18px;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  
+  :deep(.t-checkbox__label) {
+    font-size: 13px;
+    color: #475569;
+    font-weight: 500;
+    line-height: 1.6;
+  }
 }
 </style>

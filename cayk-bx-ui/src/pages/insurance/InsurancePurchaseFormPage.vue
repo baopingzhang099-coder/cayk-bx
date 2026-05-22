@@ -12,6 +12,7 @@
       <div class="page-actions" v-if="mode !== 'detail'">
         <t-space>
           <t-button variant="outline" @click="handleSave">保存</t-button>
+          <t-button theme="primary" @click="handleSubmit">申请投保</t-button>
         </t-space>
       </div>
       <div class="page-actions" v-else>
@@ -103,6 +104,9 @@
               <t-form-item label="公司中文全称" name="companyName">
                 <t-input v-model="formData.companyName" placeholder="准确填写，需与工商注册信息一致" />
               </t-form-item>
+              <t-form-item label="公司英文名称" name="companyEnglishName">
+                <t-input v-model="formData.companyEnglishName" placeholder="境外业务必填，准确填写官方英文名称（选填）" />
+              </t-form-item>
               <t-form-item label="统一社会信用代码" name="unifiedSocialCreditCode">
                 <t-input v-model="formData.unifiedSocialCreditCode" placeholder="请输入18位统一社会信用代码" :maxlength="18" />
               </t-form-item>
@@ -151,6 +155,9 @@
               </t-form-item>
               <t-form-item label="企业邮箱" name="companyEmail">
                 <t-input v-model="formData.companyEmail" placeholder="请输入企业邮箱" />
+              </t-form-item>
+              <t-form-item label="传真号码" name="faxNumber">
+                <t-input v-model="formData.faxNumber" placeholder="请输入传真号码（选填）" />
               </t-form-item>
             </div>
 
@@ -249,6 +256,85 @@
               <t-form-item v-if="formData.hasLongerCreditPeriod === '是'" label="最长赊账期（天）" name="longestCreditPeriod">
                 <t-input-number v-model="formData.longestCreditPeriod" placeholder="请输入天数" :min="0" />
               </t-form-item>
+              <!-- 业务信息字段（新增） -->
+              <t-form-item label="行业细分品类" name="industrySubCategory" class="form-item-full">
+                <t-select v-model="formData.industrySubCategory" placeholder="请选择行业细分品类（选填）" clearable filterable>
+                  <t-option value="乘用车" label="乘用车" />
+                  <t-option value="新能源汽车" label="新能源汽车" />
+                  <t-option value="客车/货车" label="客车/货车" />
+                  <t-option value="烟草制造" label="烟草制造" />
+                  <t-option value="碳酸饮料" label="碳酸饮料" />
+                  <t-option value="茶叶/茶饮料" label="茶叶/茶饮料" />
+                  <t-option value="计算机及通讯" label="计算机及通讯" />
+                  <t-option value="家用电器" label="家用电器" />
+                  <t-option value="纺织服装" label="纺织服装" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="关联公司名单及关系" name="relatedCompanies" class="form-item-full">
+                <t-input v-model="formData.relatedCompanies" placeholder="填写关联公司名称、关联关系，如母子公司、兄弟公司等（选填）" />
+              </t-form-item>
+              <t-form-item label="是否有现有信用险保单" name="existingCreditPolicy" class="form-item-full">
+                <t-select v-model="formData.existingCreditPolicy" placeholder="请选择" clearable>
+                  <t-option value="是" label="是" />
+                  <t-option value="否" label="否" />
+                </t-select>
+              </t-form-item>
+              <template v-if="formData.existingCreditPolicy === '是'">
+                <t-form-item label="现保险人名称" name="existingCreditPolicyInsurer">
+                  <t-input v-model="formData.existingCreditPolicyInsurer" placeholder="请输入现保险人名称" />
+                </t-form-item>
+                <t-form-item label="现有保单号" name="existingCreditPolicyNo">
+                  <t-input v-model="formData.existingCreditPolicyNo" placeholder="请输入现有保单号" />
+                </t-form-item>
+                <t-form-item label="续保日期" name="existingCreditPolicyRenewalDate">
+                  <t-date-picker v-model="formData.existingCreditPolicyRenewalDate" placeholder="请选择续保日期" />
+                </t-form-item>
+              </template>
+              <!-- 历史业务情况（新增） -->
+              <div class="section-title-sub" style="margin-top: 24px;">历史业务情况</div>
+              <div class="form-grid">
+                <t-form-item label="2023年出口总额（万美元）" name="threeYearExportAmount23">
+                  <t-input-number v-model="formData.threeYearExportAmount23" placeholder="选填" :min="0" />
+                </t-form-item>
+                <t-form-item label="2024年出口总额（万美元）" name="threeYearExportAmount24">
+                  <t-input-number v-model="formData.threeYearExportAmount24" placeholder="选填" :min="0" />
+                </t-form-item>
+                <t-form-item label="2025年出口总额（万美元）" name="threeYearExportAmount25">
+                  <t-input-number v-model="formData.threeYearExportAmount25" placeholder="选填" :min="0" />
+                </t-form-item>
+                <t-form-item label="2023年赊销总额（万美元）" name="threeYearCreditSales23">
+                  <t-input-number v-model="formData.threeYearCreditSales23" placeholder="选填" :min="0" />
+                </t-form-item>
+                <t-form-item label="2024年赊销总额（万美元）" name="threeYearCreditSales24">
+                  <t-input-number v-model="formData.threeYearCreditSales24" placeholder="选填" :min="0" />
+                </t-form-item>
+                <t-form-item label="2025年赊销总额（万美元）" name="threeYearCreditSales25">
+                  <t-input-number v-model="formData.threeYearCreditSales25" placeholder="选填" :min="0" />
+                </t-form-item>
+                <t-form-item label="业务的特殊性" name="exportBusinessSpecial" class="form-item-full">
+                  <t-select v-model="formData.exportBusinessSpecial" placeholder="选填" clearable multiple>
+                    <t-option value="寄售" label="寄售" />
+                    <t-option value="季节性销售" label="季节性销售" />
+                    <t-option value="半成品" label="半成品" />
+                    <t-option value="长期合同" label="长期合同" />
+                  </t-select>
+                </t-form-item>
+                <t-form-item label="现金交易占比（%）" name="cashTransactionRatio">
+                  <t-input-number v-model="formData.cashTransactionRatio" placeholder="选填" :min="0" :max="100" />
+                </t-form-item>
+                <t-form-item label="信用证交易占比（%）" name="lcTransactionRatio">
+                  <t-input-number v-model="formData.lcTransactionRatio" placeholder="选填" :min="0" :max="100" />
+                </t-form-item>
+                <t-form-item label="关联交易占比（%）" name="relatedPartyRatio">
+                  <t-input-number v-model="formData.relatedPartyRatio" placeholder="选填" :min="0" :max="100" />
+                </t-form-item>
+                <t-form-item label="赊账交易占比（%）" name="creditTransactionRatio">
+                  <t-input-number v-model="formData.creditTransactionRatio" placeholder="选填" :min="0" :max="100" />
+                </t-form-item>
+                <t-form-item label="托收交易占比（%）" name="collectionRatio">
+                  <t-input-number v-model="formData.collectionRatio" placeholder="选填" :min="0" :max="100" />
+                </t-form-item>
+              </div>
             </div>
             </div>
 
@@ -399,6 +485,57 @@
                   v-model="formData.authorizationDocument"
                   action="https://demo.com/upload"
                 />
+              </t-form-item>
+
+              <!-- 买方补充信息（新增） -->
+              <div class="subsection-header" style="margin-top: 24px; padding: 8px 12px; background: #f5f7fa; border-radius: 6px;">
+                <span style="font-weight: 600; font-size: 14px; color: var(--td-brand-color);">买方补充信息（新增）</span>
+              </div>
+              <t-form-item label="历史逾期情况" name="historicalOverdueStatus">
+                <t-select v-model="formData.historicalOverdueStatus" placeholder="请选择" clearable>
+                  <t-option value="无逾期" label="无逾期" />
+                  <t-option value="有逾期但已结清" label="有逾期但已结清" />
+                  <t-option value="有逾期未结清" label="有逾期未结清" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="买方是否有公开财报" name="buyerHasPublicFinancials">
+                <t-select v-model="formData.buyerHasPublicFinancials" placeholder="请选择" clearable>
+                  <t-option value="是" label="是" />
+                  <t-option value="否" label="否" />
+                  <t-option value="未知" label="未知" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="买方是否为上市公司" name="buyerIsListedCompany">
+                <t-select v-model="formData.buyerIsListedCompany" placeholder="请选择" clearable>
+                  <t-option value="是" label="是" />
+                  <t-option value="否" label="否" />
+                  <t-option value="未知" label="未知" />
+                </t-select>
+              </t-form-item>
+              <t-form-item label="买方是否有负面新闻/诉讼" name="buyerHasNegativeNews">
+                <t-select v-model="formData.buyerHasNegativeNews" placeholder="请选择" clearable>
+                  <t-option value="是" label="是" />
+                  <t-option value="否" label="否" />
+                  <t-option value="未知" label="未知" />
+                </t-select>
+              </t-form-item>
+              <t-form-item v-if="formData.buyerHasNegativeNews === '是'" label="负面新闻/诉讼说明" name="buyerHasNegativeNewsDesc" class="form-item-full">
+                <t-input v-model="formData.buyerHasNegativeNewsDesc" placeholder="请简要说明负面新闻或诉讼情况" />
+              </t-form-item>
+              <t-form-item label="是否指定具体保险公司" name="designatedInsuranceCompany">
+                <t-select v-model="formData.designatedInsuranceCompany" placeholder="请选择" clearable>
+                  <t-option value="是" label="是" />
+                  <t-option value="否" label="否" />
+                </t-select>
+              </t-form-item>
+              <t-form-item v-if="formData.designatedInsuranceCompany === '是'" label="指定保险公司名称" name="designatedInsuranceCompanyName">
+                <t-select v-model="formData.designatedInsuranceCompanyName" placeholder="请选择" clearable>
+                  <t-option value="中国信保" label="中国信保" />
+                  <t-option value="人保财险" label="人保财险" />
+                  <t-option value="太保产险" label="太保产险" />
+                  <t-option value="平安产险" label="平安产险" />
+                  <t-option value="其他" label="其他" />
+                </t-select>
               </t-form-item>
             </div>
             </div>
@@ -699,6 +836,7 @@ const pageTitle = computed(() => {
 const formData = reactive({
   // 主体信息
   companyName: '',
+  companyEnglishName: '',
   unifiedSocialCreditCode: '',
   registeredAddress: '',
   businessAddress: '',
@@ -712,6 +850,7 @@ const formData = reactive({
   contactPosition: '',
   contactPhone: '',
   companyEmail: '',
+  faxNumber: '',
   // 业务信息
   exportBusinessHistory: '',
   exportMainCountries: [],
@@ -723,6 +862,25 @@ const formData = reactive({
   longestPaymentTerm: null,
   hasLongerCreditPeriod: '',
   longestCreditPeriod: null,
+  industrySubCategory: '',
+  relatedCompanies: '',
+  existingCreditPolicy: '',
+  existingCreditPolicyInsurer: '',
+  existingCreditPolicyNo: '',
+  existingCreditPolicyRenewalDate: '',
+  // 历史业务情况（新增）
+  threeYearExportAmount23: null,
+  threeYearExportAmount24: null,
+  threeYearExportAmount25: null,
+  threeYearCreditSales23: null,
+  threeYearCreditSales24: null,
+  threeYearCreditSales25: null,
+  exportBusinessSpecial: [],
+  cashTransactionRatio: null,
+  lcTransactionRatio: null,
+  relatedPartyRatio: null,
+  creditTransactionRatio: null,
+  collectionRatio: null,
   // 投保核心需求
   insuranceType: '',
   preferredInsuranceOrgType: '',
@@ -765,6 +923,14 @@ const formData = reactive({
   appliedCreditLimit: null,
   creditLimitCurrency: 'USD',
   lcIssuingBank: '',
+  // 买方补充信息（新增）
+  historicalOverdueStatus: '',
+  buyerHasPublicFinancials: '',
+  buyerIsListedCompany: '',
+  buyerHasNegativeNews: '',
+  buyerHasNegativeNewsDesc: '',
+  designatedInsuranceCompany: '',
+  designatedInsuranceCompanyName: '',
   // 贸易基础信息
   exportProductCategory: '',
   involvesControlledGoods: '',
@@ -898,6 +1064,7 @@ const removeCountry = (index) => {
 const rules = {
   // 主体信息
   companyName: [{ required: true, message: '请输入公司中文全称', trigger: 'blur' }],
+  companyEnglishName: [],
   unifiedSocialCreditCode: [
     { required: true, message: '请输入统一社会信用代码', trigger: 'blur' },
     { pattern: /^[0-9A-Z]{18}$/, message: '统一社会信用代码为18位', trigger: 'blur' }
@@ -923,6 +1090,7 @@ const rules = {
     { required: true, message: '请输入企业邮箱', trigger: 'blur' },
     { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' }
   ],
+  faxNumber: [],
   // 业务信息
   exportBusinessHistory: [{ required: true, message: '请选择出口业务经营历史', trigger: 'change' }],
   exportMainCountries: [{ required: true, message: '请选择出口主要国别/地区', trigger: 'change' }],
@@ -932,6 +1100,25 @@ const rules = {
   mostUsedPaymentTerm: [{ required: true, message: '请输入最常用的付款期限', trigger: 'blur' }],
   longestPaymentTerm: [{ required: true, message: '请输入最长付款期限', trigger: 'blur' }],
   hasLongerCreditPeriod: [{ required: true, message: '请选择是否为买家提供较长赊账期', trigger: 'change' }],
+  industrySubCategory: [],
+  relatedCompanies: [],
+  existingCreditPolicy: [],
+  existingCreditPolicyInsurer: [],
+  existingCreditPolicyNo: [],
+  existingCreditPolicyRenewalDate: [],
+  // 历史业务情况（新增，可选字段）
+  threeYearExportAmount23: [],
+  threeYearExportAmount24: [],
+  threeYearExportAmount25: [],
+  threeYearCreditSales23: [],
+  threeYearCreditSales24: [],
+  threeYearCreditSales25: [],
+  exportBusinessSpecial: [],
+  cashTransactionRatio: [],
+  lcTransactionRatio: [],
+  relatedPartyRatio: [],
+  creditTransactionRatio: [],
+  collectionRatio: [],
   // 投保核心需求
   insuranceType: [{ required: true, message: '请选择投保类型', trigger: 'change' }],
   preferredInsuranceOrgType: [{ required: true, message: '请选择投保倾向机构类型', trigger: 'change' }],
@@ -958,6 +1145,14 @@ const rules = {
   tradeContract: [{ required: true, message: '请上传近期贸易合同扫描件', trigger: 'change' }],
   customsDeclaration: [{ required: true, message: '请上传出口报关单扫描件', trigger: 'change' }],
   authorizationDocument: [{ required: true, message: '请上传授权保险公司联系买方的签字文件', trigger: 'change' }],
+  // 买方补充信息（新增，可选字段）
+  historicalOverdueStatus: [],
+  buyerHasPublicFinancials: [],
+  buyerIsListedCompany: [],
+  buyerHasNegativeNews: [],
+  buyerHasNegativeNewsDesc: [],
+  designatedInsuranceCompany: [],
+  designatedInsuranceCompanyName: [],
   // 投保声明
   declarationSignature: [{ required: true, message: '请输入投保人授权人签字', trigger: 'blur' }],
   declarationDate: [{ required: true, message: '请选择声明日期', trigger: 'change' }],
@@ -972,6 +1167,7 @@ const detailData = computed(() => {
 
 const customerColumns = [
   { label: '公司中文全称', key: 'companyName' },
+  { label: '公司英文名称', key: 'companyEnglishName' },
   { label: '统一社会信用代码', key: 'unifiedSocialCreditCode' },
   { label: '注册地址', key: 'registeredAddress' },
   { label: '营业地址', key: 'businessAddress' },
@@ -983,19 +1179,36 @@ const customerColumns = [
   { label: '联系人', key: 'contactName' },
   { label: '联系人职务', key: 'contactPosition' },
   { label: '联系电话', key: 'contactPhone' },
-  { label: '企业邮箱', key: 'companyEmail' }
+  { label: '企业邮箱', key: 'companyEmail' },
+  { label: '传真号码', key: 'faxNumber' }
 ]
 
 const businessColumns = [
   { label: '出口业务经营历史', key: 'exportBusinessHistory' },
   { label: '出口主要国别/地区', key: 'exportMainCountries' },
   { label: '主营出口行业', key: 'mainExportIndustry' },
+  { label: '行业细分品类', key: 'industrySubCategory' },
   { label: '预计可保营业额', key: 'expectedInsurableTurnover', formatter: (v, row) => `${row.turnoverCurrency || 'USD'} ${Number(v || 0).toLocaleString()}` },
   { label: '主要付款方式', key: 'mainPaymentMethods' },
   { label: '最常用付款期限（天）', key: 'mostUsedPaymentTerm' },
   { label: '最长付款期限（天）', key: 'longestPaymentTerm' },
   { label: '较长赊账期', key: 'hasLongerCreditPeriod' },
-  { label: '最长赊账期（天）', key: 'longestCreditPeriod' }
+  { label: '最长赊账期（天）', key: 'longestCreditPeriod' },
+  { label: '关联公司', key: 'relatedCompanies' },
+  { label: '现有信用险保单', key: 'existingCreditPolicy' },
+  // 历史业务情况（新增）
+  { label: '2023年出口总额（万美元）', key: 'threeYearExportAmount23' },
+  { label: '2024年出口总额（万美元）', key: 'threeYearExportAmount24' },
+  { label: '2025年出口总额（万美元）', key: 'threeYearExportAmount25' },
+  { label: '2023年赊销总额（万美元）', key: 'threeYearCreditSales23' },
+  { label: '2024年赊销总额（万美元）', key: 'threeYearCreditSales24' },
+  { label: '2025年赊销总额（万美元）', key: 'threeYearCreditSales25' },
+  { label: '业务的特殊性', key: 'exportBusinessSpecial' },
+  { label: '现金交易占比', key: 'cashTransactionRatio', formatter: v => v != null ? `${v}%` : '-' },
+  { label: '信用证交易占比', key: 'lcTransactionRatio', formatter: v => v != null ? `${v}%` : '-' },
+  { label: '关联交易占比', key: 'relatedPartyRatio', formatter: v => v != null ? `${v}%` : '-' },
+  { label: '赊账交易占比', key: 'creditTransactionRatio', formatter: v => v != null ? `${v}%` : '-' },
+  { label: '托收交易占比', key: 'collectionRatio', formatter: v => v != null ? `${v}%` : '-' }
 ]
 
 const insuranceColumns = [
@@ -1021,7 +1234,15 @@ const buyerColumns = [
   { label: '预计未来12个月赊销总额', key: 'expectedNext12MonthCreditSales', formatter: (v, row) => `${row.creditSalesCurrency || 'USD'} ${Number(v || 0).toLocaleString()}` },
   { label: '付款条件', key: 'paymentTerms' },
   { label: '拟申请信用限额', key: 'appliedCreditLimit', formatter: (v, row) => `${row.creditLimitCurrency || 'USD'} ${Number(v || 0).toLocaleString()}` },
-  { label: '信用证开证行/SWIFT', key: 'lcIssuingBank' }
+  { label: '信用证开证行/SWIFT', key: 'lcIssuingBank' },
+  // 买方补充信息（新增）
+  { label: '历史逾期情况', key: 'historicalOverdueStatus' },
+  { label: '买方是否有公开财报', key: 'buyerHasPublicFinancials' },
+  { label: '买方是否为上市公司', key: 'buyerIsListedCompany' },
+  { label: '买方是否有负面新闻/诉讼', key: 'buyerHasNegativeNews' },
+  { label: '负面新闻/诉讼说明', key: 'buyerHasNegativeNewsDesc' },
+  { label: '是否指定具体保险公司', key: 'designatedInsuranceCompany' },
+  { label: '指定保险公司名称', key: 'designatedInsuranceCompanyName' }
 ]
 
 const tradeColumns = [
@@ -1124,6 +1345,7 @@ const initForm = () => {
   Object.assign(formData, {
     // 主体信息
     companyName: row.companyName || '',
+    companyEnglishName: row.companyEnglishName || '',
     unifiedSocialCreditCode: row.unifiedSocialCreditCode || '',
     registeredAddress: row.registeredAddress || '',
     businessAddress: row.businessAddress || '',
@@ -1137,6 +1359,7 @@ const initForm = () => {
     contactPosition: row.contactPosition || '',
     contactPhone: row.contactPhone || '',
     companyEmail: row.companyEmail || '',
+    faxNumber: row.faxNumber || '',
     // 业务信息
     exportBusinessHistory: row.exportBusinessHistory || '',
     exportMainCountries: row.exportMainCountries || [],
@@ -1148,6 +1371,25 @@ const initForm = () => {
     longestPaymentTerm: row.longestPaymentTerm ?? null,
     hasLongerCreditPeriod: row.hasLongerCreditPeriod || '',
     longestCreditPeriod: row.longestCreditPeriod ?? null,
+    industrySubCategory: row.industrySubCategory || '',
+    relatedCompanies: row.relatedCompanies || '',
+    existingCreditPolicy: row.existingCreditPolicy || '',
+    existingCreditPolicyInsurer: row.existingCreditPolicyInsurer || '',
+    existingCreditPolicyNo: row.existingCreditPolicyNo || '',
+    existingCreditPolicyRenewalDate: row.existingCreditPolicyRenewalDate || '',
+    // 历史业务情况（新增）
+    threeYearExportAmount23: row.threeYearExportAmount23 ?? null,
+    threeYearExportAmount24: row.threeYearExportAmount24 ?? null,
+    threeYearExportAmount25: row.threeYearExportAmount25 ?? null,
+    threeYearCreditSales23: row.threeYearCreditSales23 ?? null,
+    threeYearCreditSales24: row.threeYearCreditSales24 ?? null,
+    threeYearCreditSales25: row.threeYearCreditSales25 ?? null,
+    exportBusinessSpecial: row.exportBusinessSpecial || [],
+    cashTransactionRatio: row.cashTransactionRatio ?? null,
+    lcTransactionRatio: row.lcTransactionRatio ?? null,
+    relatedPartyRatio: row.relatedPartyRatio ?? null,
+    creditTransactionRatio: row.creditTransactionRatio ?? null,
+    collectionRatio: row.collectionRatio ?? null,
     // 投保核心需求
     insuranceType: row.insuranceType || '',
     preferredInsuranceOrgType: row.preferredInsuranceOrgType || '',
@@ -1172,6 +1414,14 @@ const initForm = () => {
     appliedCreditLimit: row.appliedCreditLimit ?? null,
     creditLimitCurrency: row.creditLimitCurrency || 'USD',
     lcIssuingBank: row.lcIssuingBank || '',
+    // 买方补充信息（新增）
+    historicalOverdueStatus: row.historicalOverdueStatus || '',
+    buyerHasPublicFinancials: row.buyerHasPublicFinancials || '',
+    buyerIsListedCompany: row.buyerIsListedCompany || '',
+    buyerHasNegativeNews: row.buyerHasNegativeNews || '',
+    buyerHasNegativeNewsDesc: row.buyerHasNegativeNewsDesc || '',
+    designatedInsuranceCompany: row.designatedInsuranceCompany || '',
+    designatedInsuranceCompanyName: row.designatedInsuranceCompanyName || '',
     // 贸易基础信息
     exportProductCategory: row.exportProductCategory || '',
     involvesControlledGoods: row.involvesControlledGoods || '',

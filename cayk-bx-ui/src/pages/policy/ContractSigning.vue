@@ -3,18 +3,18 @@
     <div class="breadcrumbs">
       <t-breadcrumb>
         <t-breadcrumb-item to="/policy/list">保单管理</t-breadcrumb-item>
-        <t-breadcrumb-item>合同签署</t-breadcrumb-item>
+        <t-breadcrumb-item>委托合同签署</t-breadcrumb-item>
       </t-breadcrumb>
     </div>
     <div class="page-header">
-      <div class="page-title">合同签署管理</div>
+      <div class="page-title">委托合同签署管理</div>
       <div class="page-header-actions">
         <span class="role-badge-tip">{{ roleTip }}</span>
       </div>
     </div>
 
     <!-- Customer: Eligible Policies for Initiation -->
-    <t-card v-if="isCustomer && eligiblePolicies.length > 0" class="eligible-card" title="可发起合同签署">
+    <t-card v-if="isCustomer && eligiblePolicies.length > 0" class="eligible-card" title="可发起委托合同签署">
       <template #actions>
         <t-link theme="primary" @click="eligibleExpanded = !eligibleExpanded">
           {{ eligibleExpanded ? '收起' : '展开' }}
@@ -33,7 +33,7 @@
               <span>保险公司：{{ item.insuranceCompany }}</span>
             </div>
           </div>
-          <t-button theme="primary" @click="handleInitiateContract(item)">发起合同签署申请</t-button>
+          <t-button theme="primary" @click="handleInitiateContract(item)">发起委托合同签署申请</t-button>
         </div>
       </div>
     </t-card>
@@ -571,7 +571,7 @@ const flowSteps = computed(() => {
   if (!c) return []
   const doneStatuses = ['inkasso_signed', 'paid', 'underwriting_submitted', 'policy_issued', 'policy_info_uploaded', 'offline_paid', 'insurance_active']
   const steps = [
-    { key: 'initiated', title: '客户发起签署', desc: '客户已发起合同签署申请', done: true, time: c.createdAt || '' },
+    { key: 'initiated', title: '客户发起签署', desc: '客户已发起委托合同签署申请', done: true, time: c.createdAt || '' },
     { key: 'inkasso_sign', title: '平台签署盖章', desc: '长安银科在线签署盖章', active: c.status === 'pending_inkasso_sign', done: doneStatuses.includes(c.status), time: c.signDate || '' },
     { key: 'payment', title: '客户扫码支付', desc: '客户扫描二维码完成支付', active: c.status === 'inkasso_signed', done: ['paid', ...doneStatuses.slice(3)].includes(c.status), time: c.paymentDate || '' },
     { key: 'underwriting', title: '提交保险公司核保', desc: '跟单员提交材料至保险公司', active: c.status === 'paid', done: ['underwriting_submitted', ...doneStatuses.slice(4)].includes(c.status), time: c.underwritingDate || '' },
@@ -732,7 +732,7 @@ const contractStatusTheme = (status) => {
 
 // Policy lifecycle integration (for contract detail view — only up to 保单生效)
 const lifecycleSteps = [
-  { label: '合同签署', key: 'contract', done: false, active: false },
+  { label: '委托合同签署', key: 'contract', done: false, active: false },
   { label: '保费支付', key: 'payment', done: false, active: false },
   { label: '核保提交', key: 'underwriting', done: false, active: false },
   { label: '保单生效', key: 'policy_activation', done: false, active: false }
@@ -740,7 +740,7 @@ const lifecycleSteps = [
 
 const currentStepLabel = (status) => {
   const map = {
-    pending_inkasso_sign: '合同签署（待平台签署）',
+    pending_inkasso_sign: '委托合同签署（待平台签署）',
     inkasso_signed: '保费支付（平台已签署，待支付）',
     paid: '核保提交（已支付，待跟单员提交核保）',
     underwriting_submitted: '核保提交（核保材料已提交）',
@@ -783,9 +783,9 @@ const handleInitiateContract = (policy) => {
   const res = store.initContractFromPolicy(policy)
   if (res) {
     currentFlowContract.value = res
-    MessagePlugin.success(`已为保单 ${policy.policyNo} 发起合同签署申请，等待平台签署`)
+    MessagePlugin.success(`已为保单 ${policy.policyNo} 发起委托合同签署申请，等待平台签署`)
   } else {
-    MessagePlugin.warning('该保单已发起过合同签署申请')
+    MessagePlugin.warning('该保单已发起过委托合同签署申请')
   }
 }
 

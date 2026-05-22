@@ -4,7 +4,7 @@
       <t-breadcrumb>
         <t-breadcrumb-item to="/">首页</t-breadcrumb-item>
         <t-breadcrumb-item to="/policy/list">保单管理</t-breadcrumb-item>
-        <t-breadcrumb-item>流程管理</t-breadcrumb-item>
+        <t-breadcrumb-item>保单流程管理</t-breadcrumb-item>
       </t-breadcrumb>
     </div>
 
@@ -93,11 +93,11 @@
             </div>
 
             <div v-show="expandedSteps[index]" class="node-body">
-              <!-- Step 1: 合同签署 -->
+              <!-- Step 1: 委托合同签署 -->
               <div v-if="index === 0" class="node-content">
                 <div class="content-inner">
                   <div class="content-section">
-                    <div class="content-section-title">合同签署流程</div>
+                    <div class="content-section-title">委托合同签署流程</div>
                     <t-form label-width="120">
                       <t-form-item label="合同编号">
                         <t-input :value="contractData.id" readonly />
@@ -297,17 +297,71 @@
                     <div class="content-section-title">保单维护操作</div>
                     <t-form label-width="120">
                       <t-form-item label="维护类型">
-                        <t-select v-model="formData.step6.maintenanceType" placeholder="请选择维护类型">
+                        <t-select v-model="formData.step7.maintenanceType" placeholder="请选择维护类型">
                           <t-option value="renewal" label="续保申请" />
                           <t-option value="change" label="保单变更" />
                           <t-option value="surrender" label="退保申请" />
                         </t-select>
                       </t-form-item>
+
+                      <!-- 续保申请 -->
+                      <template v-if="formData.step7.maintenanceType === 'renewal'">
+                        <t-form-item label="续保后保险期间起">
+                          <t-date-picker v-model="formData.step7.renewalStart" placeholder="请选择日期" />
+                        </t-form-item>
+                        <t-form-item label="续保后保险期间止">
+                          <t-date-picker v-model="formData.step7.renewalEnd" placeholder="请选择日期" />
+                        </t-form-item>
+                        <t-form-item label="续保后投保比例">
+                          <t-input-number v-model="formData.step7.renewalRatio" :min="0" :max="90" suffix="%" placeholder="最高90%" />
+                        </t-form-item>
+                        <t-form-item label="续保后预计可保营业额">
+                          <t-input-number v-model="formData.step7.renewalTurnover" :min="0" placeholder="请输入预计营业额" />
+                        </t-form-item>
+                        <t-form-item label="上年度出运总额">
+                          <t-input :value="`$${shipmentStats.totalAmount}`" disabled />
+                        </t-form-item>
+                      </template>
+
+                      <!-- 保单变更 -->
+                      <template v-if="formData.step7.maintenanceType === 'change'">
+                        <t-form-item label="变更类型">
+                          <t-select v-model="formData.step7.changeType" placeholder="请选择变更类型">
+                            <t-option value="insured" label="被保险人变更" />
+                            <t-option value="limit" label="额度调整" />
+                            <t-option value="rate" label="费率调整" />
+                            <t-option value="other" label="其他变更" />
+                          </t-select>
+                        </t-form-item>
+                      </template>
+
+                      <!-- 退保申请 -->
+                      <template v-if="formData.step7.maintenanceType === 'surrender'">
+                        <t-form-item label="退保原因">
+                          <t-select v-model="formData.step7.surrenderReason" placeholder="请选择退保原因">
+                            <t-option value="no_business" label="无业务需求" />
+                            <t-option value="switch_company" label="更换保险公司" />
+                            <t-option value="dissatisfied" label="对服务不满意" />
+                            <t-option value="other" label="其他原因" />
+                          </t-select>
+                        </t-form-item>
+                        <t-form-item label="退保生效日期">
+                          <t-date-picker v-model="formData.step7.surrenderDate" placeholder="请选择生效日期" />
+                        </t-form-item>
+                        <t-form-item label="关联理赔核查">
+                          <t-alert v-if="hasActiveClaim" theme="warning" message="该保单存在未结案理赔记录，退保可能影响理赔权益" />
+                          <t-alert v-else theme="success" message="无未结案理赔记录" />
+                        </t-form-item>
+                      </template>
+
                       <t-form-item label="申请说明">
-                        <t-textarea v-model="formData.step6.description" placeholder="请说明维护原因和具体内容" :rows="3" />
+                        <t-textarea v-model="formData.step7.description" placeholder="请说明维护原因和具体内容" :rows="3" />
                       </t-form-item>
                       <t-form-item label="附件材料">
-                        <t-upload v-model="formData.step6.attachments" :files="[]" placeholder="上传相关申请材料" />
+                        <t-upload v-model="formData.step7.attachments" :files="[]" placeholder="上传相关申请材料" />
+                      </t-form-item>
+                      <t-form-item v-if="formData.step7.maintenanceType">
+                        <t-button theme="primary" @click="handleMaintenanceSubmit">提交申请</t-button>
                       </t-form-item>
                     </t-form>
                   </div>
@@ -351,9 +405,14 @@
         </div>
 
         <div class="flow-actions">
-          <t-button variant="outline" :disabled="currentStep === 1" @click="prevStep">上一步</t-button>
-          <t-button v-if="currentStep < 7" theme="primary" @click="nextStep">下一步</t-button>
-          <t-button v-else theme="primary" @click="completeProcess">完成</t-button>
+          <t-button variant="outline" @click="viewPrevStep">上一步</t-button>
+          <t-button v-if="viewingStep > 1 && viewingStep !== currentStep" variant="outline" @click="viewNextStep">下一步查看</t-button>
+          <t-button v-if="viewingStep === currentStep && isStepOperator" theme="primary" @click="handleStepAction">
+            {{ stepRoles[currentStep - 1]?.action || '执行操作' }}
+          </t-button>
+          <t-button v-if="viewingStep === currentStep && !isStepOperator && currentStep < 7" theme="default" disabled>
+            等待{{ stepRoles[currentStep - 1]?.label }}操作
+          </t-button>
         </div>
       </t-tab-panel>
 
@@ -378,6 +437,58 @@
         </t-card>
       </t-tab-panel>
     </t-tabs>
+
+    <t-dialog v-model:visible="maintenanceSubmitted" header="维护操作结果" width="650px" :footer="false" @close="maintenanceSubmitted = false">
+      <div v-if="maintenanceResult" class="maintenance-result">
+        <div class="result-banner" :class="'banner-' + maintenanceResult.type">
+          <t-icon :name="maintenanceResult.type === 'surrender' ? 'alert-circle' : 'check-circle'" size="32px" />
+          <div class="result-msg">{{ maintenanceResult.message }}</div>
+        </div>
+
+        <!-- Renewal result: show new policy -->
+        <template v-if="maintenanceResult.type === 'renewal' && maintenanceResult.newPolicy">
+          <t-divider>新保单信息</t-divider>
+          <div class="result-fields">
+            <div class="rf-row"><span class="rf-label">新保单号</span><span class="rf-value highlight">{{ maintenanceResult.newPolicyNo }}</span></div>
+            <div class="rf-row"><span class="rf-label">保险公司</span><span class="rf-value">{{ maintenanceResult.newPolicy.insuranceCompany }}</span></div>
+            <div class="rf-row"><span class="rf-label">被保险人</span><span class="rf-value">{{ maintenanceResult.newPolicy.policyholder }}</span></div>
+            <div class="rf-row"><span class="rf-label">投保买方</span><span class="rf-value">{{ maintenanceResult.newPolicy.insured }}</span></div>
+            <div class="rf-row"><span class="rf-label">保险金额</span><span class="rf-value">${{ Number(maintenanceResult.newPolicy.coverageAmount).toLocaleString() }}</span></div>
+            <div class="rf-row"><span class="rf-label">保费</span><span class="rf-value">${{ Number(maintenanceResult.newPolicy.premium).toLocaleString() }}</span></div>
+            <div class="rf-row"><span class="rf-label">保险期间</span><span class="rf-value">{{ maintenanceResult.newPolicy.effectiveDate }} 至 {{ maintenanceResult.newPolicy.expiryDate }}</span></div>
+            <div class="rf-row"><span class="rf-label">源保单号</span><span class="rf-value">{{ maintenanceResult.newPolicy.renewedFrom }}</span></div>
+          </div>
+          <t-alert theme="info" message="新保单合同需重新签署并支付保费，请前往「委托合同签署」页面完成后续流程" style="margin-top:12px" />
+        </template>
+
+        <!-- Change result: show change record -->
+        <template v-if="maintenanceResult.type === 'change' && maintenanceResult.changeRecord">
+          <t-divider>变更记录</t-divider>
+          <div class="result-fields">
+            <div class="rf-row"><span class="rf-label">变更编号</span><span class="rf-value">{{ maintenanceResult.changeRecord.id }}</span></div>
+            <div class="rf-row"><span class="rf-label">变更类型</span><span class="rf-value">{{ maintenanceResult.changeRecord.changeTypeName }}</span></div>
+            <div class="rf-row"><span class="rf-label">变更说明</span><span class="rf-value">{{ maintenanceResult.changeRecord.description || '无' }}</span></div>
+            <div class="rf-row"><span class="rf-label">变更时间</span><span class="rf-value">{{ maintenanceResult.changeRecord.changeDate }}</span></div>
+            <div class="rf-row"><span class="rf-label">当前状态</span><span class="rf-value highlight">已生效</span></div>
+          </div>
+        </template>
+
+        <!-- Surrender result: show cancellation info -->
+        <template v-if="maintenanceResult.type === 'surrender'">
+          <t-divider>退保信息</t-divider>
+          <div class="result-fields">
+            <div class="rf-row"><span class="rf-label">退保原因</span><span class="rf-value">{{ businessStore.policies.find(p => p.policyNo === refPolicyNo)?.cancelReason || '-' }}</span></div>
+            <div class="rf-row"><span class="rf-label">生效日期</span><span class="rf-value">{{ formData.step7.surrenderDate }}</span></div>
+            <div class="rf-row"><span class="rf-label">保单状态</span><span class="rf-value highlight">已退保</span></div>
+          </div>
+          <t-alert theme="warning" message="退保后该保单不再具有保险效力，如有未结清保费请及时处理" style="margin-top:12px" />
+        </template>
+
+        <div class="result-actions">
+          <t-button theme="primary" @click="maintenanceSubmitted = false">我知道了</t-button>
+        </div>
+      </div>
+    </t-dialog>
 
     <t-dialog v-model:visible="detailVisible" header="流程任务详情" width="800px" :footer="false">
       <div v-if="currentTask" class="detail-body">
@@ -446,7 +557,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useBusinessStore } from '@/stores/business'
 import { useUserStore } from '@/stores/user'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -455,10 +566,33 @@ const businessStore = useBusinessStore()
 const userStore = useUserStore()
 
 const activeTab = ref('process')
-const currentStep = ref(1)
+
+// Current step computed from actual store data — not isolated local state
+const currentStep = computed(() => {
+  const c = refContract.value
+  if (!c) return 1
+  // Step 1: 委托合同签署 — completed when inkasso has signed
+  if (!c.status || c.status === 'pending_inkasso_sign') return 1
+  // Step 2: 保费支付 — completed when payment status is paid
+  if (c.paymentStatus !== 'paid') return 2
+  // Step 3: 核保材料提交 — completed when underwriting submitted
+  if (c.status !== 'underwriting_submitted' && !['policy_issued', 'policy_info_uploaded', 'offline_paid', 'insurance_active'].includes(c.status)) return 3
+  // Step 4: 保单生效流程 — completed when insurance active
+  if (c.status !== 'insurance_active') return 4
+  // Step 5: 信用限额管理 — completed when at least one credit limit exists
+  const hasLimits = businessStore.creditLimits.some(cl =>
+    businessStore.policies.find(p => p.policyNo === refPolicyNo.value && p.insured === cl.buyerName)
+  )
+  if (!hasLimits) return 5
+  // Step 6: 出运申报管理 — completed when at least one shipment exists for this policy
+  const hasShipments = businessStore.shipments.some(s => s.relatedPolicyNo === refPolicyNo.value)
+  if (!hasShipments) return 6
+  // Step 7: 保单维护 — all prior steps done
+  return 7
+})
 
 const stepOptions = [
-  { label: '合同签署', value: 1 },
+  { label: '委托合同签署', value: 1 },
   { label: '保费支付', value: 2 },
   { label: '核保材料提交', value: 3 },
   { label: '保单生效流程', value: 4 },
@@ -467,15 +601,23 @@ const stepOptions = [
   { label: '保单维护', value: 7 }
 ]
 
+// Each step's responsible role
 const stepRoles = [
-  { role: 'customer', label: '客户发起' },
-  { role: 'customer', label: '客户' },
-  { role: 'clerk', label: '跟单员' },
-  { role: 'clerk', label: '跟单员/客户' },
-  { role: 'inkasso', label: '长安银科' },
-  { role: 'customer', label: '客户' },
-  { role: 'customer', label: '客户/跟单员' }
+  { role: 'customer', label: '客户发起', action: '发起委托合同签署' },
+  { role: 'customer', label: '客户支付', action: '支付保费' },
+  { role: 'clerk', label: '跟单员', action: '提交核保材料' },
+  { role: 'clerk', label: '跟单员/客户', action: '保单生效操作' },
+  { role: 'inkasso', label: '长安银科', action: '管理信用限额' },
+  { role: 'customer', label: '客户', action: '出运申报' },
+  { role: 'customer', label: '客户/跟单员', action: '保单维护' }
 ]
+
+// Whether current user is the designated role for the active step
+const isStepOperator = computed(() => {
+  const idx = currentStep.value - 1
+  if (idx < 0 || idx >= stepRoles.length) return false
+  return userStore.role === stepRoles[idx].role
+})
 
 // Reference contract — first contract in store for the current company (all for inkasso/clerk)
 const refContract = computed(() => {
@@ -545,8 +687,72 @@ const formData = reactive({
   step4: { policyIssued: false, infoUploaded: false, receiptVerified: false, activeDate: '', policyInfo: null, approvalResult: '', auditOpinion: '' },
   step5: { approvalResult: '', auditOpinion: '' },
   step6: { approvalResult: '', auditOpinion: '' },
-  step7: { maintenanceType: '', description: '', attachments: [], approvalResult: '', auditOpinion: '' }
+  step7: { maintenanceType: '', changeType: '', description: '', attachments: [], renewalStart: '', renewalEnd: '', renewalRatio: 80, renewalTurnover: 0, surrenderReason: '', surrenderDate: '', approvalResult: '', auditOpinion: '' }
 })
+
+const hasActiveClaim = computed(() => {
+  const policyNo = refPolicyNo.value
+  return policyNo && businessStore.claims.some(c => c.relatedPolicyNo === policyNo && c.status !== 'completed')
+})
+
+const maintenanceSubmitted = ref(false)
+const maintenanceResult = ref(null)
+
+const handleMaintenanceSubmit = () => {
+  const mt = formData.step7.maintenanceType
+  if (!mt) { MessagePlugin.warning('请选择维护类型'); return }
+
+  const policyNo = refPolicyNo.value
+  const pIdx = businessStore.policies.findIndex(p => p.policyNo === policyNo)
+  if (pIdx < 0) { MessagePlugin.error('保单不存在'); return }
+
+  let result
+  if (mt === 'renewal') {
+    if (!formData.step7.renewalStart || !formData.step7.renewalEnd) {
+      MessagePlugin.warning('请填写续保后的保险期间'); return
+    }
+    if (!formData.step7.renewalTurnover) {
+      MessagePlugin.warning('请填写续保后预计可保营业额'); return
+    }
+    result = businessStore.processPolicyRenewal(policyNo, {
+      renewalStart: formData.step7.renewalStart,
+      renewalEnd: formData.step7.renewalEnd,
+      renewalRatio: formData.step7.renewalRatio || 80,
+      renewalTurnover: formData.step7.renewalTurnover
+    })
+  } else if (mt === 'change') {
+    if (!formData.step7.changeType) {
+      MessagePlugin.warning('请选择变更类型'); return
+    }
+    if (!formData.step7.description) {
+      MessagePlugin.warning('请填写变更内容说明'); return
+    }
+    result = businessStore.processPolicyChange(policyNo, {
+      changeType: formData.step7.changeType,
+      description: formData.step7.description
+    })
+  } else if (mt === 'surrender') {
+    if (!formData.step7.surrenderReason) {
+      MessagePlugin.warning('请选择退保原因'); return
+    }
+    if (!formData.step7.surrenderDate) {
+      MessagePlugin.warning('请选择退保生效日期'); return
+    }
+    result = businessStore.cancelPolicy(policyNo, {
+      surrenderReason: formData.step7.surrenderReason,
+      surrenderDate: formData.step7.surrenderDate,
+      description: formData.step7.description
+    })
+  }
+
+  if (result?.ok) {
+    maintenanceResult.value = { type: mt, ...result }
+    maintenanceSubmitted.value = true
+    MessagePlugin.success(result.message)
+  } else {
+    MessagePlugin.warning(result?.message || '操作失败')
+  }
+}
 
 // Credit limit data
 const limitColumns = [
@@ -576,7 +782,20 @@ const shipmentStats = computed(() => {
   }
 })
 
-const expandedSteps = reactive(stepOptions.map((_, i) => i + 1 <= currentStep.value))
+// viewingStep tracks which step the user is looking at in the UI
+const viewingStep = ref(1)
+
+// Sync viewingStep when currentStep changes (e.g. after auto-advance)
+watch(currentStep, (val) => {
+  if (val > viewingStep.value) viewingStep.value = val
+})
+
+// Auto-expand the step being viewed
+watch(viewingStep, (val) => {
+  if (val > 0 && val <= expandedSteps.length) expandedSteps[val - 1] = true
+})
+
+const expandedSteps = reactive(stepOptions.map((_, i) => i + 1 <= viewingStep.value))
 
 const getStepStatusText = (stepNum) => {
   if (stepNum < currentStep.value) return '已完成'
@@ -589,40 +808,68 @@ const toggleCollapse = (index) => {
 }
 
 const setStep = (step) => {
-  if (step <= currentStep.value) {
-    currentStep.value = step
+  if (step <= viewingStep.value) {
+    viewingStep.value = step
   }
 }
 
-const prevStep = () => {
-  if (currentStep.value > 1) currentStep.value--
+const viewPrevStep = () => {
+  if (viewingStep.value > 1) viewingStep.value--
 }
 
-const nextStep = () => {
-  if (currentStep.value < 7) {
-    setStepEndTime(currentStep.value)
-    currentStep.value++
-    setStepStartTime(currentStep.value)
-    MessagePlugin.success('操作成功')
+const viewNextStep = () => {
+  if (viewingStep.value < 7) viewingStep.value++
+}
+
+// Role-specific action for the current active step — triggers real store operations
+const handleStepAction = () => {
+  const step = currentStep.value
+  const role = userStore.role
+  const c = refContract.value
+
+  if (step === 1 && role === 'customer') {
+    window.location.href = '/policy/contract'
+    return
   }
-}
-
-const completeProcess = () => {
-  setStepEndTime(currentStep.value)
-  businessStore.addCompletedProcessTask({
-    policyNo: refPolicyNo.value,
-    companyName: contractData.value.companyName,
-    startTime: stepInfo[0].startTime,
-    endTime: stepInfo[6].endTime,
-    stepsCompleted: 7,
-    stepOptions: [...stepOptions],
-    stepInfo: stepInfo.map(s => ({ ...s })),
-    formData: Object.fromEntries(
-      Object.entries(formData).map(([k, v]) => [k, { ...v }])
-    )
-  })
-  MessagePlugin.success('保单生命周期流程已完成！')
-  activeTab.value = 'task-list'
+  if (step === 2 && role === 'customer') {
+    window.location.href = '/policy/contract'
+    return
+  }
+  if (step === 3 && role === 'clerk') {
+    if (c && c.policyNo) {
+      const res = businessStore.submitUnderwriting(c.policyNo, userStore.userName)
+      if (res.ok) MessagePlugin.success('核保材料已提交，等待保单出具')
+      else MessagePlugin.error(res.message)
+    }
+    return
+  }
+  if (step === 4 && role === 'clerk') {
+    if (c && c.policyNo && c.status === 'underwriting_submitted') {
+      const res = businessStore.confirmPolicyIssued(c.policyNo)
+      if (res.ok) MessagePlugin.success('保单已出具')
+      else MessagePlugin.error(res.message)
+    } else {
+      MessagePlugin.info('保单已在生效流程中，请检查委托合同签署页面')
+    }
+    return
+  }
+  if (step === 5 && role === 'inkasso') {
+    window.location.href = '/policy/limit'
+    return
+  }
+  if (step === 6 && role === 'customer') {
+    window.location.href = '/policy/shipment'
+    return
+  }
+  if (step === 7) {
+    if (maintenanceSubmitted.value) {
+      MessagePlugin.info('保单维护已提交，请查看结果')
+    } else {
+      MessagePlugin.info('请先填写保单维护信息并点击「提交申请」')
+    }
+    return
+  }
+  MessagePlugin.info('请到对应功能页面完成操作')
 }
 
 const updateStep4FromContract = () => {
@@ -638,7 +885,7 @@ const updateStep4FromContract = () => {
 
 onMounted(() => {
   businessStore.ensureSeeded()
-  setStepStartTime(currentStep.value)
+  viewingStep.value = currentStep.value
   updateStep4FromContract()
 })
 
@@ -809,4 +1056,19 @@ $gray-800: #1f2937;
 .sub-step-label { font-size: 12px; color: #64748b; white-space: nowrap; }
 .sub-step.done .sub-step-label { color: #10b981; font-weight: 600; }
 .sub-step-arrow { color: #cbd5e1; font-size: 16px; margin-top: -10px; }
+
+.maintenance-result { padding: 8px 0; }
+.result-banner {
+  display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 8px; margin-bottom: 8px;
+  &.banner-renewal, &.banner-change { background: #ecfdf5; color: #059669; }
+  &.banner-surrender { background: #fef2f2; color: #dc2626; }
+  .result-msg { font-size: 15px; font-weight: 600; line-height: 1.5; }
+}
+.result-fields { display: flex; flex-direction: column; gap: 10px; padding: 8px 0; }
+.rf-row { display: flex; align-items: center; gap: 16px; font-size: 14px; }
+.rf-label { min-width: 90px; color: #6b7280; flex-shrink: 0; }
+.rf-value { color: #1f2937; }
+.rf-value.highlight { color: #0052D9; font-weight: 600; }
+.result-actions { display: flex; justify-content: center; margin-top: 20px; }
+:deep(.t-divider) { margin: 16px 0; }
 </style>

@@ -320,7 +320,16 @@ const companyRule = computed(() => {
 
 const premiumCheck = computed(() => {
   if (!selectedPolicy.value) return { isFrozen: false, message: '', level: 'normal' }
-  return checkPremiumStatus(selectedPolicy.value)
+  // Check contract payment status — premium is paid on the contract, not on the policy
+  const contract = store.contracts.find(c => c.policyNo === selectedPolicy.value.policyNo)
+  if (contract && contract.paymentStatus === 'unpaid') {
+    return {
+      isFrozen: true,
+      message: `保费未缴纳（$${Number(contract.premium || selectedPolicy.value.premium || 0).toLocaleString()}），请完成缴费后方可进行出运申报`,
+      level: 'warning'
+    }
+  }
+  return { isFrozen: false, message: '', level: 'normal' }
 })
 
 const renewalGap = computed(() => {
@@ -337,8 +346,17 @@ const formData = reactive({
   currency: 'USD',
   paymentTerms: '',
   declarationType: 'single',
+  transportType: '',
+  billOfLadingNo: '',
+  goodsDescription: '',
+  invoiceNo: '',
+  invoiceAmount: 0,
+  invoiceDate: '',
+  paymentDueDate: '',
+  commercialInvoice: [],
   billOfLading: [],
   customsDeclaration: [],
+  receiptProof: [],
   usedLimitRemaining: null
 })
 
@@ -430,8 +448,17 @@ const handleAdd = () => {
     currency: 'USD',
     paymentTerms: '',
     declarationType: 'single',
+    transportType: '',
+    billOfLadingNo: '',
+    goodsDescription: '',
+    invoiceNo: '',
+    invoiceAmount: 0,
+    invoiceDate: '',
+    paymentDueDate: '',
+    commercialInvoice: [],
     billOfLading: [],
     customsDeclaration: [],
+    receiptProof: [],
     usedLimitRemaining: null
   })
   formVisible.value = true
@@ -455,8 +482,17 @@ const handleEdit = (row) => {
     currency: row.currency || 'USD',
     paymentTerms: row.paymentTerms || '',
     declarationType: row.declarationType || 'single',
+    transportType: row.transportType || '',
+    billOfLadingNo: row.billOfLadingNo || '',
+    goodsDescription: row.goodsDescription || '',
+    invoiceNo: row.invoiceNo || '',
+    invoiceAmount: Number(row.invoiceAmount) || 0,
+    invoiceDate: row.invoiceDate || '',
+    paymentDueDate: row.paymentDueDate || '',
+    commercialInvoice: row.commercialInvoice || [],
     billOfLading: row.billOfLading || [],
-    customsDeclaration: row.customsDeclaration || []
+    customsDeclaration: row.customsDeclaration || [],
+    receiptProof: row.receiptProof || []
   })
   formVisible.value = true
 }
@@ -503,6 +539,17 @@ const handleSubmit = ({ validateResult }) => {
         paymentTerms: formData.paymentTerms,
         declarationType: formData.declarationType,
         declarationTypeName: formData.declarationType === 'single' ? '逐笔申报' : '月度汇总',
+        transportType: formData.transportType,
+        billOfLadingNo: formData.billOfLadingNo,
+        goodsDescription: formData.goodsDescription,
+        invoiceNo: formData.invoiceNo,
+        invoiceAmount: formData.invoiceAmount,
+        invoiceDate: formData.invoiceDate,
+        paymentDueDate: formData.paymentDueDate,
+        commercialInvoice: formData.commercialInvoice,
+        billOfLading: formData.billOfLading,
+        customsDeclaration: formData.customsDeclaration,
+        receiptProof: formData.receiptProof,
         status: 'declared',
         statusName: '已申报'
       })
@@ -517,7 +564,18 @@ const handleSubmit = ({ validateResult }) => {
         currency: formData.currency,
         paymentTerms: formData.paymentTerms,
         declarationType: formData.declarationType,
-        declarationTypeName: formData.declarationType === 'single' ? '逐笔申报' : '月度汇总'
+        declarationTypeName: formData.declarationType === 'single' ? '逐笔申报' : '月度汇总',
+        transportType: formData.transportType,
+        billOfLadingNo: formData.billOfLadingNo,
+        goodsDescription: formData.goodsDescription,
+        invoiceNo: formData.invoiceNo,
+        invoiceAmount: formData.invoiceAmount,
+        invoiceDate: formData.invoiceDate,
+        paymentDueDate: formData.paymentDueDate,
+        commercialInvoice: formData.commercialInvoice,
+        billOfLading: formData.billOfLading,
+        customsDeclaration: formData.customsDeclaration,
+        receiptProof: formData.receiptProof
       })
       MessagePlugin.success('出运申报已更新')
     }

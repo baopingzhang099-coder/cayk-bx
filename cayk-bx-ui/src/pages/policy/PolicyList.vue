@@ -410,32 +410,20 @@
               <t-icon name="file-excel" style="color: #2ca471; font-size: 18px;" />
               <span class="attachment-label">短期出口信用保险 投保单 (保单申请书)</span>
             </div>
-            <t-space>
-              <t-button variant="outline" size="small" @click="showPreview('policy')">
-                <template #icon><t-icon name="browse" /></template>
-                预览
-              </t-button>
-              <t-button variant="outline" size="small" theme="primary" @click="downloadDirect('policy')">
-                <template #icon><t-icon name="download" /></template>
-                下载
-              </t-button>
-            </t-space>
+            <t-button variant="outline" size="small" @click="showPreview('policy')">
+              <template #icon><t-icon name="browse" /></template>
+              预览
+            </t-button>
           </div>
           <div class="attachment-row">
             <div class="attachment-info" style="display: flex; align-items: center; gap: 8px;">
               <t-icon name="file-excel" style="color: #2ca471; font-size: 18px;" />
               <span class="attachment-label">短期出口信用保险 投保买方信息采集表</span>
             </div>
-            <t-space>
-              <t-button variant="outline" size="small" @click="showPreview('buyer')">
-                <template #icon><t-icon name="browse" /></template>
-                预览
-              </t-button>
-              <t-button variant="outline" size="small" theme="primary" @click="downloadDirect('buyer')">
-                <template #icon><t-icon name="download" /></template>
-                下载
-              </t-button>
-            </t-space>
+            <t-button variant="outline" size="small" @click="showPreview('buyer')">
+              <template #icon><t-icon name="browse" /></template>
+              预览
+            </t-button>
           </div>
         </div>
         </template>
@@ -944,6 +932,7 @@ const policyStatusMap = {
   expired: '已到期',
   suspended: '中止',
   cancelled: '退保',
+  renewed: '已续保',
   terminated: '终止',
   applying: '申请中',
   approved: '已确认',
@@ -1173,21 +1162,6 @@ const previewDownload = () => {
     ? `保单申请书_${row?.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
     : `买方信息采集表_${row?.buyerName || row?.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
   downloadWorkbook(previewWb.value, filename)
-}
-
-const downloadDirect = (type) => {
-  const row = currentRow.value
-  if (!row) return
-  let wb
-  if (type === 'policy') {
-    wb = generatePolicyApplicationXlsx(row, statusMap)
-  } else {
-    wb = generateBuyerInfoXlsx(row)
-  }
-  const filename = type === 'policy'
-    ? `保单申请书_${row.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
-    : `买方信息采集表_${row.buyerName || row.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
-  downloadWorkbook(wb, filename)
 }
 
 const handleSubmit = (row) => {

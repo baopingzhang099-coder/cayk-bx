@@ -126,12 +126,14 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
+import { useBusinessStore } from '@/stores/business'
 import SearchFilter from '@/components/common/SearchFilter.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 
+const businessStore = useBusinessStore()
 const loading = ref(false)
 
 const statusOptions = [
@@ -220,17 +222,10 @@ const permissionOptions = [
 
 const fetchData = () => {
   loading.value = true
-  setTimeout(() => {
-    tableData.value = [
-      { id: 1, workNo: 'C001', name: '李明', department: '业务部', phone: '138****1234', email: 'liming@cayk.com', status: 'active', customerCount: 8, joinDate: '2023-01-15', role: 'senior', permissions: ['insurance_view', 'insurance_edit', 'policy_view', 'policy_edit', 'claim_view', 'stats_view'] },
-      { id: 2, workNo: 'C002', name: '王芳', department: '业务部', phone: '139****5678', email: 'wangfang@cayk.com', status: 'active', customerCount: 6, joinDate: '2023-03-20', role: 'normal', permissions: ['insurance_view', 'policy_view', 'claim_view', 'stats_view'] },
-      { id: 3, workNo: 'C003', name: '张伟', department: '客服部', phone: '137****9012', email: 'zhangwei@cayk.com', status: 'probation', customerCount: 5, joinDate: '2026-04-01', role: 'normal', permissions: ['insurance_view', 'policy_view', 'claim_view'] },
-      { id: 4, workNo: 'C004', name: '陈静', department: '业务部', phone: '136****3456', email: 'chenjing@cayk.com', status: 'active', customerCount: 7, joinDate: '2022-11-10', role: 'senior', permissions: ['insurance_view', 'insurance_edit', 'policy_view', 'policy_edit', 'claim_view', 'claim_edit', 'stats_view'] },
-      { id: 5, workNo: 'C005', name: '刘强', department: '风控部', phone: '135****7890', email: 'liuqiang@cayk.com', status: 'active', customerCount: 0, joinDate: '2024-02-28', role: 'admin', permissions: ['insurance_view', 'insurance_edit', 'policy_view', 'policy_edit', 'claim_view', 'claim_edit', 'clerk_view', 'clerk_manage', 'stats_view', 'stats_export'] }
-    ]
-    pagination.total = tableData.value.length
-    loading.value = false
-  }, 300)
+  businessStore.ensureSeeded()
+  tableData.value = [...businessStore.clerkList]
+  pagination.total = tableData.value.length
+  loading.value = false
 }
 
 const handleSearch = (params) => {
@@ -294,6 +289,11 @@ const handlePermissionSave = () => {
   if (idx >= 0) {
     tableData.value[idx].permissions = currentRow.value.permissions
     tableData.value[idx].role = currentRow.value.role
+    const storeIdx = businessStore.clerkList.findIndex(t => t.id === currentRow.value.id)
+    if (storeIdx >= 0) {
+      businessStore.clerkList[storeIdx].permissions = currentRow.value.permissions
+      businessStore.clerkList[storeIdx].role = currentRow.value.role
+    }
   }
   MessagePlugin.success('权限配置已保存')
   permissionVisible.value = false
@@ -302,15 +302,22 @@ const handlePermissionSave = () => {
 const handleSubmit = async ({ validateResult }) => {
   if (validateResult !== true) return
   if (formMode.value === 'create') {
-    tableData.value.unshift({
-      id: Date.now(),
+    const newClerk = {
+      id: Date.now().toString(),
       ...formData,
       permissions: [],
       role: 'normal'
-    })
+    }
+    tableData.value.unshift(newClerk)
+    businessStore.clerkList.unshift(newClerk)
+    pagination.total = tableData.value.length
     MessagePlugin.success('跟单员添加成功')
   } else if (currentRow.value) {
     Object.assign(currentRow.value, formData)
+    const storeIdx = businessStore.clerkList.findIndex(t => t.id === currentRow.value.id)
+    if (storeIdx >= 0) {
+      Object.assign(businessStore.clerkList[storeIdx], formData)
+    }
     MessagePlugin.success('跟单员信息已更新')
   }
   formVisible.value = false

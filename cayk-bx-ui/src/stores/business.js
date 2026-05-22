@@ -85,6 +85,8 @@ export const useBusinessStore = defineStore('business', {
     payments: [],
     externalPolicies: [],
     clerkList: [],
+    tradeInfos: [],
+    subsidies: [],
     claimUpdateVersion: 0,
     insuranceUpdateVersion: 0
   }),
@@ -582,51 +584,152 @@ export const useBusinessStore = defineStore('business', {
           buyerName: 'ABC Corporation',
           buyerCountry: '美国',
           appliedLimit: 500000,
+          currency: 'USD',
           usedLimit: 320000,
           remainingLimit: 180000,
           usageRate: 64,
+          paymentTerms: 'OA 60天',
+          paymentMethod: 'OA',
+          past12MonthSales: 520000,
+          cooperationYears: '3年以上',
           status: 'active',
+          statusName: '已批复',
           effectiveDate: '2026-02-01',
-          expiryDate: '2027-01-31'
+          expiryDate: '2027-01-31',
+          lastShipmentDate: '2026-05-10',
+          idleDays: 12,
+          concentrationRate: 32
         },
         {
           id: 'CL2026002',
           buyerName: 'DEF GmbH',
           buyerCountry: '德国',
           appliedLimit: 300000,
+          currency: 'USD',
           usedLimit: 150000,
           remainingLimit: 150000,
           usageRate: 50,
+          paymentTerms: 'OA 90天',
+          paymentMethod: 'OA',
+          past12MonthSales: 380000,
+          cooperationYears: '1-3年',
           status: 'active',
+          statusName: '已批复',
           effectiveDate: '2026-03-01',
-          expiryDate: '2027-02-28'
+          expiryDate: '2027-02-28',
+          lastShipmentDate: '2026-05-01',
+          idleDays: 21,
+          concentrationRate: 20
         },
         {
           id: 'CL2026003',
           buyerName: 'GHI Ltd',
           buyerCountry: '英国',
           appliedLimit: 400000,
+          currency: 'USD',
           usedLimit: 400000,
           remainingLimit: 0,
           usageRate: 100,
+          paymentTerms: 'OA 60天',
+          paymentMethod: 'OA',
+          past12MonthSales: 300000,
+          cooperationYears: '3年以上',
           status: 'exhausted',
+          statusName: '已用罄',
           effectiveDate: '2026-04-01',
-          expiryDate: '2027-03-31'
+          expiryDate: '2027-03-31',
+          lastShipmentDate: '2026-04-28',
+          idleDays: 24,
+          concentrationRate: 25
         },
         {
           id: 'CL2026004',
           buyerName: 'JKL Co',
           buyerCountry: '日本',
           appliedLimit: 200000,
+          currency: 'USD',
           usedLimit: 50000,
           remainingLimit: 150000,
           usageRate: 25,
+          paymentTerms: 'OA 45天',
+          paymentMethod: 'OA',
+          past12MonthSales: 250000,
+          cooperationYears: '1-3年',
           status: 'frozen',
+          statusName: '已冻结',
           effectiveDate: '2026-01-15',
           expiryDate: '2027-01-14',
+          lastShipmentDate: '2026-03-10',
+          idleDays: 73,
           freezeDate: '2026-05-10',
           freezeReason: '买方逾期超30天且未回应催款通知',
-          canUnfreeze: false
+          canUnfreeze: false,
+          concentrationRate: 15
+        },
+        {
+          id: 'CL2026005',
+          buyerName: 'PQR Ltd',
+          buyerCountry: '新加坡',
+          appliedLimit: 350000,
+          currency: 'USD',
+          usedLimit: 0,
+          remainingLimit: 350000,
+          usageRate: 0,
+          paymentTerms: 'LC at sight',
+          paymentMethod: 'LC',
+          past12MonthSales: 280000,
+          cooperationYears: '1-3年',
+          status: 'pending',
+          statusName: '待审批',
+          effectiveDate: '',
+          expiryDate: '',
+          lastShipmentDate: null,
+          idleDays: 0,
+          concentrationRate: 18
+        },
+        {
+          id: 'CL2026006',
+          buyerName: 'MNO Inc',
+          buyerCountry: '韩国',
+          appliedLimit: 250000,
+          currency: 'USD',
+          usedLimit: 0,
+          remainingLimit: 250000,
+          usageRate: 0,
+          paymentTerms: 'OA 30天',
+          paymentMethod: 'OA',
+          past12MonthSales: 200000,
+          cooperationYears: '1年以内',
+          status: 'revoked',
+          statusName: '已撤销',
+          effectiveDate: '2026-01-01',
+          expiryDate: '2026-12-31',
+          lastShipmentDate: '2026-02-15',
+          idleDays: 96,
+          revokeDate: '2026-05-16',
+          revokeReason: '连续90天无出运，系统自动撤销',
+          concentrationRate: 12
+        },
+        {
+          id: 'CL2026007',
+          buyerName: 'STV SA',
+          buyerCountry: '法国',
+          appliedLimit: 180000,
+          currency: 'USD',
+          usedLimit: 180000,
+          remainingLimit: 0,
+          usageRate: 100,
+          paymentTerms: 'OA 60天',
+          paymentMethod: 'OA',
+          past12MonthSales: 200000,
+          cooperationYears: '1-3年',
+          status: 'expired',
+          statusName: '已过期',
+          effectiveDate: '2025-06-01',
+          expiryDate: '2026-05-31',
+          lastShipmentDate: '2026-04-15',
+          idleDays: 37,
+          concentrationRate: 22
         }
       ]
       this.shipments = [
@@ -1890,11 +1993,177 @@ export const useBusinessStore = defineStore('business', {
         ]
       }
       this.clerkList = [
-        { id: 'C001', name: '李明', department: '业务部' },
-        { id: 'C002', name: '赵敏', department: '业务部' },
-        { id: 'C003', name: '王芳', department: '客服部' },
-        { id: 'C004', name: '张伟', department: '业务部' }
+        { id: 'C001', workNo: 'C001', name: '李明', department: '业务部', phone: '138****1234', email: 'liming@cayk.com', status: 'active', customerCount: 8, joinDate: '2023-01-15', role: 'senior', permissions: ['insurance_view', 'insurance_edit', 'policy_view', 'policy_edit', 'claim_view', 'stats_view'] },
+        { id: 'C002', workNo: 'C002', name: '赵敏', department: '业务部', phone: '139****5678', email: 'zhaomin@cayk.com', status: 'active', customerCount: 6, joinDate: '2023-03-20', role: 'normal', permissions: ['insurance_view', 'policy_view', 'claim_view', 'stats_view'] },
+        { id: 'C003', workNo: 'C003', name: '王芳', department: '客服部', phone: '137****9012', email: 'wangfang@cayk.com', status: 'active', customerCount: 5, joinDate: '2024-06-01', role: 'normal', permissions: ['insurance_view', 'policy_view', 'claim_view'] },
+        { id: 'C004', workNo: 'C004', name: '张伟', department: '业务部', phone: '136****3456', email: 'zhangwei@cayk.com', status: 'probation', customerCount: 3, joinDate: '2026-04-01', role: 'normal', permissions: ['insurance_view', 'policy_view'] },
+        { id: 'C005', workNo: 'C005', name: '刘强', department: '风控部', phone: '135****7890', email: 'liuqiang@cayk.com', status: 'active', customerCount: 0, joinDate: '2024-02-28', role: 'admin', permissions: ['insurance_view', 'insurance_edit', 'policy_view', 'policy_edit', 'claim_view', 'claim_edit', 'clerk_view', 'clerk_manage', 'stats_view', 'stats_export'] }
       ]
+      // Seed trade information
+      if (this.tradeInfos.length === 0) {
+        this.tradeInfos = [
+          {
+            id: 'TR2026001',
+            contractNo: 'CT20260001',
+            enterpriseName: '深圳XX国际贸易有限公司',
+            buyerName: 'ABC Corporation',
+            buyerCountry: '美国',
+            productInfo: '消费电子产品及零部件',
+            transactionAmount: 500000,
+            currency: 'USD',
+            paymentTerms: 'OA 60天',
+            signDate: '2026-01-15',
+            expireDate: '2027-01-14',
+            status: '进行中',
+            relatedPolicyNo: 'PI2026001234'
+          },
+          {
+            id: 'TR2026002',
+            contractNo: 'CT20260002',
+            enterpriseName: '上海YY进出口公司',
+            buyerName: 'DEF GmbH',
+            buyerCountry: '德国',
+            productInfo: '工业机械设备及配件',
+            transactionAmount: 300000,
+            currency: 'USD',
+            paymentTerms: 'OA 90天',
+            signDate: '2026-03-01',
+            expireDate: '2027-02-28',
+            status: '进行中',
+            relatedPolicyNo: 'PI2026004567'
+          },
+          {
+            id: 'TR2026003',
+            contractNo: 'CT20250003',
+            enterpriseName: '北京ZZ贸易集团',
+            buyerName: 'GHI Ltd',
+            buyerCountry: '英国',
+            productInfo: '机械设备及零部件',
+            transactionAmount: 400000,
+            currency: 'USD',
+            paymentTerms: 'OA 60天',
+            signDate: '2025-10-01',
+            expireDate: '2026-09-30',
+            status: '已完成',
+            relatedPolicyNo: 'PI2025009876'
+          },
+          {
+            id: 'TR2026004',
+            contractNo: 'CT20260004',
+            enterpriseName: '广州AA实业公司',
+            buyerName: 'JKL Co',
+            buyerCountry: '日本',
+            productInfo: '日用百货及工艺品',
+            transactionAmount: 200000,
+            currency: 'USD',
+            paymentTerms: 'OA 45天',
+            signDate: '2025-12-01',
+            expireDate: '2026-11-30',
+            status: '进行中',
+            relatedPolicyNo: 'PI2025008765'
+          },
+          {
+            id: 'TR2026005',
+            contractNo: 'CT20260005',
+            enterpriseName: '南京FF进出口有限公司',
+            buyerName: 'STG Ltd',
+            buyerCountry: '新加坡',
+            productInfo: '电子产品及元器件',
+            transactionAmount: 350000,
+            currency: 'USD',
+            paymentTerms: 'LC at sight',
+            signDate: '2026-04-01',
+            expireDate: '2027-03-31',
+            status: '进行中',
+            relatedPolicyNo: 'PI2026009999'
+          },
+          {
+            id: 'TR2026006',
+            contractNo: 'CT20260006',
+            enterpriseName: '武汉DD物流有限公司',
+            buyerName: 'UVW Corp',
+            buyerCountry: '加拿大',
+            productInfo: '物流设备及配件',
+            transactionAmount: 280000,
+            currency: 'USD',
+            paymentTerms: 'OA 30天',
+            signDate: '2026-03-01',
+            expireDate: '2027-02-28',
+            status: '进行中',
+            relatedPolicyNo: 'PI2026008888'
+          }
+        ]
+      }
+      // Seed subsidy data
+      if (this.subsidies.length === 0) {
+        this.subsidies = [
+          {
+            id: 'SB2026001',
+            policyNo: 'PI2026001234',
+            enterpriseName: '深圳XX国际贸易有限公司',
+            subsidyType: '保费补贴',
+            applicationDate: '2026-02-01',
+            subsidyAmount: 2500,
+            status: 'approved',
+            statusName: '已批复',
+            approveDate: '2026-02-15',
+            remark: '市级出口信用保险保费补贴',
+            attachment: [{ name: '保费补贴申请表_深圳XX.pdf' }]
+          },
+          {
+            id: 'SB2026002',
+            policyNo: 'PI2025009876',
+            enterpriseName: '北京ZZ贸易集团',
+            subsidyType: '保费补贴',
+            applicationDate: '2026-04-15',
+            subsidyAmount: 2000,
+            status: 'pending',
+            statusName: '待审批',
+            approveDate: '',
+            remark: '省级外贸转型升级补贴',
+            attachment: [{ name: '保费补贴申请表_北京ZZ.pdf' }]
+          },
+          {
+            id: 'SB2026003',
+            policyNo: 'PI2026004567',
+            enterpriseName: '上海YY进出口公司',
+            subsidyType: '费率优惠',
+            applicationDate: '2026-05-10',
+            subsidyAmount: 1500,
+            status: 'pending',
+            statusName: '待审批',
+            approveDate: '',
+            remark: '中小企业出口信用保险支持',
+            attachment: [{ name: '费率优惠申请_上海YY.pdf' }]
+          },
+          {
+            id: 'SB2026004',
+            policyNo: 'PI2025008765',
+            enterpriseName: '广州AA实业公司',
+            subsidyType: '保费补贴',
+            applicationDate: '2025-11-01',
+            subsidyAmount: 1800,
+            status: 'completed',
+            statusName: '已到账',
+            approveDate: '2025-11-20',
+            remark: '市级出口信用保险保费补贴',
+            attachment: [{ name: '保费补贴申请表_广州AA.pdf' }]
+          },
+          {
+            id: 'SB2026005',
+            policyNo: 'PI2026005678',
+            enterpriseName: '杭州CC贸易有限公司',
+            subsidyType: '保费补贴',
+            applicationDate: '2026-05-20',
+            subsidyAmount: 1250,
+            status: 'waiting',
+            statusName: '待提交',
+            approveDate: '',
+            remark: '区级外贸扶持资金',
+            attachment: []
+          }
+        ]
+      }
     },
     // ===== External policy upload & OCR flow =====
     uploadCustomerPolicy({ file, companyName, uploadUser }) {
@@ -2176,19 +2445,37 @@ export const useBusinessStore = defineStore('business', {
       const applied = Number(payload.appliedLimit) || 0
       const used = Number(payload.usedLimit) || 0
       const remaining = Math.max(applied - used, 0)
+      const isPending = (payload.status || 'pending') === 'pending'
       const item = {
         id: payload.id || createId('CL'),
         buyerName: payload.buyerName,
+        buyerCountry: payload.buyerCountry || '',
+        buyerAddress: payload.buyerAddress || '',
+        buyerIndustry: payload.buyerIndustry || '',
         appliedLimit: applied,
         usedLimit: used,
         remainingLimit: remaining,
         usageRate: applied > 0 ? Math.round((used / applied) * 100) : 0,
-        status: payload.status || 'pending',
-        effectiveDate: payload.effectiveDate || formatDate(now),
-        expiryDate: payload.expiryDate || addDays(formatDate(now), 365)
+        currency: payload.currency || 'USD',
+        paymentTerms: payload.paymentTerms || '',
+        paymentMethod: payload.paymentMethod || '',
+        paymentTermsDays: Number(payload.paymentTermsDays) || 0,
+        cooperationYears: payload.cooperationYears || '',
+        past12MonthSales: Number(payload.past12MonthSales) || Number(payload.historicalTransactionAmount) || 0,
+        estimatedAnnualShipment: Number(payload.estimatedAnnualShipment) || 0,
+        hasGuarantee: payload.hasGuarantee || 'no',
+        guarantorName: payload.guarantorName || '',
+        allowContactBuyer: payload.allowContactBuyer || 'yes',
+        concentrationRate: Number(payload.concentrationRate) || 0,
+        status: isPending ? 'pending' : (payload.status || 'pending'),
+        statusName: isPending ? '待审批' : (payload.statusName || '待审批'),
+        effectiveDate: isPending ? '' : (payload.effectiveDate || formatDate(now)),
+        expiryDate: isPending ? '' : (payload.expiryDate || addDays(formatDate(now), 365)),
+        lastShipmentDate: null,
+        idleDays: 0
       }
       this.creditLimits.unshift(item)
-      return item
+      return { ok: true, data: item }
     },
     createShipment(payload) {
       const shipDate = payload.shipmentDate || formatDate(new Date())
@@ -2208,6 +2495,18 @@ export const useBusinessStore = defineStore('business', {
         currency: payload.currency || 'USD',
         declarationType: payload.declarationType || 'single',
         declarationTypeName: payload.declarationTypeName || '逐笔申报',
+        paymentTerms: payload.paymentTerms || '',
+        transportType: payload.transportType || '',
+        billOfLadingNo: payload.billOfLadingNo || '',
+        goodsDescription: payload.goodsDescription || '',
+        invoiceNo: payload.invoiceNo || '',
+        invoiceAmount: Number(payload.invoiceAmount) || 0,
+        invoiceDate: payload.invoiceDate || '',
+        paymentDueDate: payload.paymentDueDate || '',
+        commercialInvoice: payload.commercialInvoice || [],
+        billOfLading: payload.billOfLading || [],
+        customsDeclaration: payload.customsDeclaration || [],
+        receiptProof: payload.receiptProof || [],
         deadline,
         status: payload.status || 'declared',
         statusName: payload.statusName || '已申报',
@@ -2216,7 +2515,110 @@ export const useBusinessStore = defineStore('business', {
       }
       const normalized = normalizeShipment(item)
       this.shipments.unshift(normalized)
+      // Update credit limit's usedLimit
+      if (normalized.relatedPolicyNo) {
+        const cl = this.creditLimits.find(c =>
+          c.buyerName === normalized.buyerName ||
+          this.policies.find(p => p.policyNo === normalized.relatedPolicyNo && p.insured === c.buyerName)
+        )
+        if (cl) {
+          const shipAmount = Number(normalized.shipmentAmount) || 0
+          cl.usedLimit = (cl.usedLimit || 0) + shipAmount
+          cl.remainingLimit = Math.max((cl.appliedLimit || 0) - cl.usedLimit, 0)
+          cl.usageRate = cl.appliedLimit > 0 ? Math.round((cl.usedLimit / cl.appliedLimit) * 100) : 0
+          cl.lastShipmentDate = shipDate
+          cl.idleDays = 0
+        }
+      }
       return normalized
+    },
+    // ===== Trade Information Management =====
+    createTradeInfo(payload) {
+      const now = new Date()
+      const item = {
+        id: payload.id || createId('TR'),
+        contractNo: payload.contractNo || createId('CT'),
+        enterpriseName: payload.enterpriseName || '',
+        buyerName: payload.buyerName || '',
+        buyerCountry: payload.buyerCountry || '',
+        productInfo: payload.productInfo || '',
+        transactionAmount: Number(payload.transactionAmount) || 0,
+        currency: payload.currency || 'USD',
+        paymentTerms: payload.paymentTerms || '',
+        signDate: payload.signDate || formatDate(now),
+        expireDate: payload.expireDate || addDays(formatDate(now), 365),
+        status: payload.status || '进行中',
+        relatedPolicyNo: payload.relatedPolicyNo || '',
+        createTime: formatDateTime(now),
+        updateTime: formatDateTime(now)
+      }
+      this.tradeInfos.unshift(item)
+      return { ok: true, data: item }
+    },
+    updateTradeInfo(id, payload) {
+      const idx = this.tradeInfos.findIndex(t => t.id === id)
+      if (idx < 0) return { ok: false, message: '贸易信息不存在' }
+      this.tradeInfos[idx] = { ...this.tradeInfos[idx], ...payload, updateTime: formatDateTime(new Date()) }
+      return { ok: true, data: this.tradeInfos[idx] }
+    },
+    deleteTradeInfo(id) {
+      const idx = this.tradeInfos.findIndex(t => t.id === id)
+      if (idx < 0) return { ok: false, message: '贸易信息不存在' }
+      this.tradeInfos.splice(idx, 1)
+      return { ok: true }
+    },
+    // ===== Subsidy Management =====
+    createSubsidy(payload) {
+      const now = new Date()
+      const item = {
+        id: payload.id || createId('SB'),
+        policyNo: payload.policyNo || '',
+        enterpriseName: payload.enterpriseName || '',
+        subsidyType: payload.subsidyType || '保费补贴',
+        applicationDate: payload.applicationDate || formatDate(now),
+        subsidyAmount: Number(payload.subsidyAmount) || 0,
+        status: payload.status || 'waiting',
+        statusName: payload.statusName || '待提交',
+        approveDate: '',
+        remark: payload.remark || '',
+        attachment: payload.attachment || []
+      }
+      this.subsidies.unshift(item)
+      return { ok: true, data: item }
+    },
+    submitSubsidy(id) {
+      const cur = this.subsidies.find(s => s.id === id)
+      if (!cur) return { ok: false, message: '补贴记录不存在' }
+      if (cur.status !== 'waiting') return { ok: false, message: '当前状态不允许提交' }
+      cur.status = 'pending'
+      cur.statusName = '待审批'
+      cur.applicationDate = formatDate(new Date())
+      return { ok: true, data: cur }
+    },
+    approveSubsidy(id) {
+      const cur = this.subsidies.find(s => s.id === id)
+      if (!cur) return { ok: false, message: '补贴记录不存在' }
+      if (cur.status !== 'pending') return { ok: false, message: '当前状态不允许审批' }
+      cur.status = 'approved'
+      cur.statusName = '已批复'
+      cur.approveDate = formatDate(new Date())
+      return { ok: true, data: cur }
+    },
+    completeSubsidy(id) {
+      const cur = this.subsidies.find(s => s.id === id)
+      if (!cur) return { ok: false, message: '补贴记录不存在' }
+      if (cur.status !== 'approved') return { ok: false, message: '当前状态不允许完成' }
+      cur.status = 'completed'
+      cur.statusName = '已到账'
+      return { ok: true, data: cur }
+    },
+    rejectSubsidy(id) {
+      const cur = this.subsidies.find(s => s.id === id)
+      if (!cur) return { ok: false, message: '补贴记录不存在' }
+      if (cur.status !== 'pending') return { ok: false, message: '当前状态不允许驳回' }
+      cur.status = 'waiting'
+      cur.statusName = '待提交'
+      return { ok: true, data: cur }
     },
     addCompletedProcessTask(task) {
       this.processTasks.unshift({
@@ -2829,6 +3231,161 @@ export const useBusinessStore = defineStore('business', {
       if (idx < 0) return { ok: false, message: '记录不存在' }
       this.externalPolicies.splice(idx, 1)
       return { ok: true }
+    },
+
+    // ===== Policy Maintenance Lifecycle (Renewal / Change / Surrender) =====
+    processPolicyRenewal(policyNo, data) {
+      const pOld = this.policies.find(p => p.policyNo === policyNo)
+      if (!pOld) return { ok: false, message: '保单不存在' }
+
+      const now = new Date()
+      const pad2 = (n) => String(n).padStart(2, '0')
+      const y = now.getFullYear()
+      const m = pad2(now.getMonth() + 1)
+      const d = pad2(now.getDate())
+
+      const newPolicyNo = `PI${y}${m}${pad2(Math.floor(Math.random() * 100))}`
+      const turnover = Number(data.renewalTurnover) || pOld.coverageAmount
+      const ratio = (Number(data.renewalRatio) || 2.5) / 100
+      const newPremium = Math.round(turnover * ratio)
+      const renewalStart = data.renewalStart || addDays(pOld.expiryDate, 1)
+      const renewalEnd = data.renewalEnd || addDays(renewalStart, 365)
+
+      // Mark old policy as renewed
+      this.policies = this.policies.map(p =>
+        p.policyNo === policyNo
+          ? { ...p, status: 'renewed', statusName: '已续保', renewalTargetNo: newPolicyNo }
+          : p
+      )
+
+      // Create new policy with updated terms
+      const newPolicy = {
+        id: `P${y}${m}${pad2(Math.floor(Math.random() * 100))}`,
+        policyNo: newPolicyNo,
+        insuranceCompany: pOld.insuranceCompany,
+        policyholder: pOld.policyholder,
+        insured: pOld.insured,
+        coverageAmount: turnover,
+        premium: newPremium,
+        effectiveDate: renewalStart,
+        expiryDate: renewalEnd,
+        status: 'active',
+        statusName: '有效',
+        usedQuota: 0,
+        remainingQuota: turnover,
+        currency: pOld.currency || 'USD',
+        renewedFrom: policyNo
+      }
+      this.policies.unshift(newPolicy)
+
+      // Create new contract for the renewed policy
+      this.contracts.unshift({
+        id: `CT${y}${m}${d}${pad2(Math.floor(Math.random() * 100))}`,
+        policyNo: newPolicyNo,
+        companyName: pOld.policyholder,
+        insuredName: pOld.insured,
+        insuranceCompany: pOld.insuranceCompany,
+        coverageAmount: turnover,
+        premium: newPremium,
+        policyStartDate: renewalStart,
+        policyEndDate: renewalEnd,
+        status: 'pending_inkasso_sign',
+        paymentStatus: 'unpaid',
+        paymentMethod: '',
+        createdAt: formatDateTime(now),
+        updatedAt: formatDateTime(now)
+      })
+
+      return {
+        ok: true,
+        newPolicyNo,
+        newPolicy,
+        message: `续保成功！新保单号：${newPolicyNo}，保险期间 ${renewalStart} 至 ${renewalEnd}`
+      }
+    },
+
+    processPolicyChange(policyNo, data) {
+      const pIdx = this.policies.findIndex(p => p.policyNo === policyNo)
+      if (pIdx < 0) return { ok: false, message: '保单不存在' }
+
+      const now = new Date()
+      const pad2 = (n) => String(n).padStart(2, '0')
+      const y = now.getFullYear()
+      const m = pad2(now.getMonth() + 1)
+      const d = pad2(now.getDate())
+
+      const changeType = data.changeType || 'other'
+      const changeTypeLabels = { insured: '被保险人变更', limit: '额度调整', rate: '费率调整', other: '其他变更' }
+      const changeTypeName = changeTypeLabels[changeType] || '其他变更'
+
+      const changeRecord = {
+        id: `CH${y}${m}${d}${pad2(Math.floor(Math.random() * 100))}`,
+        policyNo,
+        changeType,
+        changeTypeName,
+        description: data.description || '',
+        changeDate: formatDateTime(now),
+        status: 'completed'
+      }
+
+      this.policies[pIdx] = {
+        ...this.policies[pIdx],
+        changeType,
+        changeTypeName,
+        changeDescription: data.description,
+        changeDate: formatDateTime(now),
+        changeRecord
+      }
+
+      return {
+        ok: true,
+        changeRecord,
+        data: this.policies[pIdx],
+        message: `保单变更（${changeTypeName}）已生效${
+          changeType === 'limit' ? '，请重新申请信用限额' :
+          changeType === 'rate' ? '，新费率将在下一期保费中调整' : ''
+        }`
+      }
+    },
+
+    cancelPolicy(policyNo, data) {
+      const pIdx = this.policies.findIndex(p => p.policyNo === policyNo)
+      if (pIdx < 0) return { ok: false, message: '保单不存在' }
+
+      // Check active claims
+      const activeClaims = this.claims.filter(c => c.relatedPolicyNo === policyNo && c.status !== 'completed')
+      if (activeClaims.length > 0) {
+        return { ok: false, message: `该保单存在 ${activeClaims.length} 笔未结案理赔记录（${activeClaims.map(c => c.claimNo).join('、')}），请先处理完成后再申请退保` }
+      }
+
+      const surrenderReason = data.surrenderReason || 'other'
+      const reasonLabels = { no_business: '无业务需求', switch_company: '更换保险公司', dissatisfied: '对服务不满意', other: '其他原因' }
+      const reasonName = reasonLabels[surrenderReason] || '其他原因'
+
+      this.policies[pIdx] = {
+        ...this.policies[pIdx],
+        status: 'cancelled',
+        statusName: '已退保',
+        cancelReason: reasonName,
+        cancelDate: data.surrenderDate || formatDate(new Date()),
+        cancelDescription: data.description || ''
+      }
+
+      // Update related contract
+      const cIdx = this.contracts.findIndex(c => c.policyNo === policyNo)
+      if (cIdx >= 0) {
+        this.contracts[cIdx] = {
+          ...this.contracts[cIdx],
+          status: 'cancelled',
+          updatedAt: formatDateTime(new Date())
+        }
+      }
+
+      return {
+        ok: true,
+        data: this.policies[pIdx],
+        message: `保单已退保（${reasonName}），退保生效日期：${data.surrenderDate || formatDate(new Date())}`
+      }
     }
   }
 })

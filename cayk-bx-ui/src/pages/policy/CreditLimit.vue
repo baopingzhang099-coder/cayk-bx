@@ -41,6 +41,10 @@
       <template #status="{ row }">
         <t-space>
           <t-tag v-if="row.status === 'frozen'" theme="danger">已冻结</t-tag>
+          <t-tag v-else-if="row.status === 'revoked'" theme="danger">已撤销</t-tag>
+          <t-tag v-else-if="row.status === 'pending'" theme="warning">待审批</t-tag>
+          <t-tag v-else-if="row.status === 'exhausted'" theme="warning">额度用罄</t-tag>
+          <t-tag v-else-if="row.status === 'expired'" theme="default">已过期</t-tag>
           <t-tag v-else-if="row._frozenStatus?.autoDetected" theme="warning">冻结预警</t-tag>
           <t-tag v-else-if="row._idleStatus?.level === 'danger'" theme="danger">闲置待撤销</t-tag>
           <t-tag v-else-if="row._idleStatus?.level === 'warning'" theme="warning">闲置预警</t-tag>
@@ -50,7 +54,9 @@
       <template #operation="{ row }">
         <t-space>
           <t-link @click="handleView(row)">查看</t-link>
-          <t-link @click="handleEdit(row)">编辑</t-link>
+          <t-link v-if="row.status === 'pending' && userStore.role === 'inkasso'" theme="success" @click="handleApprove(row)">通过</t-link>
+          <t-link v-if="row.status === 'pending' && userStore.role === 'inkasso'" theme="danger" @click="handleReject(row)">驳回</t-link>
+          <t-link v-else @click="handleEdit(row)">编辑</t-link>
         </t-space>
       </template>
     </data-table>
@@ -186,26 +192,30 @@ import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 import { useBusinessStore } from '@/stores/business'
+import { useUserStore } from '@/stores/user'
 import { checkIdleStatus, checkConcentration, checkFrozenStatus, getStatusTag } from '@/utils/rules/creditLimitRules'
 
 const store = useBusinessStore()
+const userStore = useUserStore()
 const loading = computed(() => false)
 const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRange: [] })
 
 const statusOptions = [
-  { value: 'active', label: '有效' },
-  { value: 'pending', label: '审批中' },
+  { value: 'active', label: '已批复' },
+  { value: 'pending', label: '待审批' },
   { value: 'frozen', label: '已冻结' },
-  { value: 'expired', label: '已到期' },
-  { value: 'exhausted', label: '额度用尽' }
+  { value: 'revoked', label: '已撤销' },
+  { value: 'expired', label: '已过期' },
+  { value: 'exhausted', label: '额度用罄' }
 ]
 
 const statusMap = {
-  active: '有效',
-  pending: '审批中',
+  active: '已批复',
+  pending: '待审批',
   frozen: '已冻结',
-  expired: '已到期',
-  exhausted: '额度用尽'
+  revoked: '已撤销',
+  expired: '已过期',
+  exhausted: '额度用罄'
 }
 
 const columns = [
@@ -272,12 +282,18 @@ const formRef = ref(null)
 
 const detailColumns = [
   { label: '买方名称', key: 'buyerName' },
-  { label: '状态', key: 'status' },
+  { label: '买方国别', key: 'buyerCountry' },
   { label: '申请额度', key: 'appliedLimit' },
   { label: '已用额度', key: 'usedLimit' },
   { label: '剩余额度', key: 'remainingLimit' },
+  { label: '使用率', key: 'usageRate' },
+  { label: '币种', key: 'currency' },
+  { label: '付款条件', key: 'paymentTerms' },
+  { label: '支付方式', key: 'paymentMethod' },
+  { label: '合作年限', key: 'cooperationYears' },
   { label: '生效日期', key: 'effectiveDate' },
-  { label: '到期日期', key: 'expiryDate' }
+  { label: '到期日期', key: 'expiryDate' },
+  { label: '状态', key: 'statusName' }
 ]
 
 const formData = reactive({
@@ -402,33 +418,27 @@ const handleSubmit = async ({ validateResult }) => {
     return
   }
   if (formMode.value === 'create') {
-    const id = `CL${new Date().getFullYear()}${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`
-    store.creditLimits.unshift({
-      id,
+    store.createCreditLimit({
       buyerName: formData.buyerName,
       buyerCountry: formData.buyerCountry,
       buyerAddress: formData.buyerAddress,
       buyerIndustry: formData.buyerIndustry,
       appliedLimit: formData.appliedLimit,
-      usedLimit: 0,
-      remainingLimit: formData.appliedLimit,
-      usageRate: 0,
-      status: 'pending',
-      effectiveDate: '',
-      expiryDate: '',
       currency: formData.currency,
-      paymentTermsDays: formData.paymentTermsDays,
+      paymentTerms: `${formData.paymentMethod} ${formData.paymentTermsDays}天`,
       paymentMethod: formData.paymentMethod,
+      paymentTermsDays: formData.paymentTermsDays,
       cooperationYears: formData.cooperationYears,
       historicalTransactionAmount: formData.historicalTransactionAmount,
       estimatedAnnualShipment: formData.estimatedAnnualShipment,
       hasGuarantee: formData.hasGuarantee,
       guarantorName: formData.guarantorName,
-      historyFiles: formData.historyFiles,
-      buyerQualificationFiles: formData.buyerQualificationFiles,
-      allowContactBuyer: formData.allowContactBuyer
+      allowContactBuyer: formData.allowContactBuyer,
+      status: 'pending',
+      past12MonthSales: formData.historicalTransactionAmount,
+      concentrationRate: 0
     })
-    MessagePlugin.success('已提交限额申请（原型模拟）')
+    MessagePlugin.success('已提交限额申请')
   } else if (currentRow.value) {
     Object.assign(currentRow.value, {
       buyerName: formData.buyerName,
@@ -438,8 +448,9 @@ const handleSubmit = async ({ validateResult }) => {
       appliedLimit: formData.appliedLimit,
       remainingLimit: Math.max(0, formData.appliedLimit - (Number(currentRow.value.usedLimit) || 0)),
       currency: formData.currency,
-      paymentTermsDays: formData.paymentTermsDays,
+      paymentTerms: `${formData.paymentMethod} ${formData.paymentTermsDays}天`,
       paymentMethod: formData.paymentMethod,
+      paymentTermsDays: formData.paymentTermsDays,
       cooperationYears: formData.cooperationYears,
       historicalTransactionAmount: formData.historicalTransactionAmount,
       estimatedAnnualShipment: formData.estimatedAnnualShipment,
@@ -449,9 +460,25 @@ const handleSubmit = async ({ validateResult }) => {
       buyerQualificationFiles: formData.buyerQualificationFiles,
       allowContactBuyer: formData.allowContactBuyer
     })
-    MessagePlugin.success('已保存限额信息（原型模拟）')
+    MessagePlugin.success('已保存限额信息')
   }
   formVisible.value = false
+}
+
+const handleApprove = (row) => {
+  row.status = 'active'
+  row.statusName = '已批复'
+  row.effectiveDate = new Date().toISOString().slice(0, 10)
+  const exp = new Date()
+  exp.setFullYear(exp.getFullYear() + 1)
+  row.expiryDate = exp.toISOString().slice(0, 10)
+  MessagePlugin.success(`「${row.buyerName}」限额已审批通过，有效期至 ${row.expiryDate}`)
+}
+
+const handleReject = (row) => {
+  const idx = store.creditLimits.findIndex(c => c.id === row.id)
+  if (idx >= 0) store.creditLimits.splice(idx, 1)
+  MessagePlugin.warning(`「${row.buyerName}」限额申请已驳回`)
 }
 
 onMounted(() => {

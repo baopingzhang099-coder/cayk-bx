@@ -9,12 +9,6 @@
     </div>
     <div class="page-header">
       <div class="page-title">保单履约报表</div>
-      <div class="page-actions">
-        <t-button theme="primary">
-          <template #icon><t-icon name="download" /></template>
-          导出
-        </t-button>
-      </div>
     </div>
 
     <t-row :gutter="16" class="mb-16">

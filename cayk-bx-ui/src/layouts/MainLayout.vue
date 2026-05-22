@@ -132,10 +132,10 @@ const allMenuItems = [
       { key: 'policy-trade', title: '贸易信息管理', path: '/policy/trade', roles: ['inkasso', 'clerk'], icon: 'truck' },
       { key: 'policy-limit', title: '信用限额管理', path: '/policy/limit', roles: ['inkasso', 'clerk'], icon: 'credit-card' },
       { key: 'policy-shipment', title: '出运申报管理', path: '/policy/shipment', roles: ['customer', 'inkasso', 'clerk'], icon: 'airplane' },
-      { key: 'policy-process', title: '流程管理', path: '/policy/process', roles: ['inkasso', 'clerk'], icon: 'fork' },
+      { key: 'policy-process', title: '保单流程管理', path: '/policy/process', roles: ['inkasso', 'clerk'], icon: 'fork' },
       { key: 'policy-subsidy', title: '保费补贴管理', path: '/policy/subsidy', roles: ['inkasso'], icon: 'wallet' },
       { key: 'policy-performance', title: '保单履约报表', path: '/policy/performance', roles: ['inkasso'], icon: 'chart' },
-      { key: 'policy-contract', title: '合同签署', path: '/policy/contract', roles: ['customer', 'inkasso', 'clerk'], icon: 'edit-1' }
+      { key: 'policy-contract', title: '委托合同签署', path: '/policy/contract', roles: ['customer', 'inkasso', 'clerk'], icon: 'edit-1' }
     ]
   },
   { 
@@ -193,10 +193,10 @@ const menuConfig = {
   'policy-trade': { parent: '保单管理', current: '贸易信息管理' },
   'policy-limit': { parent: '保单管理', current: '信用限额管理' },
   'policy-shipment': { parent: '保单管理', current: '出运申报管理' },
-  'policy-process': { parent: '保单管理', current: '流程管理' },
+  'policy-process': { parent: '保单管理', current: '保单流程管理' },
   'policy-subsidy': { parent: '保单管理', current: '保费补贴管理' },
   'policy-performance': { parent: '保单管理', current: '保单履约报表' },
-  'policy-contract': { parent: '保单管理', current: '合同签署' },
+  'policy-contract': { parent: '保单管理', current: '委托合同签署' },
   'claim-list': { parent: '保险理赔', current: '理赔信息管理' },
   'claim-process': { parent: '保险理赔', current: '理赔流程管理' },
   'claim-report': { parent: '保险理赔', current: '理赔报表管理' },

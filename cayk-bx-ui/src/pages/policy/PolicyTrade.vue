@@ -36,7 +36,7 @@
 
     <div class="stats-grid mb-24">
       <stat-card title="贸易合同" :value="tableData.length" icon="folder" color="primary" />
-      <stat-card title="交易总额" value="$1,500,000" icon="money" color="success" />
+      <stat-card title="交易总额" :value="`$${totalAmount.toLocaleString()}`" icon="money" color="success" />
       <stat-card title="进行中" :value="activeCount" icon="loading" color="warning" />
       <stat-card title="已完成" :value="completedCount" icon="check-circle" color="success" />
     </div>
@@ -44,9 +44,9 @@
     <t-card>
       <div class="table-header">
         <span class="table-title">贸易信息列表</span>
-        <span class="table-count">共 {{ pagination.total }} 条记录</span>
+        <span class="table-count">共 {{ tableData.length }} 条记录</span>
       </div>
-      <t-table :data="tableData" :columns="columns" :loading="loading" row-key="id" hover stripe>
+      <t-table :data="tableData" :columns="columns" row-key="id" hover stripe>
         <template #status="{ row }">
           <status-tag :status="row.status" :status-map="statusMap" />
         </template>
@@ -79,6 +79,8 @@
             <t-option value="英国" label="英国" />
             <t-option value="法国" label="法国" />
             <t-option value="香港" label="香港" />
+            <t-option value="新加坡" label="新加坡" />
+            <t-option value="加拿大" label="加拿大" />
           </t-select>
         </t-form-item>
 
@@ -98,12 +100,13 @@
         </t-form-item>
         <t-form-item label="付款条件" name="paymentTerms">
           <t-select v-model="formData.paymentTerms" placeholder="请选择付款条件" clearable>
-            <t-option value="TT30" label="TT 30天" />
-            <t-option value="TT60" label="TT 60天" />
-            <t-option value="LC" label="信用证 LC" />
+            <t-option value="OA 30天" label="OA 30天" />
+            <t-option value="OA 45天" label="OA 45天" />
+            <t-option value="OA 60天" label="OA 60天" />
+            <t-option value="OA 90天" label="OA 90天" />
+            <t-option value="LC at sight" label="LC at sight" />
             <t-option value="DP" label="DP" />
             <t-option value="DA" label="DA" />
-            <t-option value="OA" label="OA 赊账" />
           </t-select>
         </t-form-item>
         <t-form-item label="合同签订日期" name="signDate">
@@ -137,21 +140,22 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
+import { useBusinessStore } from '@/stores/business'
 
-const loading = ref(false)
+const store = useBusinessStore()
 const searchParams = reactive({ enterpriseName: '', buyerName: '' })
-const pagination = reactive({ total: 0, current: 1, pageSize: 20 })
 
 const statusMap = {
-  active: '进行中',
-  completed: '已完成',
-  cancelled: '已取消'
+  '进行中': '进行中',
+  '已完成': '已完成',
+  '已取消': '已取消'
 }
 
 const columns = [
   { colKey: 'contractNo', title: '合同号', width: 140 },
   { colKey: 'enterpriseName', title: '企业名称', ellipsis: true },
   { colKey: 'buyerName', title: '买方名称' },
+  { colKey: 'buyerCountry', title: '买方国别', width: 100 },
   { colKey: 'productInfo', title: '商品信息', ellipsis: true },
   { colKey: 'transactionAmount', title: '交易金额', align: 'right' },
   { colKey: 'currency', title: '币种', width: 80 },
@@ -160,10 +164,20 @@ const columns = [
   { colKey: 'operation', title: '操作', width: 120, slot: 'operation' }
 ]
 
-const tableData = ref([])
+const tableData = computed(() => {
+  let data = store.tradeInfos
+  if (searchParams.enterpriseName) {
+    data = data.filter(t => t.enterpriseName.includes(searchParams.enterpriseName))
+  }
+  if (searchParams.buyerName) {
+    data = data.filter(t => t.buyerName.includes(searchParams.buyerName))
+  }
+  return data
+})
 
-const activeCount = computed(() => tableData.value.filter(t => t.status === 'active').length)
-const completedCount = computed(() => tableData.value.filter(t => t.status === 'completed').length)
+const totalAmount = computed(() => tableData.value.reduce((s, t) => s + (Number(t.transactionAmount) || 0), 0))
+const activeCount = computed(() => tableData.value.filter(t => t.status === '进行中').length)
+const completedCount = computed(() => tableData.value.filter(t => t.status === '已完成').length)
 
 const formVisible = ref(false)
 const formMode = ref('create')
@@ -202,53 +216,21 @@ const detailColumns = [
   { label: '付款条件', key: 'paymentTerms' },
   { label: '签订日期', key: 'signDate' },
   { label: '到期日期', key: 'expireDate' },
+  { label: '关联保单', key: 'relatedPolicyNo' },
   { label: '状态', key: 'status' }
 ]
 
-const fetchData = () => {
-  loading.value = true
-  setTimeout(() => {
-    tableData.value = [
-      { id: 1, contractNo: 'C2026001', enterpriseName: '深圳XX国际贸易有限公司', buyerName: 'ABC Corporation', buyerCountry: '美国', productInfo: '电子产品', transactionAmount: 500000, currency: 'USD', paymentTerms: 'TT 30天', signDate: '2026-03-15', expireDate: '2027-03-15', status: 'active' },
-      { id: 2, contractNo: 'C2026002', enterpriseName: '上海YY进出口公司', buyerName: 'DEF GmbH', buyerCountry: '德国', productInfo: '机械设备', transactionAmount: 300000, currency: 'USD', paymentTerms: 'LC 60天', signDate: '2026-02-20', expireDate: '2027-02-20', status: 'active' },
-      { id: 3, contractNo: 'C2026003', enterpriseName: '北京ZZ贸易集团', buyerName: 'GHI Ltd', buyerCountry: '英国', productInfo: '纺织品', transactionAmount: 200000, currency: 'EUR', paymentTerms: 'TT 45天', signDate: '2026-01-10', expireDate: '2027-01-10', status: 'completed' }
-    ]
-    pagination.total = tableData.value.length
-    loading.value = false
-  }, 300)
-}
-
-const handleSearch = () => {
-  loading.value = true
-  setTimeout(() => {
-    let filtered = [
-      { id: 1, contractNo: 'C2026001', enterpriseName: '深圳XX国际贸易有限公司', buyerName: 'ABC Corporation', buyerCountry: '美国', productInfo: '电子产品', transactionAmount: 500000, currency: 'USD', paymentTerms: 'TT 30天', signDate: '2026-03-15', expireDate: '2027-03-15', status: 'active' },
-      { id: 2, contractNo: 'C2026002', enterpriseName: '上海YY进出口公司', buyerName: 'DEF GmbH', buyerCountry: '德国', productInfo: '机械设备', transactionAmount: 300000, currency: 'USD', paymentTerms: 'LC 60天', signDate: '2026-02-20', expireDate: '2027-02-20', status: 'active' },
-      { id: 3, contractNo: 'C2026003', enterpriseName: '北京ZZ贸易集团', buyerName: 'GHI Ltd', buyerCountry: '英国', productInfo: '纺织品', transactionAmount: 200000, currency: 'EUR', paymentTerms: 'TT 45天', signDate: '2026-01-10', expireDate: '2027-01-10', status: 'completed' }
-    ]
-    if (searchParams.enterpriseName) {
-      filtered = filtered.filter(t => t.enterpriseName.includes(searchParams.enterpriseName))
-    }
-    if (searchParams.buyerName) {
-      filtered = filtered.filter(t => t.buyerName.includes(searchParams.buyerName))
-    }
-    tableData.value = filtered
-    pagination.total = filtered.length
-    loading.value = false
-  }, 300)
-}
-
+const handleSearch = () => { /* computed handles filtering */ }
 const handleReset = () => {
   searchParams.enterpriseName = ''
   searchParams.buyerName = ''
-  fetchData()
 }
 
 const handleAdd = () => {
   formMode.value = 'create'
   currentRow.value = null
   Object.assign(formData, {
-    contractNo: `C${new Date().getFullYear()}${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`,
+    contractNo: `CT${new Date().getFullYear()}${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`,
     enterpriseName: '',
     buyerName: '',
     buyerCountry: '',
@@ -291,20 +273,16 @@ const handleEdit = (row) => {
 const handleSubmit = async ({ validateResult }) => {
   if (validateResult !== true) return
   if (formMode.value === 'create') {
-    tableData.value.unshift({
-      id: Date.now(),
-      ...formData,
-      status: 'active'
-    })
+    store.createTradeInfo({ ...formData })
     MessagePlugin.success('新增贸易成功')
   } else if (currentRow.value) {
-    Object.assign(currentRow.value, formData)
+    store.updateTradeInfo(currentRow.value.id, { ...formData })
     MessagePlugin.success('贸易信息已更新')
   }
   formVisible.value = false
 }
 
-onMounted(() => fetchData())
+onMounted(() => { store.ensureSeeded() })
 </script>
 
 <style lang="scss" scoped>

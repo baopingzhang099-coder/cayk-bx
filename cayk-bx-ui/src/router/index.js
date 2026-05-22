@@ -59,7 +59,7 @@ const routes = [
         path: '/policy/contract',
         name: 'ContractSigning',
         component: () => import('@/pages/policy/ContractSigning.vue'),
-        meta: { title: '合同签署', menuKey: 'policy-contract', roles: ['customer', 'inkasso', 'clerk'] }
+        meta: { title: '委托合同签署', menuKey: 'policy-contract', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/policy/trade',
@@ -83,7 +83,7 @@ const routes = [
         path: '/policy/process',
         name: 'PolicyProcess',
         component: () => import('@/pages/policy/PolicyProcess.vue'),
-        meta: { title: '流程管理', menuKey: 'policy-process', roles: ['inkasso', 'clerk'] }
+        meta: { title: '保单流程管理', menuKey: 'policy-process', roles: ['inkasso', 'clerk'] }
       },
       {
         path: '/policy/subsidy',

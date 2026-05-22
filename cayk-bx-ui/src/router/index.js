@@ -86,12 +86,6 @@ const routes = [
         meta: { title: '保单流程管理', menuKey: 'policy-process', roles: ['inkasso', 'clerk'] }
       },
       {
-        path: '/policy/subsidy',
-        name: 'SubsidyManage',
-        component: () => import('@/pages/policy/SubsidyManage.vue'),
-        meta: { title: '保费补贴管理', menuKey: 'policy-subsidy', roles: ['inkasso'] }
-      },
-      {
         path: '/policy/performance',
         name: 'PolicyPerformance',
         component: () => import('@/pages/policy/PolicyPerformance.vue'),

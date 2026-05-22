@@ -86,7 +86,6 @@ export const useBusinessStore = defineStore('business', {
     externalPolicies: [],
     clerkList: [],
     tradeInfos: [],
-    subsidies: [],
     claimUpdateVersion: 0,
     insuranceUpdateVersion: 0
   }),
@@ -2306,76 +2305,6 @@ export const useBusinessStore = defineStore('business', {
           }
         ]
       }
-      // Seed subsidy data
-      if (this.subsidies.length === 0) {
-        this.subsidies = [
-          {
-            id: 'SB2026001',
-            policyNo: 'PI2026001234',
-            enterpriseName: '深圳XX国际贸易有限公司',
-            subsidyType: '保费补贴',
-            applicationDate: '2026-02-01',
-            subsidyAmount: 2500,
-            status: 'approved',
-            statusName: '已批复',
-            approveDate: '2026-02-15',
-            remark: '市级出口信用保险保费补贴',
-            attachment: [{ name: '保费补贴申请表_深圳XX.pdf' }]
-          },
-          {
-            id: 'SB2026002',
-            policyNo: 'PI2025009876',
-            enterpriseName: '北京ZZ贸易集团',
-            subsidyType: '保费补贴',
-            applicationDate: '2026-04-15',
-            subsidyAmount: 2000,
-            status: 'pending',
-            statusName: '待审批',
-            approveDate: '',
-            remark: '省级外贸转型升级补贴',
-            attachment: [{ name: '保费补贴申请表_北京ZZ.pdf' }]
-          },
-          {
-            id: 'SB2026003',
-            policyNo: 'PI2026004567',
-            enterpriseName: '上海YY进出口公司',
-            subsidyType: '费率优惠',
-            applicationDate: '2026-05-10',
-            subsidyAmount: 1500,
-            status: 'pending',
-            statusName: '待审批',
-            approveDate: '',
-            remark: '中小企业出口信用保险支持',
-            attachment: [{ name: '费率优惠申请_上海YY.pdf' }]
-          },
-          {
-            id: 'SB2026004',
-            policyNo: 'PI2025008765',
-            enterpriseName: '广州AA实业公司',
-            subsidyType: '保费补贴',
-            applicationDate: '2025-11-01',
-            subsidyAmount: 1800,
-            status: 'completed',
-            statusName: '已到账',
-            approveDate: '2025-11-20',
-            remark: '市级出口信用保险保费补贴',
-            attachment: [{ name: '保费补贴申请表_广州AA.pdf' }]
-          },
-          {
-            id: 'SB2026005',
-            policyNo: 'PI2026005678',
-            enterpriseName: '杭州CC贸易有限公司',
-            subsidyType: '保费补贴',
-            applicationDate: '2026-05-20',
-            subsidyAmount: 1250,
-            status: 'waiting',
-            statusName: '待提交',
-            approveDate: '',
-            remark: '区级外贸扶持资金',
-            attachment: []
-          }
-        ]
-      }
     },
     // ===== External policy upload & OCR flow =====
     uploadCustomerPolicy({ file, companyName, uploadUser }) {
@@ -2778,59 +2707,6 @@ export const useBusinessStore = defineStore('business', {
       if (idx < 0) return { ok: false, message: '贸易信息不存在' }
       this.tradeInfos.splice(idx, 1)
       return { ok: true }
-    },
-    // ===== Subsidy Management =====
-    createSubsidy(payload) {
-      const now = new Date()
-      const item = {
-        id: payload.id || createId('SB'),
-        policyNo: payload.policyNo || '',
-        enterpriseName: payload.enterpriseName || '',
-        subsidyType: payload.subsidyType || '保费补贴',
-        applicationDate: payload.applicationDate || formatDate(now),
-        subsidyAmount: Number(payload.subsidyAmount) || 0,
-        status: payload.status || 'waiting',
-        statusName: payload.statusName || '待提交',
-        approveDate: '',
-        remark: payload.remark || '',
-        attachment: payload.attachment || []
-      }
-      this.subsidies.unshift(item)
-      return { ok: true, data: item }
-    },
-    submitSubsidy(id) {
-      const cur = this.subsidies.find(s => s.id === id)
-      if (!cur) return { ok: false, message: '补贴记录不存在' }
-      if (cur.status !== 'waiting') return { ok: false, message: '当前状态不允许提交' }
-      cur.status = 'pending'
-      cur.statusName = '待审批'
-      cur.applicationDate = formatDate(new Date())
-      return { ok: true, data: cur }
-    },
-    approveSubsidy(id) {
-      const cur = this.subsidies.find(s => s.id === id)
-      if (!cur) return { ok: false, message: '补贴记录不存在' }
-      if (cur.status !== 'pending') return { ok: false, message: '当前状态不允许审批' }
-      cur.status = 'approved'
-      cur.statusName = '已批复'
-      cur.approveDate = formatDate(new Date())
-      return { ok: true, data: cur }
-    },
-    completeSubsidy(id) {
-      const cur = this.subsidies.find(s => s.id === id)
-      if (!cur) return { ok: false, message: '补贴记录不存在' }
-      if (cur.status !== 'approved') return { ok: false, message: '当前状态不允许完成' }
-      cur.status = 'completed'
-      cur.statusName = '已到账'
-      return { ok: true, data: cur }
-    },
-    rejectSubsidy(id) {
-      const cur = this.subsidies.find(s => s.id === id)
-      if (!cur) return { ok: false, message: '补贴记录不存在' }
-      if (cur.status !== 'pending') return { ok: false, message: '当前状态不允许驳回' }
-      cur.status = 'waiting'
-      cur.statusName = '待提交'
-      return { ok: true, data: cur }
     },
     addCompletedProcessTask(task) {
       this.processTasks.unshift({

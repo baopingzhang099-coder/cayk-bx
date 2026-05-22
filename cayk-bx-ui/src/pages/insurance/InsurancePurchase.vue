@@ -566,7 +566,7 @@ const statusMap = {
 
 const columns = [
   { colKey: 'id', title: '投保编号', width: 130 },
-  { colKey: 'enterpriseName', title: '企业名称', ellipsis: true },
+  { colKey: 'companyName', title: '企业名称', ellipsis: true },
   { colKey: 'buyerName', title: '买方名称', ellipsis: true },
   { colKey: 'buyerCountry', title: '买方国别', width: 100 },
   { colKey: 'insuranceType', title: '投保类型', width: 120 },
@@ -588,7 +588,7 @@ const pendingStats = computed(() => {
 const filteredData = computed(() => {
   const list = store.insuranceApplications || []
   return list.filter((it) => {
-    if (searchParams.enterpriseName && !String(it.enterpriseName || '').includes(searchParams.enterpriseName)) return false
+    if (searchParams.enterpriseName && !String(it.companyName || it.enterpriseName || '').includes(searchParams.enterpriseName)) return false
     if (searchParams.buyerName && !String(it.buyerName || '').includes(searchParams.buyerName)) return false
     if (searchParams.buyerCountry && it.buyerCountry !== searchParams.buyerCountry) return false
     if (searchParams.status && it.status !== searchParams.status) return false
@@ -657,6 +657,9 @@ const generateExcel = () => {
   exportData.value.forEach(row => {
     const rowData = headers.map(h => {
       let value = row[h.key]
+      if (h.key === 'enterpriseName') {
+        value = value || row.companyName || ''
+      }
       if (h.key === 'status') {
         value = statusMap[row[h.key]] || row[h.key]
       }

@@ -2413,11 +2413,11 @@ export const useBusinessStore = defineStore('business', {
       }
       const id = payload?.id || createId('TB')
       const item = {
+        ...payload,
         id,
-        status: 'pending_submit',
+        status: 'draft',
         createTime: formatDate(now),
         updateTime: formatDateTime(now),
-        ...payload
       }
       this.insuranceApplications.unshift(item)
       return item
@@ -2444,17 +2444,8 @@ export const useBusinessStore = defineStore('business', {
       if (!['draft', 'rejected'].includes(cur.status)) {
         return { ok: false, message: '当前状态不允许提交' }
       }
-      // OCR records resubmitting don't need attachment validation
-      if (cur.ocrSource) {
-        this.insuranceApplications[idx] = { ...cur, status: 'pending_review', updateTime: formatDateTime(now) }
-        return { ok: true, data: this.insuranceApplications[idx] }
-      }
-      const missing = []
-      if (!hasFile(cur.businessLicense)) missing.push('企业法人营业执照扫描件')
-      if (!hasFile(cur.importExportQualification)) missing.push('对外贸易经营者备案登记表')
-      if (!hasFile(cur.authorizationDocument)) missing.push('授权保险公司联系买方的签字文件')
-      if (missing.length > 0) return { ok: false, message: `提交失败：缺少必传附件（${missing.join('、')}）` }
-      this.insuranceApplications[idx] = { ...cur, status: 'pending_review', updateTime: formatDateTime(now) }
+      // 客户提交后直接确认，交给平台处理
+      this.insuranceApplications[idx] = { ...cur, status: 'approved', updateTime: formatDateTime(now) }
       return { ok: true, data: this.insuranceApplications[idx] }
     },
     submitToClerkReview(id) {

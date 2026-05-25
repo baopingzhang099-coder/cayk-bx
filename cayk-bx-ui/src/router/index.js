@@ -38,12 +38,6 @@ const routes = [
         meta: { title: '投保信息管理', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso'] }
       },
       {
-        path: '/insurance/apply',
-        name: 'InsuranceApply',
-        component: () => import('@/pages/insurance/InsuranceApply.vue'),
-        meta: { title: '投保流程管理', menuKey: 'insurance-apply', roles: ['customer', 'inkasso'] }
-      },
-      {
         path: '/insurance/report',
         name: 'InsuranceReport',
         component: () => import('@/pages/insurance/InsuranceReport.vue'),

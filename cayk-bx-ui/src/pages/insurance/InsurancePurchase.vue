@@ -81,7 +81,7 @@
         @page-change="handlePageChange"
       >
         <template #status="{ row }">
-          <status-tag :status="row.status" :status-map="statusMap" />
+          <status-tag :status="userStore.role === 'inkasso' ? 'approved' : row.status" :status-map="statusMap" />
         </template>
         <template #coverageAmount="{ row }">
           {{ row.insuranceCurrency || 'USD' }}{{ Number(row.insuranceAmount || 0).toLocaleString() }}
@@ -89,9 +89,10 @@
         <template #operation="{ row }">
           <t-space>
             <t-link @click="handleView(row)">查看</t-link>
-            <t-link v-if="row.status === 'draft' || row.status === 'pending_review'" @click="handleEdit(row)">编辑</t-link>
-            <t-link v-if="row.status === 'draft' || row.status === 'pending_review'" theme="danger" @click="handleShowDeleteModal(row)">删除</t-link>
-            <t-link v-if="row.status === 'approved' && !row.policyNo" theme="primary" @click="handleShowInsuranceInfo(row)">投保申请</t-link>
+            <t-link v-if="isPendingConfirmation(row.status) && userStore.role === 'customer'" @click="handleEdit(row)">编辑</t-link>
+            <t-link v-if="isPendingConfirmation(row.status) && userStore.role === 'customer'" theme="primary" @click="handleShowSubmitModal(row)">提交</t-link>
+            <t-link v-if="isPendingConfirmation(row.status) && userStore.role === 'customer'" theme="danger" @click="handleShowDeleteModal(row)">删除</t-link>
+            <t-link v-if="userStore.role === 'inkasso'" theme="primary" @click="handleGenerateDocuments(row)">生成投保资料</t-link>
           </t-space>
         </template>
       </t-table>
@@ -99,135 +100,218 @@
 
     <t-dialog v-model:visible="submitVisible" header="提交申请" width="700px" :footer="false">
       <div class="submit-modal">
-        <div class="modal-info">
-          <div class="info-icon">
-            <t-icon name="clock" :size="48" />
-          </div>
-          <div class="info-text">
-            <h3>等待平台审核</h3>
-            <p>您的投保申请将提交至平台进行审核，请耐心等待审核结果。</p>
-          </div>
+        <div class="submit-confirm-bar">
+          <t-icon name="check-circle-filled" size="24px" class="confirm-icon" />
+          <span>确认提交后，该投保记录状态将由"待确认"变更为"已确认"。</span>
         </div>
-        
+
         <div class="modal-divider"></div>
-        
-        <div class="form-preview">
-          <h4 class="preview-title">申请信息摘要</h4>
-          <div class="preview-grid">
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-blue">
-                <t-icon name="file-text" :size="18" />
+
+        <div class="submit-sections">
+          <div class="submit-section">
+            <div class="submit-section-title">客户基础信息</div>
+            <div class="detail-panel">
+              <div class="detail-item">
+                <span class="detail-label">投保编号</span>
+                <span class="detail-value">{{ currentSubmitData?.id || '-' }}</span>
               </div>
-              <div class="preview-content">
-                <span class="preview-label">投保编号</span>
-                <span class="preview-value">{{ currentSubmitData?.id || '-' }}</span>
+              <div class="detail-item">
+                <span class="detail-label">公司中文全称</span>
+                <span class="detail-value">{{ currentSubmitData?.companyName || '-' }}</span>
               </div>
-            </div>
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-green">
-                <t-icon name="building" :size="18" />
-              </div>
-              <div class="preview-content">
-                <span class="preview-label">企业名称</span>
-                <span class="preview-value">{{ currentSubmitData?.companyName || currentSubmitData?.enterpriseName || '-' }}</span>
+              <div class="detail-item">
+                <span class="detail-label">联系人</span>
+                <span class="detail-value">{{ currentSubmitData?.contactName || '-' }} {{ currentSubmitData?.contactPhone || '' }}</span>
               </div>
             </div>
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-purple">
-                <t-icon name="user" :size="18" />
+          </div>
+
+          <div class="submit-section">
+            <div class="submit-section-title">投保核心需求</div>
+            <div class="detail-panel">
+              <div class="detail-item">
+                <span class="detail-label">投保类型</span>
+                <span class="detail-value">{{ currentSubmitData?.insuranceType || '-' }}</span>
               </div>
-              <div class="preview-content">
-                <span class="preview-label">买方名称</span>
-                <span class="preview-value">{{ currentSubmitData?.buyerName || '-' }}</span>
+              <div class="detail-item">
+                <span class="detail-label">机构类型</span>
+                <span class="detail-value">{{ currentSubmitData?.preferredInsuranceOrgType || '-' }}</span>
               </div>
-            </div>
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-orange">
-                <t-icon name="globe" :size="18" />
+              <div class="detail-item">
+                <span class="detail-label">投保金额</span>
+                <span class="detail-value">{{ currentSubmitData?.insuranceCurrency || 'USD' }} {{ Number(currentSubmitData?.insuranceAmount || 0).toLocaleString() }}</span>
               </div>
-              <div class="preview-content">
-                <span class="preview-label">买方国别</span>
-                <span class="preview-value">{{ currentSubmitData?.buyerCountry || '-' }}</span>
+              <div class="detail-item">
+                <span class="detail-label">投保期限</span>
+                <span class="detail-value">{{ currentSubmitData?.expectedInsurancePeriod?.join(' 至 ') || '-' }}</span>
               </div>
-            </div>
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-cyan">
-                <t-icon name="tag" :size="18" />
-              </div>
-              <div class="preview-content">
-                <span class="preview-label">投保类型</span>
-                <span class="preview-value">{{ currentSubmitData?.insuranceType || '-' }}</span>
-              </div>
-            </div>
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-yellow">
-                <t-icon name="wallet" :size="18" />
-              </div>
-              <div class="preview-content">
-                <span class="preview-label">投保金额</span>
-                <span class="preview-value">{{ currentSubmitData?.insuranceCurrency || 'USD' }}{{ Number(currentSubmitData?.insuranceAmount || 0).toLocaleString() }}</span>
+              <div class="detail-item">
+                <span class="detail-label">投保目的</span>
+                <span class="detail-value">{{ [currentSubmitData?.insurancePrimaryPurpose1, currentSubmitData?.insurancePrimaryPurpose2].filter(Boolean).join('、') || '-' }}</span>
               </div>
             </div>
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-red">
-                <t-icon name="calendar" :size="18" />
+          </div>
+
+          <div class="submit-section">
+            <div class="submit-section-title">买方信息</div>
+            <div class="detail-panel">
+              <div class="detail-item">
+                <span class="detail-label">买方名称</span>
+                <span class="detail-value">{{ currentSubmitData?.buyerName || '-' }}</span>
               </div>
-              <div class="preview-content">
-                <span class="preview-label">投保期限</span>
-                <span class="preview-value">{{ currentSubmitData?.expectedInsurancePeriod?.join(' 至 ') || '-' }}</span>
+              <div class="detail-item">
+                <span class="detail-label">买方国别</span>
+                <span class="detail-value">{{ currentSubmitData?.buyerCountry || '-' }}</span>
               </div>
-            </div>
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-indigo">
-                <t-icon name="briefcase" :size="18" />
+              <div class="detail-item">
+                <span class="detail-label">拟申请信用限额</span>
+                <span class="detail-value">{{ currentSubmitData?.creditLimitCurrency || 'USD' }} {{ Number(currentSubmitData?.appliedCreditLimit || 0).toLocaleString() }}</span>
               </div>
-              <div class="preview-content">
-                <span class="preview-label">机构类型</span>
-                <span class="preview-value">{{ currentSubmitData?.preferredInsuranceOrgType || '-' }}</span>
-              </div>
-            </div>
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-pink">
-                <t-icon name="target" :size="18" />
-              </div>
-              <div class="preview-content">
-                <span class="preview-label">投保目的</span>
-                <span class="preview-value">{{ [currentSubmitData?.insurancePrimaryPurpose1, currentSubmitData?.insurancePrimaryPurpose2].filter(Boolean).join('、') || '-' }}</span>
+              <div class="detail-item">
+                <span class="detail-label">付款条件</span>
+                <span class="detail-value">{{ currentSubmitData?.paymentTerms || '-' }}</span>
               </div>
             </div>
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-teal">
-                <t-icon name="trending-up" :size="18" />
+          </div>
+
+          <div class="submit-section">
+            <div class="submit-section-title">业务信息</div>
+            <div class="detail-panel">
+              <div class="detail-item">
+                <span class="detail-label">预计可保营业额</span>
+                <span class="detail-value">{{ currentSubmitData?.turnoverCurrency || 'USD' }} {{ Number(currentSubmitData?.expectedInsurableTurnover || 0).toLocaleString() }}</span>
               </div>
-              <div class="preview-content">
-                <span class="preview-label">预计年销售额</span>
-                <span class="preview-value">{{ currentSubmitData?.turnoverCurrency || 'USD' }}{{ Number(currentSubmitData?.expectedInsurableTurnover || 0).toLocaleString() }}</span>
-              </div>
-            </div>
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-gray">
-                <t-icon name="date" :size="18" />
-              </div>
-              <div class="preview-content">
-                <span class="preview-label">申请日期</span>
-                <span class="preview-value">{{ currentSubmitData?.createTime || '-' }}</span>
-              </div>
-            </div>
-            <div class="preview-card">
-              <div class="preview-icon-wrapper bg-primary">
-                <t-icon name="phone" :size="18" />
-              </div>
-              <div class="preview-content">
-                <span class="preview-label">联系人</span>
-                <span class="preview-value">{{ currentSubmitData?.contactName || '-' }} {{ currentSubmitData?.contactPhone || '' }}</span>
+              <div class="detail-item">
+                <span class="detail-label">申请日期</span>
+                <span class="detail-value">{{ currentSubmitData?.createTime || '-' }}</span>
               </div>
             </div>
           </div>
         </div>
-        
+
         <div class="modal-footer">
           <t-button variant="outline" @click="submitVisible = false">取消</t-button>
           <t-button theme="primary" @click="handleConfirmSubmit">确认提交</t-button>
+        </div>
+      </div>
+    </t-dialog>
+
+    <t-dialog v-model:visible="documentVisible" header="投保申请详情" width="800px" :footer="false">
+      <div class="document-modal">
+        <div class="submit-sections">
+          <div class="submit-section">
+            <div class="submit-section-title">客户基础信息</div>
+            <div class="detail-panel">
+              <div class="detail-item">
+                <span class="detail-label">投保编号</span>
+                <span class="detail-value">{{ currentDocumentData?.id || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">公司中文全称</span>
+                <span class="detail-value">{{ currentDocumentData?.companyName || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">联系人</span>
+                <span class="detail-value">{{ currentDocumentData?.contactName || '-' }} {{ currentDocumentData?.contactPhone || '' }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="submit-section">
+            <div class="submit-section-title">投保核心需求</div>
+            <div class="detail-panel">
+              <div class="detail-item">
+                <span class="detail-label">投保类型</span>
+                <span class="detail-value">{{ currentDocumentData?.insuranceType || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">机构类型</span>
+                <span class="detail-value">{{ currentDocumentData?.preferredInsuranceOrgType || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">投保金额</span>
+                <span class="detail-value">{{ currentDocumentData?.insuranceCurrency || 'USD' }} {{ Number(currentDocumentData?.insuranceAmount || 0).toLocaleString() }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">投保期限</span>
+                <span class="detail-value">{{ currentDocumentData?.expectedInsurancePeriod?.join(' 至 ') || '-' }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="submit-section">
+            <div class="submit-section-title">买方信息</div>
+            <div class="detail-panel">
+              <div class="detail-item">
+                <span class="detail-label">买方名称</span>
+                <span class="detail-value">{{ currentDocumentData?.buyerName || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">买方国别</span>
+                <span class="detail-value">{{ currentDocumentData?.buyerCountry || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">付款条件</span>
+                <span class="detail-value">{{ currentDocumentData?.paymentTerms || '-' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-divider"></div>
+
+        <div class="documents-section">
+          <div class="documents-title">生成投保资料</div>
+          <div class="documents-grid">
+            <div class="document-card" @click="handlePreviewPolicyApplication(currentDocumentData)">
+              <div class="doc-card-icon doc-icon-primary">
+                <t-icon name="file-text" size="32px" />
+              </div>
+              <div class="doc-card-info">
+                <div class="doc-card-name">投保申请书</div>
+                <div class="doc-card-desc">中国人民财产保险股份有限公司短期出口贸易信用保险投保单</div>
+              </div>
+              <div class="doc-card-actions">
+                <t-button variant="outline" size="small" @click.stop="handlePreviewPolicyApplication(currentDocumentData)">
+                  <template #icon><t-icon name="browse" /></template>
+                  预览
+                </t-button>
+              </div>
+            </div>
+            <div class="document-card" @click="handlePreviewBuyerInfo(currentDocumentData)">
+              <div class="doc-card-icon doc-icon-success">
+                <t-icon name="file-text" size="32px" />
+              </div>
+              <div class="doc-card-info">
+                <div class="doc-card-name">买方信息采集表</div>
+                <div class="doc-card-desc">Buyer Information Collection Form</div>
+              </div>
+              <div class="doc-card-actions">
+                <t-button variant="outline" size="small" @click.stop="handlePreviewBuyerInfo(currentDocumentData)">
+                  <template #icon><t-icon name="browse" /></template>
+                  预览
+                </t-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <t-button variant="outline" @click="documentVisible = false">关闭</t-button>
+        </div>
+      </div>
+    </t-dialog>
+
+    <t-dialog v-model:visible="previewVisible" :header="previewTitle" width="960px" :footer="false" destroy-on-close>
+      <div class="preview-modal">
+        <t-tabs v-if="previewSheets.length > 1" v-model:value="previewActiveSheet" theme="card">
+          <t-tab-panel v-for="sheet in previewSheets" :key="sheet.name" :value="sheet.name" :label="sheet.name">
+            <div class="preview-table-wrap" v-html="sheet.html"></div>
+          </t-tab-panel>
+        </t-tabs>
+        <div v-else-if="previewSheets.length === 1" class="preview-table-wrap" v-html="previewSheets[0].html"></div>
+        <empty-state v-else description="暂无数据" />
+        <div class="modal-footer">
+          <t-button variant="outline" @click="handleDownloadPreview">下载文件</t-button>
+          <t-button variant="outline" @click="previewVisible = false">关闭</t-button>
         </div>
       </div>
     </t-dialog>
@@ -496,8 +580,11 @@ import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatCard from '@/components/common/StatCard.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { useBusinessStore } from '@/stores/business'
 import { useUserStore } from '@/stores/user'
+import * as XLSX from 'xlsx'
+import { generatePolicyApplicationXlsx, generateBuyerInfoXlsx } from '@/utils/templateFiller'
 
 const router = useRouter()
 const store = useBusinessStore()
@@ -514,6 +601,37 @@ const currentDeleteData = ref(null)
 const insuranceInfoVisible = ref(false)
 const currentInsuranceInfo = ref(null)
 const isConfirmedSchema = ref(false)
+
+const documentVisible = ref(false)
+const currentDocumentData = ref(null)
+
+const previewVisible = ref(false)
+const previewTitle = ref('')
+const previewSheets = ref([])
+const previewActiveSheet = ref('')
+const previewWorkbook = ref(null)
+const previewFilename = ref('')
+
+const showTablePreview = (wb, title, filename) => {
+  previewWorkbook.value = wb
+  previewTitle.value = title
+  previewFilename.value = filename
+  const sheets = []
+  wb.SheetNames.forEach(name => {
+    const ws = wb.Sheets[name]
+    const html = XLSX.utils.sheet_to_html(ws, { id: 'preview-' + name })
+    sheets.push({ name, html })
+  })
+  previewSheets.value = sheets
+  previewActiveSheet.value = sheets[0]?.name || ''
+  previewVisible.value = true
+}
+
+const handleDownloadPreview = () => {
+  if (!previewWorkbook.value) return
+  XLSX.writeFile(previewWorkbook.value, previewFilename.value)
+  MessagePlugin.success('文件已下载')
+}
 
 const searchParams = reactive({
   enterpriseName: '',
@@ -558,7 +676,7 @@ const statusMap = {
   pending_review: '待确认',
   clerk_review: '跟单员审核',
   approved: '已确认',
-  rejected: '已驳回',
+  rejected: '待确认',
   ocr_pending: '待确认',
   ocr_clerk_review: '待审核',
   ocr_approved: '已确认'
@@ -579,6 +697,9 @@ const columns = [
 
 const pendingStats = computed(() => {
   const list = store.insuranceApplications || []
+  if (userStore.role === 'inkasso') {
+    return { pending_all: 0, approved: list.length }
+  }
   return {
     pending_all: list.filter(it => it.status === 'draft' || it.status === 'pending_review' || it.status === 'rejected').length,
     approved: list.filter(it => it.status === 'approved').length
@@ -688,6 +809,9 @@ const generateExcel = () => {
 const handleAdd = () => { router.push('/insurance/purchase/new') }
 const handleView = (row) => { router.push(`/insurance/purchase/${row.id}`) }
 const handleEdit = (row) => { router.push(`/insurance/purchase/${row.id}/edit`) }
+const pendingStatuses = ['draft', 'pending_review', 'rejected', 'ocr_pending']
+const isPendingConfirmation = (status) => pendingStatuses.includes(status)
+
 const handleShowSubmitModal = (row) => {
   currentSubmitData.value = row
   submitVisible.value = true
@@ -699,8 +823,37 @@ const handleConfirmSubmit = () => {
     return
   }
   submitVisible.value = false
-  MessagePlugin.success('提交成功，等待平台审核')
+  MessagePlugin.success('提交成功，状态已变更为已确认')
 }
+const handleGenerateDocuments = (row) => {
+  currentDocumentData.value = row
+  documentVisible.value = true
+}
+
+const handlePreviewPolicyApplication = (row) => {
+  if (!row) return
+  try {
+    const wb = generatePolicyApplicationXlsx(row, statusMap)
+    const filename = `投保申请书_${row.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
+    showTablePreview(wb, '投保申请书 - 预览', filename)
+  } catch (e) {
+    console.error('生成投保申请书失败', e)
+    MessagePlugin.error('生成投保申请书失败：' + (e.message || '未知错误'))
+  }
+}
+
+const handlePreviewBuyerInfo = (row) => {
+  if (!row) return
+  try {
+    const wb = generateBuyerInfoXlsx(row)
+    const filename = `买方信息采集表_${row.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
+    showTablePreview(wb, '买方信息采集表 - 预览', filename)
+  } catch (e) {
+    console.error('生成买方信息采集表失败', e)
+    MessagePlugin.error('生成买方信息采集表失败：' + (e.message || '未知错误'))
+  }
+}
+
 const handleApprove = (row) => {
   const res = store.approveInsuranceApplication(row.id)
   if (!res?.ok) {
@@ -829,151 +982,285 @@ onMounted(() => {
 .detail-container { padding: 0 16px; }
 
 .submit-modal {
-  padding: 16px 0;
-  
-  .modal-info {
+	  padding: 8px 0;
+
+	  .submit-confirm-bar {
+	    display: flex;
+	    align-items: center;
+	    gap: 10px;
+	    padding: 12px 16px;
+	    background: #f0f9ff;
+	    border: 1px solid #bae6fd;
+	    border-radius: 8px;
+	    color: #0369a1;
+	    font-size: 14px;
+
+	    .confirm-icon {
+	      color: #0ea5e9;
+	      flex-shrink: 0;
+	    }
+	  }
+
+	  .modal-divider {
+	    height: 1px;
+	    background: #e2e8f0;
+	    margin: 16px 0;
+	  }
+
+	  .submit-sections {
+	    display: flex;
+	    flex-direction: column;
+	    gap: 16px;
+	  }
+
+	  .submit-section {
+	    background: #fafbfc;
+	    border: 1px solid #e8ecf0;
+	    border-radius: 8px;
+	    overflow: hidden;
+	  }
+
+	  .submit-section-title {
+	    font-size: 14px;
+	    font-weight: 600;
+	    color: #1e293b;
+	    padding: 10px 16px;
+	    background: #f1f4f8;
+	    border-bottom: 1px solid #e8ecf0;
+	  }
+
+	  .detail-panel {
+	    padding: 4px 0;
+	  }
+
+	  .detail-item {
+	    display: flex;
+	    padding: 10px 16px;
+	    border-bottom: 1px dashed #eee;
+
+	    &:last-child {
+	      border-bottom: none;
+	    }
+	  }
+
+	  .detail-label {
+	    width: 140px;
+	    flex-shrink: 0;
+	    color: #999;
+	    font-size: 13px;
+	  }
+
+	  .detail-value {
+	    flex: 1;
+	    color: #333;
+	    font-size: 13px;
+	    word-break: break-all;
+	  }
+
+	  .modal-footer {
+	    display: flex;
+	    justify-content: flex-end;
+	    gap: 12px;
+	    margin-top: 20px;
+	    padding-top: 16px;
+	    border-top: 1px solid #e2e8f0;
+	  }
+	}
+
+.document-modal {
+  padding: 8px 0;
+
+  .submit-sections {
     display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 24px;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-radius: 12px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    
-    .info-icon {
-      width: 72px;
-      height: 72px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-      border-radius: 50%;
-      color: #fff;
-      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
-    }
-    
-    .info-text {
-      h3 {
-        margin: 0 0 8px 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: #1e293b;
-      }
-      
-      p {
-        margin: 0;
-        font-size: 14px;
-        color: #64748b;
-        line-height: 1.6;
-      }
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .submit-section {
+    background: #fafbfc;
+    border: 1px solid #e8ecf0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .submit-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    padding: 10px 16px;
+    background: #f1f4f8;
+    border-bottom: 1px solid #e8ecf0;
+  }
+
+  .detail-panel {
+    padding: 4px 0;
+  }
+
+  .detail-item {
+    display: flex;
+    padding: 10px 16px;
+    border-bottom: 1px dashed #eee;
+
+    &:last-child {
+      border-bottom: none;
     }
   }
-  
+
+  .detail-label {
+    width: 140px;
+    flex-shrink: 0;
+    color: #999;
+    font-size: 13px;
+  }
+
+  .detail-value {
+    flex: 1;
+    color: #333;
+    font-size: 13px;
+    word-break: break-all;
+  }
+
   .modal-divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
-    margin: 20px 0;
+    background: #e2e8f0;
+    margin: 16px 0;
   }
-  
-  .form-preview {
-    .preview-title {
-      font-size: 16px;
+
+  .documents-section {
+    .documents-title {
+      font-size: 15px;
       font-weight: 600;
       color: #1e293b;
-      margin: 0 0 20px 0;
-      padding-left: 16px;
-      border-left: 4px solid #1d39c4;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      margin-bottom: 12px;
+      padding-left: 12px;
+      border-left: 4px solid #0052d9;
     }
-    
-    .preview-grid {
+
+    .documents-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 14px;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
     }
-    
-    .preview-card {
+
+    .document-card {
       display: flex;
+      flex-direction: column;
       align-items: center;
       gap: 12px;
-      padding: 14px 16px;
-      background: #fff;
+      padding: 20px;
+      border: 1px solid #e8ecf0;
       border-radius: 10px;
-      border: 1px solid #e2e8f0;
-      transition: all 0.2s ease;
-      
+      background: #fafbfc;
+      cursor: pointer;
+      transition: all 0.2s;
+
       &:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        transform: translateY(-1px);
+        border-color: #0052d9;
+        box-shadow: 0 2px 12px rgba(0, 82, 217, 0.08);
       }
-      
-      .preview-icon-wrapper {
-        width: 36px;
-        height: 36px;
+
+      .doc-card-icon {
+        width: 56px;
+        height: 56px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 10px;
-        flex-shrink: 0;
-        
-        &.bg-blue { background: #dbeafe; color: #2563eb; }
-        &.bg-green { background: #dcfce7; color: #16a34a; }
-        &.bg-purple { background: #ede9fe; color: #7c3aed; }
-        &.bg-orange { background: #ffedd5; color: #ea580c; }
-        &.bg-cyan { background: #cffafe; color: #0891b2; }
-        &.bg-yellow { background: #fef3c7; color: #ca8a04; }
-        &.bg-red { background: #fee2e2; color: #dc2626; }
-        &.bg-indigo { background: #e0e7ff; color: #4f46e5; }
-        &.bg-pink { background: #fce7f3; color: #db2777; }
-        &.bg-teal { background: #ccfbf1; color: #14b8a6; }
-        &.bg-gray { background: #f3f4f6; color: #6b7280; }
-        &.bg-primary { background: #e0e7ff; color: #1d39c4; }
+        border-radius: 12px;
+
+        &.doc-icon-primary {
+          background: #e8f4fd;
+          color: #0052d9;
+        }
+
+        &.doc-icon-success {
+          background: #e8f8e8;
+          color: #16a34a;
+        }
       }
-      
-      .preview-content {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        min-width: 0;
-        
-        .preview-label {
+
+      .doc-card-info {
+        text-align: center;
+
+        .doc-card-name {
+          font-size: 15px;
+          font-weight: 600;
+          color: #1e293b;
+          margin-bottom: 4px;
+        }
+
+        .doc-card-desc {
           font-size: 12px;
           color: #94a3b8;
-          font-weight: 500;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
+          line-height: 1.4;
         }
-        
-        .preview-value {
-          font-size: 14px;
-          color: #1e293b;
-          font-weight: 600;
-          word-break: break-all;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
+      }
+
+      .doc-card-actions {
+        display: flex;
+        gap: 8px;
       }
     }
   }
-  
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
+.preview-modal {
+  padding: 8px 0;
+
+  .preview-table-wrap {
+    max-height: 480px;
+    overflow: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+
+    :deep(table) {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 12px;
+    }
+
+    :deep(td), :deep(th) {
+      border: 1px solid #e2e8f0;
+      padding: 6px 8px;
+      text-align: left;
+      white-space: nowrap;
+      min-width: 60px;
+    }
+
+    :deep(th) {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #475569;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    :deep(tr:hover td) {
+      background: #f1f5f9;
+    }
+  }
+
   .modal-footer {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    margin-top: 24px;
-    padding-top: 20px;
+    margin-top: 16px;
+    padding-top: 12px;
     border-top: 1px solid #e2e8f0;
   }
 }
 
 .export-modal {
   padding: 16px 0;
-  
+
   .export-filters {
     margin-bottom: 20px;
     padding-bottom: 20px;

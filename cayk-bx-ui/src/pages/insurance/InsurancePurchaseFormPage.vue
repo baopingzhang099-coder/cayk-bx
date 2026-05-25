@@ -11,7 +11,7 @@
       <div class="page-title">{{ pageTitle }}</div>
       <div class="page-actions" v-if="mode !== 'detail'">
         <t-space>
-          <t-button variant="outline" @click="handleSave">保存</t-button>
+          <t-button variant="outline" @click="handleBack">返回</t-button>
           <t-button theme="primary" @click="handleSubmit">申请投保</t-button>
         </t-space>
       </div>
@@ -45,6 +45,59 @@
         </div>
       </div>
     </t-dialog>
+
+    <!-- 投保流程看板 - 嵌入详情页 -->
+    <div v-if="mode === 'detail' && detailData" class="process-flow-section">
+      <div class="process-flow-header">
+        <span class="process-flow-title">投保流程进度</span>
+        <t-tag v-if="detailData.status === 'approved' || detailData.status === 'completed'" theme="success" variant="light" size="small">已完成</t-tag>
+        <t-tag v-else-if="detailData.status === 'rejected'" theme="danger" variant="light" size="small">已退回</t-tag>
+        <t-tag v-else theme="primary" variant="light" size="small">进行中</t-tag>
+      </div>
+
+      <div class="process-steps-bar">
+        <template v-for="(step, idx) in processSteps" :key="idx">
+          <div class="process-step-item">
+            <div class="step-indicator" :class="getStepDotClass(idx)">
+              <t-icon v-if="getStepStatus(idx) === 'completed'" name="check" class="step-check-icon" />
+              <span v-else class="step-num">{{ idx + 1 }}</span>
+            </div>
+            <div class="step-label" :class="'step-' + getStepStatus(idx)">{{ step.label }}</div>
+            <div class="step-role-tag" :class="'role-' + step.roleKey">{{ step.role }}</div>
+          </div>
+          <div v-if="idx < processSteps.length - 1" class="step-connector" :class="{ 'connector-done': getStepStatus(idx) === 'completed' }" />
+        </template>
+      </div>
+
+      <div class="current-step-panel">
+        <div class="current-step-header">
+          <div class="current-step-info">
+            <span class="current-step-badge">当前步骤</span>
+            <span class="current-step-name">{{ processSteps[getCurrentStepIndex()]?.label || '未开始' }}</span>
+          </div>
+          <div class="current-step-status">
+            <t-tag :theme="getStepTagTheme(getCurrentStepIndex())" variant="light" size="small">
+              {{ getStepStatusText(getCurrentStepIndex()) }}
+            </t-tag>
+          </div>
+        </div>
+
+        <div class="role-action-grid">
+          <div
+            v-for="(action, aidx) in getCurrentStepActions()"
+            :key="aidx"
+            class="role-action-card"
+            :class="{ 'is-active': action.isActive }"
+          >
+            <div class="action-card-header">
+              <span class="action-role-name">{{ action.role }}</span>
+              <t-tag v-if="action.isActive" theme="primary" variant="light" size="small">当前处理</t-tag>
+            </div>
+            <div class="action-desc">{{ action.description }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <t-card v-if="mode === 'detail'">
       <t-tabs default-value="customer">
@@ -1062,51 +1115,36 @@ const removeCountry = (index) => {
 }
 
 const rules = {
-  // 主体信息
-  companyName: [{ required: true, message: '请输入公司中文全称', trigger: 'blur' }],
+  // 所有字段校验暂时全部放开，不做必填和格式限制
+  companyName: [],
   companyEnglishName: [],
-  unifiedSocialCreditCode: [
-    { required: true, message: '请输入统一社会信用代码', trigger: 'blur' },
-    { pattern: /^[0-9A-Z]{18}$/, message: '统一社会信用代码为18位', trigger: 'blur' }
-  ],
-  registeredAddress: [{ required: true, message: '请输入注册地址', trigger: 'blur' }],
-  businessAddress: [{ required: true, message: '请输入营业地址', trigger: 'blur' }],
-  organizationCode: [{ required: true, message: '请输入组织机构代码', trigger: 'blur' }],
-  establishmentYear: [
-    { required: true, message: '请输入成立年份', trigger: 'blur' },
-    { pattern: /^\d{4}$/, message: '成立年份为4位数字', trigger: 'blur' }
-  ],
-  legalRepresentative: [{ required: true, message: '请输入法定代表人姓名', trigger: 'blur' }],
-  enterpriseNature: [{ required: true, message: '请选择企业性质', trigger: 'change' }],
-  businessType: [{ required: true, message: '请选择经营性质', trigger: 'change' }],
-  // 联系信息
-  contactName: [{ required: true, message: '请输入联系人姓名', trigger: 'blur' }],
-  contactPosition: [{ required: true, message: '请输入联系人职务', trigger: 'blur' }],
-  contactPhone: [
-    { required: true, message: '请输入联系电话', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入有效手机号', trigger: 'blur' }
-  ],
-  companyEmail: [
-    { required: true, message: '请输入企业邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' }
-  ],
+  unifiedSocialCreditCode: [],
+  registeredAddress: [],
+  businessAddress: [],
+  organizationCode: [],
+  establishmentYear: [],
+  legalRepresentative: [],
+  enterpriseNature: [],
+  businessType: [],
+  contactName: [],
+  contactPosition: [],
+  contactPhone: [],
+  companyEmail: [],
   faxNumber: [],
-  // 业务信息
-  exportBusinessHistory: [{ required: true, message: '请选择出口业务经营历史', trigger: 'change' }],
-  exportMainCountries: [{ required: true, message: '请选择出口主要国别/地区', trigger: 'change' }],
-  mainExportIndustry: [{ required: true, message: '请选择主营出口行业', trigger: 'change' }],
-  expectedInsurableTurnover: [{ required: true, message: '请输入预计可保营业额', trigger: 'blur' }],
-  mainPaymentMethods: [{ required: true, message: '请选择主要付款方式', trigger: 'change' }],
-  mostUsedPaymentTerm: [{ required: true, message: '请输入最常用的付款期限', trigger: 'blur' }],
-  longestPaymentTerm: [{ required: true, message: '请输入最长付款期限', trigger: 'blur' }],
-  hasLongerCreditPeriod: [{ required: true, message: '请选择是否为买家提供较长赊账期', trigger: 'change' }],
+  exportBusinessHistory: [],
+  exportMainCountries: [],
+  mainExportIndustry: [],
+  expectedInsurableTurnover: [],
+  mainPaymentMethods: [],
+  mostUsedPaymentTerm: [],
+  longestPaymentTerm: [],
+  hasLongerCreditPeriod: [],
   industrySubCategory: [],
   relatedCompanies: [],
   existingCreditPolicy: [],
   existingCreditPolicyInsurer: [],
   existingCreditPolicyNo: [],
   existingCreditPolicyRenewalDate: [],
-  // 历史业务情况（新增，可选字段）
   threeYearExportAmount23: [],
   threeYearExportAmount24: [],
   threeYearExportAmount25: [],
@@ -1119,33 +1157,25 @@ const rules = {
   relatedPartyRatio: [],
   creditTransactionRatio: [],
   collectionRatio: [],
-  // 投保核心需求
-  insuranceType: [{ required: true, message: '请选择投保类型', trigger: 'change' }],
-  preferredInsuranceOrgType: [{ required: true, message: '请选择投保倾向机构类型', trigger: 'change' }],
-  insuranceBusinessScope: [{ required: true, message: '请选择投保业务范围', trigger: 'change' }],
-  insuranceCurrency: [{ required: true, message: '请选择投保币种', trigger: 'change' }],
-  insuranceAmount: [{ required: true, message: '请输入投保金额', trigger: 'blur' }],
-  expectedInsurancePeriod: [{ required: true, message: '请选择期望保险期间', trigger: 'change' }],
-  insurancePrimaryPurpose1: [{ required: true, message: '请选择最重要的投保目的', trigger: 'change' }],
-  // 买方信息
-  buyerName: [{ required: true, message: '请输入买方全称', trigger: 'blur' }],
-  buyerCountry: [{ required: true, message: '请选择买方所在国家/地区', trigger: 'change' }],
-  buyerAddress: [{ required: true, message: '请输入买方注册地址', trigger: 'blur' }],
-  cooperationYearsWithBuyer: [{ required: true, message: '请选择与买方合作年限', trigger: 'change' }],
-  last12MonthExportAmount: [{ required: true, message: '请输入过去12个月出口交易额', trigger: 'blur' }],
-  paymentTerms: [{ required: true, message: '请输入付款条件', trigger: 'blur' }],
-  appliedCreditLimit: [{ required: true, message: '请输入拟申请信用限额', trigger: 'blur' }],
-  // 贸易基础信息
-  exportProductCategory: [{ required: true, message: '请输入出口商品/服务品类', trigger: 'blur' }],
-  involvesControlledGoods: [{ required: true, message: '请选择是否涉及管制商品', trigger: 'change' }],
-  hasTitleRetentionClause: [{ required: true, message: '请选择贸易合同是否含物权保留条款', trigger: 'change' }],
-  // 补充资料
-  businessLicense: [],
-  importExportQualification: [],
-  tradeContract: [],
-  customsDeclaration: [],
-  authorizationDocument: [],
-  // 买方补充信息（新增，可选字段）
+  insuranceType: [],
+  preferredInsuranceOrgType: [],
+  insuranceBusinessScope: [],
+  insuranceCurrency: [],
+  insuranceAmount: [],
+  expectedInsurancePeriod: [],
+  insurancePrimaryPurpose1: [],
+  buyerName: [],
+  buyerCountry: [],
+  buyerAddress: [],
+  cooperationYearsWithBuyer: [],
+  last12MonthExportAmount: [],
+  last12MonthCreditSalesAmount: [],
+  expectedNext12MonthCreditSales: [],
+  creditSalesCurrency: [],
+  paymentTerms: [],
+  appliedCreditLimit: [],
+  creditLimitCurrency: [],
+  lcIssuingBank: [],
   historicalOverdueStatus: [],
   buyerHasPublicFinancials: [],
   buyerIsListedCompany: [],
@@ -1153,10 +1183,48 @@ const rules = {
   buyerHasNegativeNewsDesc: [],
   designatedInsuranceCompany: [],
   designatedInsuranceCompanyName: [],
-  // 投保声明
-  declarationSignature: [{ required: true, message: '请输入投保人授权人签字', trigger: 'blur' }],
-  declarationDate: [{ required: true, message: '请选择声明日期', trigger: 'change' }],
+  exportProductCategory: [],
+  involvesControlledGoods: [],
+  controlledGoodsDescription: [],
+  hasTitleRetentionClause: [],
+  businessLicense: [],
+  importExportQualification: [],
+  tradeContract: [],
+  customsDeclaration: [],
+  exportLicense: [],
+  authorizationDocument: [],
+  declarationSignature: [],
+  declarationDate: [],
   companySeal: [],
+  policyNo: [],
+  insuranceCompanyName: [],
+  insurerName: [],
+  insuredName: [],
+  beneficiaryName: [],
+  policyPeriodRange: [],
+  policyPeriod: [],
+  renewalFlag: [],
+  countryRiskVersion: [],
+  clauseVersion: [],
+  agreedCoverageScope: [],
+  tradeBusinessType: [],
+  maxCompensationLimit: [],
+  buyerCreditLimit: [],
+  coveredRisks: [],
+  limitIdlePeriod: [],
+  selfControlledLimit: [],
+  deductible: [],
+  declarationMethod: [],
+  declarationCycle: [],
+  declarationDeadline: [],
+  premiumRate: [],
+  premiumPaymentDeadline: [],
+  premiumPaymentMethod: [],
+  premium: [],
+  surrenderFee: [],
+  recoveryPayee: [],
+  policyFile: [],
+  endorsementFile: []
 }
 
 const detailData = computed(() => {
@@ -1327,6 +1395,168 @@ const policyFileColumns = [
   }}
 ]
 
+const processSteps = [
+  { label: '提交投保申请', role: '客户', roleKey: 'customer' },
+  { label: '资料审核', role: '跟单员', roleKey: 'clerk' },
+  { label: '资信调查', role: '长安银科', roleKey: 'inkasso' },
+  { label: '信用限额审批', role: '长安银科 → 保险公司', roleKey: 'insurer' },
+  { label: '核保出单', role: '保险公司（跟单员配合）', roleKey: 'clerk' },
+  { label: '缴费生效', role: '客户', roleKey: 'customer' }
+]
+
+const statusStepMap = {
+  draft: 0,
+  pending_submit: 0,
+  pending_material: 1,
+  pending_review: 1,
+  clerk_review: 1,
+  ocr_pending: 1,
+  ocr_clerk_review: 1,
+  credit_investigating: 2,
+  limit_approving: 3,
+  underwriting: 4,
+  pending_payment: 5,
+  approved: 5,
+  completed: 5,
+  rejected: 0
+}
+
+const getCurrentStepIndex = () => {
+  const app = detailData.value
+  if (!app) return 0
+  return statusStepMap[app.status] ?? 0
+}
+
+const getStepStatus = (idx) => {
+  const current = getCurrentStepIndex()
+  if (idx < current) return 'completed'
+  if (idx === current) return 'active'
+  return 'pending'
+}
+
+const getStepStatusText = (idx) => {
+  const s = getStepStatus(idx)
+  return s === 'completed' ? '已完成' : s === 'active' ? '进行中' : '待处理'
+}
+
+const getStepDotClass = (idx) => {
+  return 'step-dot-' + getStepStatus(idx)
+}
+
+const getStepTagTheme = (idx) => {
+  const s = getStepStatus(idx)
+  return s === 'completed' ? 'success' : s === 'active' ? 'primary' : 'default'
+}
+
+const stepActions = [
+  // Step 0: 提交投保申请
+  {
+    role: '客户',
+    roleKey: 'customer',
+    description: '填写完整的投保申请信息，上传企业资质文件（营业执照、对外贸易经营者备案登记表），确认投保声明并签字提交',
+    isActiveFor: ['draft', 'pending_submit']
+  },
+  // Step 1: 资料审核
+  {
+    role: '跟单员',
+    roleKey: 'clerk',
+    description: '审核客户提交的投保资料是否完整、准确，核对营业执照、备案登记表、授权文件等附件',
+    isActiveFor: ['pending_review', 'clerk_review', 'pending_material', 'ocr_pending', 'ocr_clerk_review']
+  },
+  {
+    role: '长安银科',
+    roleKey: 'inkasso',
+    description: '复核跟单员的审核结果，确认资料无误后推送至保险公司',
+    isActiveFor: ['clerk_review']
+  },
+  // Step 2: 资信调查
+  {
+    role: '长安银科',
+    roleKey: 'inkasso',
+    description: '对买方进行资信调查，包括信用评级、财务状况分析、历史交易记录核查',
+    isActiveFor: ['credit_investigating']
+  },
+  {
+    role: '保险公司',
+    roleKey: 'insurer',
+    description: '配合长安银科提供买方资信数据支持（跟单员协调对接）',
+    isActiveFor: ['credit_investigating']
+  },
+  // Step 3: 信用限额审批
+  {
+    role: '长安银科',
+    roleKey: 'inkasso',
+    description: '根据资信调查结果评估信用限额，提交至保险公司审批',
+    isActiveFor: ['limit_approving']
+  },
+  {
+    role: '保险公司',
+    roleKey: 'insurer',
+    description: '审批信用限额申请，确认承保条件（由跟单员对接保险公司）',
+    isActiveFor: ['limit_approving']
+  },
+  // Step 4: 核保出单
+  {
+    role: '保险公司',
+    roleKey: 'insurer',
+    description: '保险公司核保并签发保单（跟单员全程配合，跟进出单进度并上传保单文件）',
+    isActiveFor: ['underwriting']
+  },
+  {
+    role: '跟单员',
+    roleKey: 'clerk',
+    description: '对接保险公司完成核保出单，上传保单文件及费率表至系统',
+    isActiveFor: ['underwriting']
+  },
+  // Step 5: 缴费生效
+  {
+    role: '客户',
+    roleKey: 'customer',
+    description: '确认保单信息并缴纳保费，上传支付凭证',
+    isActiveFor: ['pending_payment']
+  },
+  {
+    role: '长安银科',
+    roleKey: 'inkasso',
+    description: '确认保费到账，更新保单状态为生效',
+    isActiveFor: ['pending_payment']
+  }
+]
+
+const getCurrentStepActions = () => {
+  const app = detailData.value
+  if (!app) return []
+  const status = app.status
+  const matched = stepActions.filter(a => a.isActiveFor.includes(status))
+  if (matched.length > 0) {
+    const current = getCurrentStepIndex()
+    return matched.map(a => ({
+      ...a,
+      isActive: a.isActiveFor.includes(status) && processSteps[current]?.roleKey === a.roleKey
+    }))
+  }
+  // Fallback: show general info
+  const current = getCurrentStepIndex()
+  return [{
+    role: processSteps[current]?.role || '系统',
+    roleKey: processSteps[current]?.roleKey || 'system',
+    description: getStepDefaultDesc(current),
+    isActive: true
+  }]
+}
+
+const getStepDefaultDesc = (idx) => {
+  const descs = [
+    '请填写完整投保信息并提交申请',
+    '跟单员正在审核资料，请耐心等待',
+    '长安银科正在进行资信调查',
+    '信用限额审批处理中',
+    '保险公司核保出单中',
+    '缴费生效处理中'
+  ]
+  return descs[idx] || '处理中'
+}
+
 const processTimeline = computed(() => {
   const base = detailData.value
   if (!base) return []
@@ -1486,16 +1716,9 @@ const handleSave = () => {
   MessagePlugin.success('已保存')
 }
 
-const handleSubmit = async () => {
-  const result = await formRef.value?.validate?.()
-  if (result !== true) return
+const handleSubmit = () => {
   const saved = store.createOrUpdateInsuranceApplication({ ...formData, id: formData.id || undefined })
-  const res = store.submitInsuranceApplication(saved.id)
-  if (!res?.ok) {
-    MessagePlugin.error(res?.message || '提交失败')
-    return
-  }
-  MessagePlugin.success('提交成功，已进入资信调查')
+  MessagePlugin.success('投保申请已创建')
   router.push('/insurance/purchase')
 }
 
@@ -1860,5 +2083,199 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 16px;
   font-size: 14px;
+}
+
+/* ── 投保流程看板 ── */
+.process-flow-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.process-flow-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.process-flow-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.process-steps-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 8px;
+}
+
+.process-step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-connector {
+  flex: 1;
+  height: 2px;
+  background: #e5e7eb;
+  margin: 0 4px;
+  align-self: center;
+  margin-bottom: 32px;
+}
+
+.step-connector.connector-done {
+  background: #10b981;
+}
+
+.step-indicator {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.step-dot-completed {
+  background: #10b981;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(16,185,129,0.15);
+}
+
+.step-dot-active {
+  background: #0052D9;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(0,82,217,0.18);
+}
+
+.step-dot-pending {
+  background: #e5e7eb;
+  color: #9ca3af;
+}
+
+.step-check-icon {
+  font-size: 16px;
+}
+
+.step-num {
+  font-size: 13px;
+}
+
+.step-label {
+  font-size: 11px;
+  text-align: center;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.step-label.step-completed { color: #10b981; }
+.step-label.step-active { color: #0052D9; font-weight: 600; }
+.step-label.step-pending { color: #9ca3af; }
+
+.step-role-tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.step-role-tag.role-customer { background: #eff6ff; color: #1d4ed8; }
+.step-role-tag.role-clerk { background: #fef3c7; color: #b45309; }
+.step-role-tag.role-inkasso { background: #ecfdf5; color: #047857; }
+
+.step-role-tag.role-insurer { background: #fdf2f8; color: #be185d; }
+
+/* ── 当前步骤面板 ── */
+.current-step-panel {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.current-step-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.current-step-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.current-step-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: #0052D9;
+  padding: 2px 10px;
+  border-radius: 4px;
+}
+
+.current-step-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.role-action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  padding: 14px 18px;
+}
+
+.role-action-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
+  transition: all 0.2s;
+}
+
+.role-action-card.is-active {
+  border-color: #0052D9;
+  box-shadow: 0 0 0 1px rgba(0,82,217,0.12);
+}
+
+.action-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.action-role-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.action-desc {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.6;
 }
 </style>

@@ -120,7 +120,6 @@ const allMenuItems = [
     children: [
       { key: 'insurance-purchase', title: '投保信息管理', path: '/insurance/purchase', roles: ['customer', 'inkasso'], icon: 'clipboard' },
       { key: 'insurance-report', title: '投保数据报表', path: '/insurance/report', roles: ['customer', 'inkasso'], icon: 'chart' },
-      { key: 'insurance-apply', title: '投保流程管理', path: '/insurance/apply', roles: ['customer', 'inkasso'], icon: 'switch' }
     ]
   },
   { 
@@ -186,7 +185,6 @@ const filteredMenuItems = computed(() => {
 const menuConfig = {
   'insurance-questionnaire': { parent: '保险购买', current: '客户投保问卷' },
   'insurance-purchase': { parent: '保险购买', current: '投保信息管理' },
-  'insurance-apply': { parent: '保险购买', current: '投保流程管理' },
   'insurance-report': { parent: '保险购买', current: '投保数据报表' },
   'policy-list': { parent: '保单管理', current: '保单信息管理' },
   'policy-trade': { parent: '保单管理', current: '贸易信息管理' },

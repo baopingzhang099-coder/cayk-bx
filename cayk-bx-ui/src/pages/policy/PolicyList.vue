@@ -9,6 +9,14 @@
     </div>
     <div class="page-header">
       <div class="page-title">保单信息管理</div>
+      <t-badge v-if="isClerk && unreadNotificationCount > 0" :count="unreadNotificationCount" :offset="[-4, 4]" dot>
+        <t-button shape="circle" variant="text" @click="notificationVisible = true">
+          <template #icon><t-icon name="notification" /></template>
+        </t-button>
+      </t-badge>
+      <t-button v-if="isClerk && unreadNotificationCount === 0" shape="circle" variant="text" @click="notificationVisible = true">
+        <template #icon><t-icon name="notification" /></template>
+      </t-button>
     </div>
 
     <t-tabs v-model="mainTab" theme="card" class="mb-16">
@@ -68,7 +76,7 @@
         />
 
         <div class="stats-grid mb-24">
-          <stat-card title="已确认" :value="activePolicyCount" icon="check-circle" color="success" />
+          <stat-card title="已审核" :value="activePolicyCount" icon="check-circle" color="success" />
           <stat-card title="总申请数" :value="store.insuranceApplications.length" icon="file" color="primary" />
           <stat-card title="总投保金额" :value="`$${totalInsuranceAmount.toLocaleString()}`" icon="credit-card" color="danger" />
         </div>
@@ -90,14 +98,23 @@
           <template #expectedInsurancePeriod="{ row }">
             <span>{{ Array.isArray(row.expectedInsurancePeriod) ? row.expectedInsurancePeriod.join(' ~ ') : row.expectedInsurancePeriod }}</span>
           </template>
+          <template #serviceFee="{ row }">
+            <template v-if="row.serviceFeePaid">
+              <span style="color:#00a870;font-weight:600;">${{ Number(row.serviceFeeAmount || 0).toLocaleString() }}</span>
+              <t-tag theme="success" variant="light" size="small" style="margin-left:4px;">已支付</t-tag>
+            </template>
+            <span v-else style="color:#999;">-</span>
+          </template>
           <template #operation="{ row }">
             <t-space>
               <t-link @click="handleView(row)">查看</t-link>
               <t-link v-if="isInkasso && row.status === 'pending_review'" theme="primary" @click="handleApprove(row)">申请跟单员确认</t-link>
-              <t-link v-if="isClerk && row.status === 'clerk_review'" theme="primary" @click="handleClerkApprove(row)">确认完成</t-link>
-              <t-link v-if="isClerk && row.status === 'clerk_review'" theme="danger" @click="handleClerkReject(row)">驳回</t-link>
+              <t-link v-if="isClerk && row.status === 'clerk_review'" theme="primary" @click="handleClerkApprove(row)">审核</t-link>
+              <t-link v-if="isClerk && row.status === 'approved'" theme="primary" @click="handleSubmitUnderwriting(row)">提交核保</t-link>
+              <t-link v-if="isClerk && row.status === 'underwriting'" theme="primary" @click="handleUnderwritingComplete(row)">核保通过</t-link>
+              <t-link v-if="isClerk && row.status === 'uw_completed'" theme="primary" @click="handleSyncToPlatform(row)">同步保单</t-link>
               <t-link v-if="isInkasso && row.status === 'ocr_pending'" theme="primary" @click="handleApprove(row)">申请跟单员确认</t-link>
-              <t-link v-if="isClerk && (row.status === 'ocr_pending' || row.status === 'ocr_clerk_review')" theme="primary" @click="handleClerkApprove(row)">确认完成</t-link>
+              <t-link v-if="isClerk && (row.status === 'ocr_pending' || row.status === 'ocr_clerk_review')" theme="primary" @click="handleClerkApprove(row)">审核</t-link>
               <t-link v-if="isCustomer && row.status === 'ocr_pending'" theme="primary" @click="handleSubmitToPlatform(row)">提交平台审核</t-link>
               <t-link v-if="!isInkasso && !isClerk && row.status === 'rejected'" theme="primary" @click="handleSubmit(row)">重新提交</t-link>
             </t-space>
@@ -148,8 +165,58 @@
     </t-tabs>
 
     <!-- 投保确认详情弹窗 -->
-    <t-dialog v-model:visible="detailVisible" header="投保方案确认" width="760px" :footer="false">
+    <t-dialog v-model:visible="detailVisible" header="投保方案审核" width="760px" :footer="false">
       <div v-if="currentRow" class="insurance-info-modal">
+        <!-- 流程状态 - 仅审核模式展示 -->
+        <div v-if="detailMode === 'clerk_approve' || detailMode === 'view'" class="clerk-flow-section">
+          <div class="modal-section-title">📋 投保流程状态</div>
+          <div class="clerk-flow-progress">
+            <div class="clerk-flow-steps">
+              <template v-for="(step, index) in clerkFlowStepOptions" :key="step.value">
+                <div class="clerk-flow-step-col">
+                  <div
+                    class="clerk-flow-step-dot"
+                    :class="{
+                      completed: index + 1 < clerkCurrentStep || clerkTaskCompleted,
+                      active: index + 1 === clerkCurrentStep && !clerkTaskCompleted
+                    }"
+                  >
+                    <span v-if="index + 1 < clerkCurrentStep || clerkTaskCompleted" class="clerk-flow-step-check">✓</span>
+                    <span v-else class="clerk-flow-step-num">{{ index + 1 }}</span>
+                  </div>
+                  <div
+                    class="clerk-flow-step-label"
+                    :class="{
+                      active: index + 1 === clerkCurrentStep && !clerkTaskCompleted,
+                      completed: index + 1 < clerkCurrentStep || clerkTaskCompleted
+                    }"
+                  >
+                    {{ step.label }}
+                  </div>
+                  <div class="clerk-flow-step-status">
+                    <t-tag v-if="index + 1 < clerkCurrentStep || clerkTaskCompleted" theme="success" variant="light" size="small">已完成</t-tag>
+                    <t-tag v-else-if="index + 1 === clerkCurrentStep" theme="primary" variant="light" size="small">进行中</t-tag>
+                    <t-tag v-else theme="default" variant="light" size="small">待处理</t-tag>
+                  </div>
+                  <div class="clerk-flow-step-role">
+                    <t-tag theme="warning" variant="light" size="small">{{ clerkFlowStepRoles[index].label }}</t-tag>
+                  </div>
+                  <div v-if="clerkStepInfo[index].handler" class="clerk-flow-step-info">
+                    <span class="clerk-flow-step-handler">{{ clerkStepInfo[index].handler }}</span>
+                    <span v-if="clerkStepInfo[index].endTime" class="clerk-flow-step-time">✓ {{ clerkStepInfo[index].endTime }}</span>
+                    <span v-else-if="clerkStepInfo[index].startTime && (index + 1 === clerkCurrentStep || clerkTaskCompleted)" class="clerk-flow-step-time">开始: {{ clerkStepInfo[index].startTime }}</span>
+                  </div>
+                </div>
+                <div v-if="index < clerkFlowStepOptions.length - 1" class="clerk-flow-arrow" :class="{ completed: index + 1 < clerkCurrentStep || clerkTaskCompleted }">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+              </template>
+            </div>
+          </div>
+          <t-divider />
+        </div>
         <!-- OCR来源保单 - 跟单员审核编辑模式 -->
         <div v-if="currentRow?.ocrSource && detailMode === 'clerk_approve'">
           <div class="modal-section-title">📄 电子保单OCR识别信息 <span class="edit-badge">可编辑</span></div>
@@ -325,7 +392,6 @@
               <t-icon name="chart-bubble" />
               <span>💡 贸易信用数字化预审推荐方案</span>
             </div>
-            <span class="recommend-badge">AI 算法专属推荐</span>
           </div>
 
           <div class="recommend-risk-info">
@@ -398,17 +464,17 @@
         <!-- Section 3: Checkbox willingness -->
         <div class="confirmation-box">
           <t-checkbox :checked="true" disabled>
-            我已仔细核对并确认此『数字化推荐投保建议方案』符合我司本次出运要求，现正式提交投保申请并流转至出单。
+            『数字化推荐投保建议方案』符合我司本次出运要求，现正式提交投保申请并流转至出单。
           </t-checkbox>
         </div>
 
         <!-- Section 4: Generated Documents (hidden for OCR-sourced policies) -->
-        <div v-if="!currentRow?.ocrSource" class="modal-section-title">📎 自动生成投保文件</div>
+        <div v-if="!currentRow?.ocrSource" class="modal-section-title">📎 投保申请书和信息采集表预览</div>
         <div v-if="!currentRow?.ocrSource" class="attachment-section mb-16">
           <div class="attachment-row">
             <div class="attachment-info" style="display: flex; align-items: center; gap: 8px;">
               <t-icon name="file-excel" style="color: #2ca471; font-size: 18px;" />
-              <span class="attachment-label">短期出口信用保险 投保单 (保单申请书)</span>
+              <span class="attachment-label">投保申请书</span>
             </div>
             <t-button variant="outline" size="small" @click="showPreview('policy')">
               <template #icon><t-icon name="browse" /></template>
@@ -418,7 +484,7 @@
           <div class="attachment-row">
             <div class="attachment-info" style="display: flex; align-items: center; gap: 8px;">
               <t-icon name="file-excel" style="color: #2ca471; font-size: 18px;" />
-              <span class="attachment-label">短期出口信用保险 投保买方信息采集表</span>
+              <span class="attachment-label">信息采集表</span>
             </div>
             <t-button variant="outline" size="small" @click="showPreview('buyer')">
               <template #icon><t-icon name="browse" /></template>
@@ -447,8 +513,10 @@
         <!-- Modal Footer -->
         <div class="modal-footer">
           <t-button v-if="detailMode === 'apply'" theme="primary" @click="handleDetailApply">申请跟单员确认</t-button>
-          <t-button v-if="detailMode === 'clerk_approve'" theme="primary" @click="handleDetailApply">确认完成</t-button>
+          <t-button v-if="detailMode === 'clerk_approve'" theme="success" @click="handleDetailApply">审核通过</t-button>
+          <t-button v-if="detailMode === 'clerk_approve'" theme="danger" @click="handleClerkRejectFromDialog">审核驳回</t-button>
           <t-button v-if="detailMode === 'resubmit'" theme="primary" @click="handleDetailApply">重新提交</t-button>
+          <t-button v-if="detailMode === 'underwriting'" theme="primary" @click="handleDetailApply">提交核保</t-button>
         </div>
       </div>
       <div v-else class="no-data">暂无数据</div>
@@ -553,6 +621,67 @@
           <t-button theme="danger" @click="handleClerkRejectConfirm">确认驳回</t-button>
         </t-space>
       </template>
+    </t-dialog>
+
+    <!-- 核保通过弹窗 -->
+    <t-dialog v-model:visible="uwCompleteVisible" header="核保通过" width="600px" :footer="false" destroy-on-close>
+      <div v-if="uwCompleteRow" class="uw-modal">
+        <div class="modal-section-title">📋 核保决定</div>
+        <div class="uw-form">
+          <div class="uw-row">
+            <span class="uw-label">核保决定 <span style="color: #dc2626;">*</span></span>
+            <t-select v-model="uwForm.decision" placeholder="请选择核保决定">
+              <t-option value="approved" label="通过" />
+              <t-option value="conditional" label="有条件通过" />
+            </t-select>
+          </div>
+          <div class="uw-row">
+            <span class="uw-label">保单号 <span style="color: #dc2626;">*</span></span>
+            <t-input v-model="uwForm.policyNo" placeholder="请输入保险公司出具的保单号" />
+          </div>
+          <div class="uw-row">
+            <span class="uw-label">保险公司</span>
+            <t-input v-model="uwForm.insuranceCompany" placeholder="请输入保险公司名称" />
+          </div>
+          <div class="uw-row">
+            <span class="uw-label">保额</span>
+            <t-input-adornment prepend="USD">
+              <t-input-number v-model="uwForm.coverageAmount" placeholder="请输入保额" :min="0" :step="1000" />
+            </t-input-adornment>
+          </div>
+          <div class="uw-row">
+            <span class="uw-label">保费</span>
+            <t-input-adornment prepend="USD">
+              <t-input-number v-model="uwForm.premium" placeholder="请输入保费金额" :min="0" :step="100" />
+            </t-input-adornment>
+          </div>
+          <div class="uw-row">
+            <span class="uw-label">核保意见</span>
+            <t-textarea v-model="uwForm.opinion" placeholder="请输入核保意见" :rows="3" />
+          </div>
+        </div>
+        <!-- 附件文件 -->
+        <div class="uw-attachments">
+          <div class="modal-section-title">📎 附加文件</div>
+          <div class="uw-attach-row">
+            <span class="uw-label">保单明细表</span>
+            <t-upload v-model="uwForm.policyDetailFile" theme="file" :multiple="false" :auto-upload="false" accept=".xlsx,.xls,.pdf" placeholder="请上传保单明细表" />
+          </div>
+          <div class="uw-attach-row">
+            <span class="uw-label">费率表</span>
+            <t-upload v-model="uwForm.rateFile" theme="file" :multiple="false" :auto-upload="false" accept=".xlsx,.xls,.pdf" placeholder="请上传费率表" />
+          </div>
+          <div class="uw-attach-row">
+            <span class="uw-label">国家（地区）分类表</span>
+            <t-upload v-model="uwForm.countryCategoryFile" theme="file" :multiple="false" :auto-upload="false" accept=".xlsx,.xls,.pdf" placeholder="请上传国家（地区）分类表" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <t-button variant="outline" @click="uwCompleteVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handleUwConfirm">确认核保</t-button>
+        </div>
+      </div>
+      <div v-else class="no-data">暂无数据</div>
     </t-dialog>
 
     <!-- 附件预览弹窗 -->
@@ -742,6 +871,26 @@
       :policy="currentPolicy"
       @saved="handleChangeSaved"
     />
+
+    <!-- 站内信弹窗 -->
+    <t-dialog v-model:visible="notificationVisible" header="站内信" width="550px" :footer="false" destroy-on-close>
+      <div class="notification-list" v-if="notificationList.length > 0">
+        <div
+          v-for="n in notificationList"
+          :key="n.id"
+          class="notification-item"
+          :class="{ unread: !n.read }"
+          @click="handleMarkNotificationRead(n)"
+        >
+          <div class="notif-header">
+            <span class="notif-type">{{ n.type === 'payment_notification' ? '支付通知' : '系统消息' }}</span>
+            <span class="notif-time">{{ n.createTime }}</span>
+          </div>
+          <div class="notif-body">{{ n.message }}</div>
+        </div>
+      </div>
+      <div v-else class="no-data" style="text-align:center;padding:40px 0;color:#999;">暂无消息</div>
+    </t-dialog>
   </div>
 </template>
 
@@ -783,8 +932,14 @@ const statusTabs = [
 ]
 
 const statusOptions = [
-  { value: 'approved', label: '已确认' },
-  { value: 'clerk_review', label: '申请跟单员确认' },
+  { value: 'approved', label: '已审核' },
+  { value: 'clerk_review', label: '待审核' },
+  { value: 'underwriting', label: '核保中' },
+  { value: 'uw_completed', label: '核保通过' },
+  { value: 'platform_synced', label: '待确认保费' },
+  { value: 'premium_confirmed', label: '保费已确认' },
+  { value: 'payment_uploaded', label: '凭证已上传' },
+  { value: 'active', label: '已生效' },
   { value: 'ocr_pending', label: '待确认' },
   { value: 'ocr_clerk_review', label: '待审核' },
   { value: 'ocr_approved', label: '已确认' },
@@ -794,8 +949,14 @@ const statusOptions = [
 const statusMap = {
   draft: '已确认',
   pending_review: '已确认',
-  clerk_review: '申请跟单员确认',
-  approved: '已确认',
+  clerk_review: '待审核',
+  approved: '已审核',
+  underwriting: '核保中',
+  uw_completed: '核保通过',
+  platform_synced: '待确认保费',
+  premium_confirmed: '保费已确认',
+  payment_uploaded: '凭证已上传',
+  active: '已生效',
   ocr_pending: '待确认',
   ocr_clerk_review: '待审核',
   ocr_approved: '已确认',
@@ -809,6 +970,7 @@ const columns = [
   { colKey: 'buyerCountry', title: '买方国别', width: 100 },
   { colKey: 'insuranceType', title: '投保类型', width: 140 },
   { colKey: 'insuranceAmount', title: '投保金额', align: 'right', width: 120, slot: 'insuranceAmount' },
+  { colKey: 'serviceFee', title: '服务费', width: 130, slot: 'serviceFee' },
   { colKey: 'expectedInsurancePeriod', title: '投保期限', width: 160, slot: 'expectedInsurancePeriod' },
   { colKey: 'status', title: '状态', width: 100, slot: 'status' },
   { colKey: 'operation', title: '操作', width: 140, fixed: 'right', slot: 'operation' }
@@ -825,10 +987,10 @@ const filteredData = computed(() => {
       // Customer sees approved and rejected items
       if (!['approved', 'rejected', 'ocr_pending'].includes(it.status)) return false
     } else {
-      // Changan Yinke (inkasso) sees pending_review, approved and OCR items
-      if (userStore.role === 'inkasso' && !['pending_review', 'approved', 'ocr_pending', 'ocr_clerk_review', 'ocr_approved'].includes(it.status)) return false
-      // Clerk sees clerk_review, approved and OCR items
-      if (userStore.role === 'clerk' && !['clerk_review', 'approved', 'ocr_pending', 'ocr_clerk_review', 'ocr_approved'].includes(it.status)) return false
+      // Changan Yinke (inkasso) sees pending_review, approved, payment_uploaded, active and OCR items
+      if (userStore.role === 'inkasso' && !['pending_review', 'approved', 'payment_uploaded', 'active', 'ocr_pending', 'ocr_clerk_review', 'ocr_approved'].includes(it.status)) return false
+      // Clerk sees clerk_review, approved, underwriting, uw_completed and OCR statuses only
+      if (userStore.role === 'clerk' && !['clerk_review', 'approved', 'underwriting', 'uw_completed', 'ocr_pending', 'ocr_clerk_review', 'ocr_approved'].includes(it.status)) return false
     }
     if (p.enterpriseName && !String(it.companyName || '').includes(p.enterpriseName)) return false
     if (p.buyerName && !String(it.buyerName || '').includes(p.buyerName)) return false
@@ -927,6 +1089,7 @@ const clerkExternalPolicies = computed(() => {
 // ===== Policy list =====
 const policyStatusMap = {
   pending_effect: '待生效',
+  activating: '保单生效中',
   active: '有效',
   expiring: '即将到期',
   expired: '已到期',
@@ -993,8 +1156,60 @@ const ocrEditForm = ref({
 
 const confirmRow = ref(null)
 
+// ===== Clerk approval flow progress =====
+const clerkFlowStepOptions = [
+  { label: '提交投保申请', value: 1 },
+  { label: '资料审核', value: 2 },
+  { label: '资信调查', value: 3 },
+  { label: '信用限额审批', value: 4 },
+  { label: '核保出单', value: 5 },
+  { label: '缴费生效', value: 6 }
+]
+const clerkFlowStepRoles = [
+  { role: 'customer', label: '客户 / 长安银科' },
+  { role: 'inkasso', label: '长安银科 / 跟单员' },
+  { role: 'insurer', label: '保险公司' },
+  { role: 'insurer', label: '保险公司' },
+  { role: 'clerk', label: '跟单员' },
+  { role: 'customer', label: '客户' }
+]
+const clerkCurrentStep = ref(1)
+const clerkTaskCompleted = ref(false)
+const clerkStepInfo = reactive(
+  Array.from({ length: 6 }, () => ({ handler: '', startTime: '', endTime: '' }))
+)
+
+const getClerkCurrentStep = (status) => {
+  const map = {
+    clerk_review: 2,
+    approved: 3,
+    credit_investigating: 3,
+    limit_approving: 4,
+    underwriting: 3,
+    uw_completed: 5,
+    platform_synced: 6,
+    premium_confirmed: 6,
+    payment_uploaded: 6,
+    active: 6
+  }
+  return map[status] || 2
+}
+
 const clerkRejectVisible = ref(false)
 const clerkRejectReason = ref('')
+const uwCompleteVisible = ref(false)
+const uwCompleteRow = ref(null)
+const uwForm = reactive({
+  decision: 'approved',
+  policyNo: '',
+  insuranceCompany: '',
+  coverageAmount: 0,
+  premium: 0,
+  opinion: '',
+  policyDetailFile: [],
+  rateFile: [],
+  countryCategoryFile: []
+})
 
 const ocrDialogVisible = ref(false)
 const ocrExternalId = ref(null)
@@ -1112,7 +1327,31 @@ const handleReset = () => { searchParams.value = { enterpriseName: '', buyerName
 const handlePageChange = (pageInfo) => { pagination.current = pageInfo.current; pagination.pageSize = pageInfo.pageSize }
 const handlePolicyPageChange = (pageInfo) => { policyPagination.current = pageInfo.current; policyPagination.pageSize = pageInfo.pageSize }
 
-const handleView = (row) => { currentRow.value = row; detailMode.value = 'view'; detailVisible.value = true }
+const handleView = (row) => {
+  currentRow.value = row
+  detailMode.value = 'view'
+  // Setup flow progress data from store processTasks if available
+  const task = store.processTasks.find(t => t.id === row.id + '_flow')
+  if (task) {
+    clerkCurrentStep.value = task.currentStep || getClerkCurrentStep(row.status)
+    clerkTaskCompleted.value = task.status === 'completed'
+    for (let i = 0; i < clerkFlowStepOptions.length; i++) {
+      clerkStepInfo[i] = task.stepInfo[i] || { handler: '', startTime: '', endTime: '' }
+    }
+  } else {
+    const step = getClerkCurrentStep(row.status)
+    clerkCurrentStep.value = step
+    clerkTaskCompleted.value = false
+    clerkStepInfo[0] = { handler: row.companyName || '客户', startTime: row.createTime || '', endTime: row.submitTime || '' }
+    for (let i = 1; i < clerkFlowStepOptions.length; i++) {
+      clerkStepInfo[i] = { handler: '', startTime: '', endTime: '' }
+    }
+    if (step >= 2) {
+      clerkStepInfo[1] = { handler: '李跟单', startTime: row.clerkReviewTime || '', endTime: '' }
+    }
+  }
+  detailVisible.value = true
+}
 const handleViewPolicy = (row) => { currentPolicy.value = row; policyDetailVisible.value = true }
 
 const handleApprove = (row) => {
@@ -1203,12 +1442,13 @@ const handleDetailApply = () => {
       startTime: fmtDt(now),
       endTime: '',
       stepsCompleted: 1,
+      currentStep: 2,
       status: 'processing',
       statusName: '进行中',
       stepOptions,
       stepInfo: [
         { handler: row.declarationSignature || row.legalRepresentative || row.contactName || '客户', startTime: fmtDt(now), endTime: fmtDt(now) },
-        { handler: '李跟单', startTime: '', endTime: '' },
+        { handler: '李跟单', startTime: fmtDt(now), endTime: '' },
         { handler: '', startTime: '', endTime: '' },
         { handler: '', startTime: '', endTime: '' },
         { handler: '', startTime: '', endTime: '' },
@@ -1262,7 +1502,13 @@ const handleDetailApply = () => {
       MessagePlugin.error(res?.message || '确认失败')
       return
     }
-    MessagePlugin.success('确认完成')
+    MessagePlugin.success('审核通过')
+    // 跟单员审核通过 → 完成资料审核(step2)，推进到资信调查(step3)
+    store.approveInsuranceTaskStep(row.id + '_flow', {
+      handler: '李跟单',
+      approvalResult: 'approved',
+      auditOpinion: '审核通过，进入资信调查阶段'
+    })
     detailVisible.value = false
   } else if (detailMode.value === 'resubmit') {
     // Customer: resubmit rejected application
@@ -1273,12 +1519,52 @@ const handleDetailApply = () => {
     }
     MessagePlugin.success('提交申请成功')
     detailVisible.value = false
+  } else if (detailMode.value === 'underwriting') {
+    // Clerk: submit to underwriting
+    const res = store.submitToUnderwriting(row.id)
+    if (!res?.ok) {
+      MessagePlugin.error(res?.message || '提交核保失败')
+      return
+    }
+    MessagePlugin.success('已提交核保')
+    // 提交核保 → 状态更新核保中，流程已在资信调查阶段，无需再次推进
+    detailVisible.value = false
   }
 }
 
 const handleClerkApprove = (row) => {
   currentRow.value = row
   detailMode.value = 'clerk_approve'
+  // Setup flow progress data - prefer store processTasks if available
+  const task = store.processTasks.find(t => t.id === row.id + '_flow')
+  if (task) {
+    clerkCurrentStep.value = task.currentStep || getClerkCurrentStep(row.status)
+    clerkTaskCompleted.value = task.status === 'completed'
+    for (let i = 0; i < clerkFlowStepOptions.length; i++) {
+      clerkStepInfo[i] = task.stepInfo[i] || { handler: '', startTime: '', endTime: '' }
+    }
+  } else {
+    const step = getClerkCurrentStep(row.status)
+    clerkCurrentStep.value = step
+    clerkTaskCompleted.value = false
+    clerkStepInfo[0] = {
+      handler: row.companyName || (row.submitter || '客户'),
+      startTime: row.createTime || '',
+      endTime: row.submitTime || row.clerkReviewTime || ''
+    }
+    for (let i = 1; i < clerkFlowStepOptions.length; i++) {
+      clerkStepInfo[i] = { handler: '', startTime: '', endTime: '' }
+    }
+    const now = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    if (step >= 2) {
+      clerkStepInfo[1] = { handler: '李跟单', startTime: row.clerkReviewTime || '', endTime: '' }
+    }
+    if (step >= 3) {
+      clerkStepInfo[1].endTime = row.clerkReviewTime || fmt(now)
+    }
+  }
   // Populate OCR edit form if it's an OCR source record
   if (row?.ocrSource) {
     ocrEditForm.value = {
@@ -1308,6 +1594,15 @@ const handleClerkReject = (row) => {
   clerkRejectReason.value = ''
 }
 
+const handleClerkRejectFromDialog = () => {
+  // 关闭审核弹窗，打开驳回弹窗
+  const row = currentRow.value
+  if (row) {
+    detailVisible.value = false
+    handleClerkReject(row)
+  }
+}
+
 const handleClerkRejectConfirm = () => {
   if (!clerkRejectReason.value.trim()) {
     MessagePlugin.warning('请输入驳回原因')
@@ -1320,6 +1615,174 @@ const handleClerkRejectConfirm = () => {
   }
   MessagePlugin.success('已驳回')
   clerkRejectVisible.value = false
+}
+
+const handleSubmitUnderwriting = (row) => {
+  currentRow.value = row
+  detailMode.value = 'underwriting'
+  detailVisible.value = true
+}
+
+const handleUnderwritingComplete = (row) => {
+  uwCompleteRow.value = row
+  uwForm.decision = 'approved'
+  uwForm.policyNo = ''
+  uwForm.insuranceCompany = ''
+  uwForm.coverageAmount = Number(row.insuranceAmount || 0)
+  uwForm.premium = Math.round(Number(row.insuranceAmount || 0) * 0.0011)
+  uwForm.opinion = ''
+  uwForm.policyDetailFile = []
+  uwForm.rateFile = []
+  uwForm.countryCategoryFile = []
+  uwCompleteVisible.value = true
+}
+
+const handleUwConfirm = () => {
+  const row = uwCompleteRow.value
+  if (!row) return
+  if (!uwForm.policyNo.trim()) {
+    MessagePlugin.warning('请输入保单号')
+    return
+  }
+  const res = store.completeUnderwriting(row.id, {
+    decision: uwForm.decision,
+    policyNo: uwForm.policyNo,
+    insuranceCompany: uwForm.insuranceCompany,
+    coverageAmount: uwForm.coverageAmount,
+    premium: uwForm.premium,
+    opinion: uwForm.opinion,
+    policyDetailFile: uwForm.policyDetailFile,
+    rateFile: uwForm.rateFile,
+    countryCategoryFile: uwForm.countryCategoryFile
+  })
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '操作失败')
+    return
+  }
+  MessagePlugin.success('核保已通过')
+  // 确保流程任务存在，不存在则创建
+  let task = store.processTasks.find(t => t.id === row.id + '_flow')
+  if (!task) {
+    const now = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    const fmtDt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    const stepOptions = [
+      { label: '提交投保申请', value: 1 },
+      { label: '资料审核', value: 2 },
+      { label: '资信调查', value: 3 },
+      { label: '信用限额审批', value: 4 },
+      { label: '核保出单', value: 5 },
+      { label: '缴费生效', value: 6 }
+    ]
+    store.processTasks.unshift({
+      id: row.id + '_flow',
+      policyNo: row.policyNo || '',
+      companyName: row.companyName || '',
+      taskType: '投保流程',
+      startTime: fmtDt(now),
+      endTime: '',
+      stepsCompleted: 2,
+      currentStep: 3,
+      status: 'processing',
+      statusName: '进行中',
+      stepOptions,
+      stepInfo: [
+        { handler: row.declarationSignature || row.legalRepresentative || row.contactName || '客户', startTime: fmtDt(now), endTime: fmtDt(now) },
+        { handler: '李跟单', startTime: fmtDt(now), endTime: fmtDt(now) },
+        { handler: '', startTime: fmtDt(now), endTime: '' },
+        { handler: '', startTime: '', endTime: '' },
+        { handler: '', startTime: '', endTime: '' },
+        { handler: '', startTime: '', endTime: '' }
+      ],
+      formData: {
+        step1: { approvalResult: 'approved', auditOpinion: '投保申请已提交' },
+        step2: { approvalResult: 'approved', auditOpinion: '资料审核通过' },
+        step3: { approvalResult: '', auditOpinion: '' },
+        step4: { checkedItems: [], approvalResult: '', auditOpinion: '' },
+        step5: { policyNo: '', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
+        step6: { premiumAmount: '', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
+      },
+      step2Docs: { applicationForm: true, buyerInfoForm: true },
+      planLabels: { planA: '方案A - 短期出口信用保险', planB: '方案B - 中长期出口信用保险', planC: '方案C - 国内贸易信用保险' },
+      companyLabels: { company1: '中国出口信用保险公司', company2: '平安财产保险', company3: '太平洋财产保险' }
+    })
+    task = store.processTasks[0]
+  }
+  // 核保通过 → 连续推进: 资信调查(step3)完成 → 信用限额审批(step4)完成 → 核保出单(step5)
+  store.approveInsuranceTaskStep(row.id + '_flow', {
+    handler: '李跟单',
+    approvalResult: 'approved',
+    auditOpinion: '核保通过，资信调查完成'
+  })
+  store.approveInsuranceTaskStep(row.id + '_flow', {
+    handler: '李跟单',
+    approvalResult: 'approved',
+    auditOpinion: '核保通过，信用限额审批完成，进入核保出单阶段'
+  })
+  uwCompleteVisible.value = false
+  uwCompleteRow.value = null
+}
+
+const handleSyncToPlatform = (row) => {
+  const res = store.syncUnderwritingToPlatform(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '同步失败')
+    return
+  }
+  store.touchInsuranceApplications()
+  // 确保流程任务存在
+  if (!store.processTasks.some(t => t.id === row.id + '_flow')) {
+    const now = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    const fmtDt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    const stepOptions = [
+      { label: '提交投保申请', value: 1 },
+      { label: '资料审核', value: 2 },
+      { label: '资信调查', value: 3 },
+      { label: '信用限额审批', value: 4 },
+      { label: '核保出单', value: 5 },
+      { label: '缴费生效', value: 6 }
+    ]
+    store.processTasks.unshift({
+      id: row.id + '_flow',
+      policyNo: row.policyNo || '',
+      companyName: row.companyName || '',
+      taskType: '投保流程',
+      startTime: fmtDt(now),
+      endTime: '',
+      stepsCompleted: 4,
+      currentStep: 5,
+      status: 'processing',
+      statusName: '进行中',
+      stepOptions,
+      stepInfo: [
+        { handler: row.declarationSignature || row.legalRepresentative || row.contactName || '客户', startTime: fmtDt(now), endTime: fmtDt(now) },
+        { handler: '李跟单', startTime: fmtDt(now), endTime: fmtDt(now) },
+        { handler: '系统', startTime: fmtDt(now), endTime: fmtDt(now) },
+        { handler: '系统', startTime: fmtDt(now), endTime: fmtDt(now) },
+        { handler: '', startTime: fmtDt(now), endTime: '' },
+        { handler: '', startTime: '', endTime: '' }
+      ],
+      formData: {
+        step1: { approvalResult: 'approved', auditOpinion: '投保申请已提交' },
+        step2: { approvalResult: 'approved', auditOpinion: '资料审核通过' },
+        step3: { approvalResult: 'approved', auditOpinion: '资信调查完成' },
+        step4: { checkedItems: [], approvalResult: 'approved', auditOpinion: '信用限额审批完成' },
+        step5: { policyNo: '', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
+        step6: { premiumAmount: '', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
+      },
+      step2Docs: { applicationForm: true, buyerInfoForm: true },
+      planLabels: { planA: '方案A - 短期出口信用保险', planB: '方案B - 中长期出口信用保险', planC: '方案C - 国内贸易信用保险' },
+      companyLabels: { company1: '中国出口信用保险公司', company2: '平安财产保险', company3: '太平洋财产保险' }
+    })
+  }
+  // 同步保单 → 完成核保出单(step5)，推进到缴费生效(step6)
+  store.approveInsuranceTaskStep(row.id + '_flow', {
+    handler: '跟单员',
+    approvalResult: 'approved',
+    auditOpinion: '保单已同步至平台，进入缴费生效阶段'
+  })
+  MessagePlugin.success('保单已同步至平台')
 }
 
 const handlePolicyChange = (row) => { currentPolicy.value = row; changeVisible.value = true }
@@ -1466,6 +1929,21 @@ const confirmExternalClerkReject = () => {
 const handleExternalPageChange = (pageInfo) => {
   externalPagination.current = pageInfo.current
   externalPagination.pageSize = pageInfo.pageSize
+}
+
+// ===== Notifications (站内信) =====
+const notificationVisible = ref(false)
+const notificationList = computed(() => {
+  return (store.notifications || []).filter(n => n.toRole === 'clerk')
+})
+const unreadNotificationCount = computed(() => {
+  return notificationList.value.filter(n => !n.read).length
+})
+
+const handleMarkNotificationRead = (notification) => {
+  if (!notification.read) {
+    notification.read = true
+  }
 }
 
 onMounted(() => { store.ensureSeeded() })
@@ -1726,6 +2204,65 @@ onMounted(() => { store.ensureSeeded() })
 .edit-form-row :deep(.t-input-adornment) {
   flex: 1;
 }
+.uw-modal {
+  padding: 8px 0;
+  .uw-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .uw-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    .uw-label {
+      min-width: 90px;
+      font-size: 13px;
+      color: #333;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    :deep(.t-input),
+    :deep(.t-input-number),
+    :deep(.t-select),
+    :deep(.t-textarea) {
+      flex: 1;
+    }
+    :deep(.t-input-adornment) {
+      flex: 1;
+    }
+  }
+  .uw-attachments {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+  }
+  .uw-attach-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    .uw-label {
+      min-width: 110px;
+      font-size: 13px;
+      color: #333;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    :deep(.t-upload) {
+      flex: 1;
+    }
+  }
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
 .edit-badge {
   display: inline-block;
   font-size: 11px;
@@ -1838,5 +2375,144 @@ onMounted(() => { store.ensureSeeded() })
   max-width: 65%;
   line-height: 1.6;
   word-break: break-word;
+}
+
+.notification-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+.notification-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.notification-item:hover {
+  background: #f5f5f5;
+}
+.notification-item.unread {
+  background: #f0f9ff;
+  border-left: 3px solid #1890ff;
+}
+.notification-item.unread:hover {
+  background: #e6f7ff;
+}
+.notif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.notif-type {
+  font-size: 12px;
+  color: #1890ff;
+  background: #e6f7ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.notif-time {
+  font-size: 12px;
+  color: #999;
+}
+.notif-body {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+}
+
+.clerk-flow-section {
+  margin-bottom: 16px;
+}
+.clerk-flow-progress {
+  margin: 16px 0 8px;
+  overflow-x: auto;
+}
+.clerk-flow-steps {
+  display: flex;
+  align-items: flex-start;
+  min-width: 660px;
+  padding: 8px 0;
+}
+.clerk-flow-step-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 80px;
+}
+.clerk-flow-step-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  background: #f0f0f0;
+  color: #999;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+.clerk-flow-step-dot.completed {
+  background: #00a870;
+  color: #fff;
+}
+.clerk-flow-step-dot.active {
+  background: #0052d9;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 82, 217, 0.15);
+}
+.clerk-flow-step-num,
+.clerk-flow-step-check {
+  line-height: 1;
+}
+.clerk-flow-step-label {
+  font-size: 12px;
+  color: #999;
+  margin-top: 8px;
+  text-align: center;
+  font-weight: 500;
+}
+.clerk-flow-step-label.active {
+  color: #0052d9;
+  font-weight: 600;
+}
+.clerk-flow-step-label.completed {
+  color: #00a870;
+}
+.clerk-flow-step-status {
+  margin-top: 4px;
+}
+.clerk-flow-step-role {
+  margin-top: 4px;
+}
+.clerk-flow-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 6px;
+  color: #d0d0d0;
+  flex-shrink: 0;
+}
+.clerk-flow-arrow.completed {
+  color: #00a870;
+}
+.clerk-flow-step-info {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.clerk-flow-step-handler {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+}
+.clerk-flow-step-time {
+  font-size: 10px;
+  color: #999;
+  white-space: nowrap;
 }
 </style>

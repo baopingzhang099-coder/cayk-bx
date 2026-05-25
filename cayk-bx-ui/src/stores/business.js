@@ -127,2184 +127,17 @@ export const useBusinessStore = defineStore('business', {
     },
     ensureSeeded() {
       if (this.insuranceApplications.length > 0) return
-      this.insuranceApplications = [
-        {
-          id: 'TB2026001',
-          // 客户基础信息
-          companyName: '深圳XX国际贸易有限公司',
-          unifiedSocialCreditCode: '91440300XXXXXXXXXX',
-          registeredAddress: '深圳市南山区科技园南区XX大厦12楼',
-          businessAddress: '深圳市南山区科技园南区XX大厦12楼',
-          organizationCode: 'G101234-8',
-          establishmentYear: '2008',
-          legalRepresentative: '张伟华',
-          enterpriseNature: '民营企业',
-          businessType: '贸易公司',
-          contactName: '张经理',
-          contactPosition: '出口业务经理',
-          contactPhone: '138****8888',
-          companyEmail: 'zhang@szxx-trade.com',
-          // 业务信息
-          exportBusinessHistory: '3年以上',
-          exportMainCountries: ['美国', '加拿大', '墨西哥'],
-          mainExportIndustry: '电子',
-          expectedInsurableTurnover: 8000000,
-          turnoverCurrency: 'USD',
-          mainPaymentMethods: 'OA',
-          mostUsedPaymentTerm: 60,
-          longestPaymentTerm: 90,
-          hasLongerCreditPeriod: '否',
-          longestCreditPeriod: null,
-          // 业务信息扩展（新增）
-          industrySubCategory: '计算机及通讯',
-          relatedCompanies: '深圳XX电子科技有限公司（兄弟公司）',
-          existingCreditPolicy: '否',
-          existingCreditPolicyInsurer: '',
-          existingCreditPolicyNo: '',
-          existingCreditPolicyRenewalDate: '',
-          // 历史业务情况（新增）
-          threeYearExportAmount23: 5000,
-          threeYearExportAmount24: 5500,
-          threeYearExportAmount25: 6000,
-          threeYearCreditSales23: 3500,
-          threeYearCreditSales24: 4000,
-          threeYearCreditSales25: 4500,
-          exportBusinessSpecial: ['长期合同'],
-          cashTransactionRatio: 5,
-          lcTransactionRatio: 15,
-          relatedPartyRatio: 10,
-          creditTransactionRatio: 60,
-          collectionRatio: 10,
-          // 投保核心需求
-          insuranceType: '短期出口信用保险',
-          preferredInsuranceOrgType: '政策性保险机构',
-          insuranceBusinessScope: '全部适保业务',
-          insuranceCurrency: 'USD',
-          insuranceAmount: 500000,
-          expectedInsurancePeriod: ['2026-06-01', '2027-05-31'],
-          insurancePrimaryPurpose1: '保障出口收汇安全',
-          insurancePrimaryPurpose2: '获取银行贸易融资',
-          insurancePrimaryPurpose3: '取得海外买方信息',
-          insurancePrimaryPurpose4: '提升公司内部管理',
-          // 买方信息
-          buyerName: 'ABC Corporation',
-          buyerCountry: '美国',
-          buyerAddress: '123 Broadway, New York, NY 10006, USA',
-          cooperationYearsWithBuyer: '3年以上',
-          last12MonthExportAmount: 520,
-          last12MonthCreditSalesAmount: 480,
-          expectedNext12MonthCreditSales: 600,
-          creditSalesCurrency: 'USD',
-          paymentTerms: '发送货物后60天',
-          appliedCreditLimit: 500000,
-          creditLimitCurrency: 'USD',
-          lcIssuingBank: '',
-          // 买方补充信息（新增）
-          historicalOverdueStatus: '无逾期',
-          buyerHasPublicFinancials: '是',
-          buyerIsListedCompany: '是',
-          buyerHasNegativeNews: '否',
-          buyerHasNegativeNewsDesc: '',
-          designatedInsuranceCompany: '否',
-          designatedInsuranceCompanyName: '',
-          // 贸易基础信息
-          exportProductCategory: '消费电子产品及零部件',
-          involvesControlledGoods: '否',
-          controlledGoodsDescription: '',
-          hasTitleRetentionClause: '否',
-          // 补充资料
-          businessLicense: [{ name: '营业执照.pdf' }],
-          importExportQualification: [{ name: '进出口资质.pdf' }],
-          tradeContract: [{ name: '贸易合同_ABC2025001.pdf' }],
-          customsDeclaration: [{ name: '报关单_20260501.pdf' }],
-          exportLicense: null,
-          authorizationDocument: [{ name: '授权文件.pdf' }],
-          // 投保声明
-          declarationSignature: '张伟华',
-          declarationDate: '2026-05-01',
-          companySeal: [{ name: '公章文件.pdf' }],
-          // 状态
-          status: 'rejected',
-          rejectReason: '缺少贸易合同和报关单等核心证明文件，请补充后重新提交。',
-          createTime: '2026-05-01',
-          updateTime: '2026-05-01 10:30:00'
-        },
-        {
-          id: 'TB2026002',
-          // 客户基础信息
-          companyName: '上海YY进出口公司',
-          unifiedSocialCreditCode: '91310000XXXXXXXXXX',
-          registeredAddress: '上海市浦东新区陆家嘴金融区XX号',
-          businessAddress: '上海市浦东新区陆家嘴金融区XX号',
-          organizationCode: 'G201234-5',
-          establishmentYear: '2012',
-          legalRepresentative: '李明辉',
-          enterpriseNature: '民营企业',
-          businessType: '贸易代理',
-          contactName: '李经理',
-          contactPosition: '业务主管',
-          contactPhone: '139****6666',
-          companyEmail: 'li@shanghai-yy.com',
-          // 业务信息
-          exportBusinessHistory: '1-3年',
-          exportMainCountries: ['德国', '法国', '荷兰'],
-          mainExportIndustry: '机械',
-          expectedInsurableTurnover: 5000000,
-          turnoverCurrency: 'USD',
-          mainPaymentMethods: 'OA',
-          mostUsedPaymentTerm: 90,
-          longestPaymentTerm: 120,
-          hasLongerCreditPeriod: '是',
-          longestCreditPeriod: 150,
-          // 业务信息扩展（新增）
-          industrySubCategory: '家用电器',
-          relatedCompanies: '',
-          existingCreditPolicy: '否',
-          existingCreditPolicyInsurer: '',
-          existingCreditPolicyNo: '',
-          existingCreditPolicyRenewalDate: '',
-          // 历史业务情况（新增）
-          threeYearExportAmount23: 3000,
-          threeYearExportAmount24: 3500,
-          threeYearExportAmount25: 4000,
-          threeYearCreditSales23: 2500,
-          threeYearCreditSales24: 2800,
-          threeYearCreditSales25: 3200,
-          exportBusinessSpecial: [],
-          cashTransactionRatio: 10,
-          lcTransactionRatio: 20,
-          relatedPartyRatio: 5,
-          creditTransactionRatio: 55,
-          collectionRatio: 10,
-          // 投保核心需求
-          insuranceType: '短期出口信用保险',
-          preferredInsuranceOrgType: '政策性保险机构',
-          insuranceBusinessScope: '部分适保业务-全部非信用证',
-          insuranceCurrency: 'USD',
-          insuranceAmount: 300000,
-          expectedInsurancePeriod: ['2026-05-01', '2027-04-30'],
-          insurancePrimaryPurpose1: '保障出口收汇安全',
-          insurancePrimaryPurpose2: '获取银行贸易融资',
-          insurancePrimaryPurpose3: '提升公司内部管理',
-          insurancePrimaryPurpose4: '取得海外买方信息',
-          // 买方信息
-          buyerName: 'DEF GmbH',
-          buyerCountry: '德国',
-          buyerAddress: 'Industriestr. 100, 20099 Hamburg, Germany',
-          cooperationYearsWithBuyer: '1-3年',
-          last12MonthExportAmount: 380,
-          last12MonthCreditSalesAmount: 350,
-          expectedNext12MonthCreditSales: 450,
-          creditSalesCurrency: 'USD',
-          paymentTerms: '开具发票后90天',
-          appliedCreditLimit: 300000,
-          creditLimitCurrency: 'USD',
-          lcIssuingBank: '',
-          // 买方补充信息（新增）
-          historicalOverdueStatus: '有逾期但已结清',
-          buyerHasPublicFinancials: '是',
-          buyerIsListedCompany: '否',
-          buyerHasNegativeNews: '否',
-          buyerHasNegativeNewsDesc: '',
-          designatedInsuranceCompany: '否',
-          designatedInsuranceCompanyName: '',
-          // 贸易基础信息
-          exportProductCategory: '工业机械设备及配件',
-          involvesControlledGoods: '否',
-          controlledGoodsDescription: '',
-          hasTitleRetentionClause: '是',
-          // 补充资料
-          businessLicense: [{ name: '营业执照.pdf' }],
-          importExportQualification: [{ name: '进出口资质.pdf' }],
-          tradeContract: [{ name: '贸易合同_DEF2025001.pdf' }],
-          customsDeclaration: [{ name: '报关单_20260428.pdf' }],
-          exportLicense: null,
-          authorizationDocument: [{ name: '授权文件.pdf' }],
-          // 投保声明
-          declarationSignature: '李明辉',
-          declarationDate: '2026-04-28',
-          companySeal: [{ name: '公章文件.pdf' }],
-          // 状态
-          status: 'pending_review',
-          createTime: '2026-04-28',
-          updateTime: '2026-05-05 14:20:00'
-        },
-        {
-          id: 'TB2026003',
-          // 客户基础信息
-          companyName: '北京ZZ贸易集团',
-          unifiedSocialCreditCode: '91110000XXXXXXXXXX',
-          registeredAddress: '北京市朝阳区国贸CBD核心区XX座35层',
-          businessAddress: '北京市朝阳区国贸CBD核心区XX座35层',
-          organizationCode: 'G301234-2',
-          establishmentYear: '2005',
-          legalRepresentative: '王建国',
-          enterpriseNature: '民营企业',
-          businessType: '贸易公司',
-          contactName: '王总监',
-          contactPosition: '业务总监',
-          contactPhone: '137****9999',
-          companyEmail: 'wang@zz-trade.com',
-          // 业务信息
-          exportBusinessHistory: '3年以上',
-          exportMainCountries: ['英国', '德国', '法国'],
-          mainExportIndustry: '机械',
-          expectedInsurableTurnover: 6000000,
-          turnoverCurrency: 'USD',
-          mainPaymentMethods: 'OA',
-          mostUsedPaymentTerm: 60,
-          longestPaymentTerm: 120,
-          hasLongerCreditPeriod: '是',
-          longestCreditPeriod: 180,
-          // 业务信息扩展（新增）
-          industrySubCategory: '家用电器',
-          relatedCompanies: '北京ZZ电器有限公司（母公司）',
-          existingCreditPolicy: '是',
-          existingCreditPolicyInsurer: '太保产险',
-          existingCreditPolicyNo: 'PI2025004321',
-          existingCreditPolicyRenewalDate: '2027-03-31',
-          // 历史业务情况（新增）
-          threeYearExportAmount23: 8000,
-          threeYearExportAmount24: 7500,
-          threeYearExportAmount25: 7200,
-          threeYearCreditSales23: 5000,
-          threeYearCreditSales24: 4800,
-          threeYearCreditSales25: 4500,
-          exportBusinessSpecial: ['季节性销售'],
-          cashTransactionRatio: 15,
-          lcTransactionRatio: 25,
-          relatedPartyRatio: 20,
-          creditTransactionRatio: 30,
-          collectionRatio: 10,
-          // 投保核心需求
-          insuranceType: '短期出口信用保险',
-          preferredInsuranceOrgType: '商业性保险机构',
-          insuranceBusinessScope: '全部适保业务',
-          insuranceCurrency: 'USD',
-          insuranceAmount: 400000,
-          expectedInsurancePeriod: ['2026-04-01', '2027-03-31'],
-          insurancePrimaryPurpose1: '保障出口收汇安全',
-          insurancePrimaryPurpose2: '获取银行贸易融资',
-          insurancePrimaryPurpose3: '提升公司内部管理',
-          insurancePrimaryPurpose4: '取得海外买方信息',
-          // 买方信息
-          buyerName: 'GHI Ltd',
-          buyerCountry: '英国',
-          buyerAddress: '20 Liverpool Street, London EC2M 7PD, UK',
-          cooperationYearsWithBuyer: '3年以上',
-          last12MonthExportAmount: 300,
-          last12MonthCreditSalesAmount: 250,
-          expectedNext12MonthCreditSales: 350,
-          creditSalesCurrency: 'USD',
-          paymentTerms: '发送货物后60天',
-          appliedCreditLimit: 350000,
-          creditLimitCurrency: 'USD',
-          lcIssuingBank: '',
-          // 买方补充信息（新增）
-          historicalOverdueStatus: '无逾期',
-          buyerHasPublicFinancials: '是',
-          buyerIsListedCompany: '是',
-          buyerHasNegativeNews: '否',
-          buyerHasNegativeNewsDesc: '',
-          designatedInsuranceCompany: '是',
-          designatedInsuranceCompanyName: '中国信保',
-          // 贸易基础信息
-          exportProductCategory: '机械设备及零部件',
-          involvesControlledGoods: '否',
-          controlledGoodsDescription: '',
-          hasTitleRetentionClause: '否',
-          // 补充资料
-          businessLicense: [{ name: '营业执照.jpg' }],
-          importExportQualification: [{ name: '进出口资质.jpg' }],
-          tradeContract: [{ name: '贸易合同_GHI2025001.pdf' }],
-          customsDeclaration: [{ name: '报关单_20260315.pdf' }],
-          exportLicense: null,
-          authorizationDocument: [{ name: '授权文件.pdf' }],
-          // 投保声明
-          declarationSignature: '王建国',
-          declarationDate: '2026-03-15',
-          companySeal: [{ name: '公章文件.jpg' }],
-          // 状态
-          status: 'approved',
-          createTime: '2026-03-15',
-          updateTime: '2026-04-20 11:00:00',
-          // 保单数字化信息 - 基础信息
-          policyNo: 'PI2026005678',
-          insuranceCompanyName: '太保产险',
-          insurerName: '太保产险北京分公司',
-          insuredName: '北京ZZ贸易集团',
-          beneficiaryName: '北京ZZ贸易集团',
-          policyStartDate: '2026-04-01',
-          policyEndDate: '2027-03-31',
-          policyPeriod: '12个月',
-          renewalFlag: '否',
-          countryRiskVersion: '2026版',
-          clauseVersion: '短期出口信用保险条款v2025',
-          agreedCoverageScope: '全部适保业务',
-          tradeBusinessType: '货物贸易',
-          // 保单数字化信息 - 责任限额
-          maxCompensationLimit: 400000,
-          buyerCreditLimit: 300000,
-          coveredRisks: '商业风险—买方破产或无力偿付债务；商业风险—买方拖欠；政治风险',
-          limitIdlePeriod: 60,
-          selfControlledLimit: '条件：历史交易良好；限额：单笔不超过50000；赔偿比例：80%',
-          deductible: 5000,
-          // 保单数字化信息 - 申报规则
-          declarationMethod: '月度申报',
-          declarationCycle: '月度',
-          declarationDeadline: '次月15日',
-          // 保单数字化信息 - 费用管理
-          premiumRate: 2.5,
-          premiumPaymentDeadline: '保险起期前30日',
-          premiumPaymentMethod: '一次性',
-          premium: 10000,
-          surrenderFee: null,
-          recoveryPayee: '被保险人',
-          // 保单数字化信息 - 保单文件
-          policyFile: [{ name: 'PI2026005678_保单.pdf', url: '#', size: 2456789, type: 'application/pdf' }],
-          endorsementFile: []
-        },
-        {
-          id: 'TB2026005',
-          companyName: '杭州XX机电有限公司',
-          unifiedSocialCreditCode: '91330100XXXXXXXXXX',
-          registeredAddress: '杭州市滨江区科技园区XX路XX号',
-          businessAddress: '杭州市滨江区科技园区XX路XX号',
-          organizationCode: 'G501234-7',
-          establishmentYear: '2015',
-          legalRepresentative: '刘建华',
-          enterpriseNature: '民营企业',
-          businessType: '制造业',
-          contactName: '刘经理',
-          contactPosition: '销售总监',
-          contactPhone: '137****4444',
-          companyEmail: 'liu@hz-xx.com',
-          exportBusinessHistory: '3年以上',
-          exportMainCountries: ['澳大利亚', '新西兰'],
-          mainExportIndustry: '机电',
-          expectedInsurableTurnover: 4000000,
-          turnoverCurrency: 'USD',
-          mainPaymentMethods: 'L/C',
-          mostUsedPaymentTerm: 45,
-          longestPaymentTerm: 90,
-          hasLongerCreditPeriod: '否',
-          // 业务信息扩展（新增）
-          industrySubCategory: '机电设备',
-          relatedCompanies: '',
-          existingCreditPolicy: '否',
-          existingCreditPolicyInsurer: '',
-          existingCreditPolicyNo: '',
-          existingCreditPolicyRenewalDate: '',
-          // 历史业务情况（新增）
-          threeYearExportAmount23: 2000,
-          threeYearExportAmount24: 2500,
-          threeYearExportAmount25: 3000,
-          threeYearCreditSales23: 1500,
-          threeYearCreditSales24: 1800,
-          threeYearCreditSales25: 2200,
-          exportBusinessSpecial: ['长期合同'],
-          cashTransactionRatio: 5,
-          lcTransactionRatio: 60,
-          relatedPartyRatio: 5,
-          creditTransactionRatio: 20,
-          collectionRatio: 10,
-          insuranceType: '短期出口信用保险',
-          preferredInsuranceOrgType: '政策性保险机构',
-          insuranceBusinessScope: '全部适保业务',
-          insuranceCurrency: 'USD',
-          insuranceAmount: 300000,
-          expectedInsurancePeriod: ['2026-05-15', '2027-05-14'],
-          insurancePrimaryPurpose1: '保障出口收汇安全',
-          insurancePrimaryPurpose2: '获取银行贸易融资',
-          buyerName: 'XYZ Pty Ltd',
-          buyerCountry: '澳大利亚',
-          buyerAddress: '123 George Street, Sydney NSW 2000, Australia',
-          cooperationYearsWithBuyer: '1-3年',
-          last12MonthExportAmount: 280,
-          last12MonthCreditSalesAmount: 240,
-          expectedNext12MonthCreditSales: 320,
-          creditSalesCurrency: 'USD',
-          paymentTerms: 'L/C at sight',
-          appliedCreditLimit: 300000,
-          creditLimitCurrency: 'USD',
-          // 买方补充信息（新增）
-          historicalOverdueStatus: '无逾期',
-          buyerHasPublicFinancials: '否',
-          buyerIsListedCompany: '否',
-          buyerHasNegativeNews: '否',
-          buyerHasNegativeNewsDesc: '',
-          designatedInsuranceCompany: '否',
-          designatedInsuranceCompanyName: '',
-          exportProductCategory: '机电设备',
-          involvesControlledGoods: '否',
-          hasTitleRetentionClause: '否',
-          businessLicense: [{ name: '营业执照.pdf' }],
-          importExportQualification: [{ name: '进出口资质.pdf' }],
-          tradeContract: [{ name: '贸易合同_XYZ2026001.pdf' }],
-          customsDeclaration: [{ name: '报关单_20260510.pdf' }],
-          authorizationDocument: [{ name: '授权文件.pdf' }],
-          declarationSignature: '刘建华',
-          declarationDate: '2026-05-15',
-          companySeal: [{ name: '公章文件.pdf' }],
-          status: 'approved',
-          createTime: '2026-05-15',
-          updateTime: '2026-05-18 09:00:00',
-          policyNo: 'PI2026005679',
-          insuranceCompanyName: '中国信保',
-          insurerName: '中国信保浙江分公司',
-          insuredName: '杭州XX机电有限公司',
-          beneficiaryName: '杭州XX机电有限公司',
-          policyStartDate: '2026-05-15',
-          policyEndDate: '2027-05-14',
-          policyPeriod: '12个月',
-          maxCompensationLimit: 300000,
-          declarationMethod: '月度申报',
-          declarationCycle: '月度',
-          declarationDeadline: '次月15日',
-          premiumRate: 2.0,
-          premium: 6000,
-          policyFile: [{ name: 'PI2026005679_保单.pdf', url: '#', size: 1895678, type: 'application/pdf' }],
-          endorsementFile: [{ name: '批单_20260518_001.pdf', url: '#', size: 567890, type: 'application/pdf' }]
-        },
-        {
-          id: 'TB2026006',
-          // 客户基础信息
-          companyName: '四川WW食品进出口有限公司',
-          unifiedSocialCreditCode: '91510100XXXXXXXXXX',
-          registeredAddress: '四川省成都市高新区天府大道XX号',
-          businessAddress: '四川省成都市高新区天府大道XX号',
-          organizationCode: 'G106543-2',
-          establishmentYear: '2015',
-          legalRepresentative: '陈志强',
-          enterpriseNature: '民营企业',
-          businessType: '贸易公司',
-          contactName: '陈经理',
-          contactPosition: '外贸部经理',
-          contactPhone: '139****6789',
-          companyEmail: 'chen@ww-food-export.com',
-          // 业务信息
-          exportBusinessHistory: '3年以上',
-          exportMainCountries: ['日本', '韩国', '新加坡'],
-          mainExportIndustry: '食品',
-          expectedInsurableTurnover: 5000000,
-          turnoverCurrency: 'USD',
-          mainPaymentMethods: 'L/C',
-          mostUsedPaymentTerm: 60,
-          longestPaymentTerm: 90,
-          hasLongerCreditPeriod: '否',
-          longestCreditPeriod: null,
-          // 业务信息扩展（新增）
-          industrySubCategory: '食品',
-          relatedCompanies: '',
-          existingCreditPolicy: '否',
-          existingCreditPolicyInsurer: '',
-          existingCreditPolicyNo: '',
-          existingCreditPolicyRenewalDate: '',
-          // 历史业务情况（新增）
-          threeYearExportAmount23: 1500,
-          threeYearExportAmount24: 1800,
-          threeYearExportAmount25: 2200,
-          threeYearCreditSales23: 800,
-          threeYearCreditSales24: 1000,
-          threeYearCreditSales25: 1400,
-          exportBusinessSpecial: ['季节性销售', '长期合同'],
-          cashTransactionRatio: 20,
-          lcTransactionRatio: 50,
-          relatedPartyRatio: 5,
-          creditTransactionRatio: 20,
-          collectionRatio: 5,
-          // 投保核心需求
-          insuranceType: '短期出口信用保险',
-          preferredInsuranceOrgType: '政策性保险机构',
-          insuranceBusinessScope: '全部适保业务',
-          insuranceCurrency: 'USD',
-          insuranceAmount: 300000,
-          expectedInsurancePeriod: ['2026-06-01', '2027-05-31'],
-          insurancePrimaryPurpose1: '保障出口收汇安全',
-          insurancePrimaryPurpose2: '获取银行贸易融资',
-          insurancePrimaryPurpose3: '',
-          insurancePrimaryPurpose4: '',
-          // 买方信息
-          buyerName: 'Tokyo Food Supply Co., Ltd.',
-          buyerCountry: '日本',
-          buyerAddress: '東京都中央区日本橋浜町3-XX-XX',
-          cooperationYearsWithBuyer: '1-3年',
-          last12MonthExportAmount: 180,
-          last12MonthCreditSalesAmount: 160,
-          expectedNext12MonthCreditSales: 220,
-          creditSalesCurrency: 'USD',
-          paymentTerms: 'L/C at sight',
-          appliedCreditLimit: 200000,
-          creditLimitCurrency: 'USD',
-          lcIssuingBank: '三菱UFJ銀行',
-          // 买方补充信息（新增）
-          historicalOverdueStatus: '无逾期',
-          buyerHasPublicFinancials: '否',
-          buyerIsListedCompany: '否',
-          buyerHasNegativeNews: '否',
-          buyerHasNegativeNewsDesc: '',
-          designatedInsuranceCompany: '否',
-          designatedInsuranceCompanyName: '',
-          // 贸易基础信息
-          exportProductCategory: '食品及农产品',
-          involvesControlledGoods: '否',
-          controlledGoodsDescription: '',
-          hasTitleRetentionClause: '否',
-          // 补充资料
-          businessLicense: [{ name: '营业执照.pdf' }],
-          importExportQualification: [{ name: '进出口资质.pdf' }],
-          tradeContract: [{ name: '贸易合同_TFS2026001.pdf' }],
-          customsDeclaration: [{ name: '报关单_20260520.pdf' }],
-          exportLicense: null,
-          authorizationDocument: null,
-          // 投保声明
-          declarationSignature: '',
-          declarationDate: '',
-          companySeal: null,
-          // 状态
-          status: 'draft',
-          createTime: '2026-05-20',
-          updateTime: '2026-05-20 15:30:00'
-        }
-      ]
-      this.policies = [
-        {
-          id: 'P2026001',
-          policyNo: 'PI2026001234',
-          insuranceCompany: '人保财险',
-          policyholder: '深圳XX国际贸易有限公司',
-          insured: 'ABC Corporation',
-          coverageAmount: 500000,
-          premium: 12500,
-          effectiveDate: '2026-01-01',
-          expiryDate: '2027-01-01',
-          status: 'active',
-          statusName: '有效',
-          usedQuota: 320000,
-          remainingQuota: 180000
-        },
-        {
-          id: 'P2026002',
-          policyNo: 'PI2025009876',
-          insuranceCompany: '太保产险',
-          policyholder: '北京ZZ贸易集团',
-          insured: 'GHI Ltd',
-          coverageAmount: 400000,
-          premium: 10000,
-          effectiveDate: '2026-04-01',
-          expiryDate: '2027-04-01',
-          status: 'active',
-          statusName: '有效',
-          usedQuota: 150000,
-          remainingQuota: 250000
-        },
-        {
-          id: 'P2025008',
-          policyNo: 'PI2025008765',
-          insuranceCompany: '平安产险',
-          policyholder: '广州AA实业公司',
-          insured: 'JKL Co',
-          coverageAmount: 200000,
-          premium: 5000,
-          effectiveDate: '2025-10-01',
-          expiryDate: '2026-10-01',
-          status: 'expiring',
-          statusName: '即将到期',
-          usedQuota: 180000,
-          remainingQuota: 20000
-        },
-        {
-          id: 'P2026004',
-          policyNo: 'PI2026004567',
-          insuranceCompany: '中国信保',
-          policyholder: '上海YY进出口公司',
-          insured: 'DEF GmbH',
-          coverageAmount: 300000,
-          premium: 7500,
-          effectiveDate: '2026-06-01',
-          expiryDate: '2027-06-01',
-          status: 'applying',
-          statusName: '申请中',
-          usedQuota: 0,
-          remainingQuota: 300000
-        },
-        {
-          id: 'P2026005',
-          policyNo: 'PI2026005678',
-          insuranceCompany: '人保财险',
-          policyholder: '杭州CC贸易有限公司',
-          insured: 'MNO Inc',
-          coverageAmount: 250000,
-          premium: 6250,
-          effectiveDate: '2026-05-15',
-          expiryDate: '2027-05-15',
-          status: 'pending_review',
-          statusName: '待确认',
-          usedQuota: 0,
-          remainingQuota: 250000
-        },
-        {
-          id: 'P2026006',
-          policyNo: 'PI2026006789',
-          insuranceCompany: '太保产险',
-          policyholder: '成都DD商贸有限公司',
-          insured: 'PQR Ltd',
-          coverageAmount: 450000,
-          premium: 11250,
-          effectiveDate: '2026-05-20',
-          expiryDate: '2027-05-20',
-          status: 'approved',
-          statusName: '已确认',
-          usedQuota: 0,
-          remainingQuota: 450000
-        },
-        {
-          id: 'P2026007',
-          policyNo: 'PI2026009999',
-          insuranceCompany: '人保财险',
-          policyholder: '南京FF进出口有限公司',
-          insured: 'STG Ltd',
-          coverageAmount: 350000,
-          premium: 8750,
-          effectiveDate: '2026-04-01',
-          expiryDate: '2027-04-01',
-          status: 'active',
-          statusName: '有效',
-          usedQuota: 200000,
-          remainingQuota: 150000
-        },
-        {
-          id: 'P2026008',
-          policyNo: 'PI2026008888',
-          insuranceCompany: '平安产险',
-          policyholder: '武汉DD物流有限公司',
-          insured: 'UVW Corp',
-          coverageAmount: 280000,
-          premium: 7000,
-          effectiveDate: '2026-03-01',
-          expiryDate: '2027-03-01',
-          status: 'active',
-          statusName: '有效',
-          usedQuota: 150000,
-          remainingQuota: 130000
-        }
-      ]
-      this.creditLimits = [
-        {
-          id: 'CL2026001',
-          buyerName: 'ABC Corporation',
-          buyerCountry: '美国',
-          appliedLimit: 500000,
-          currency: 'USD',
-          usedLimit: 320000,
-          remainingLimit: 180000,
-          usageRate: 64,
-          paymentTerms: 'OA 60天',
-          paymentMethod: 'OA',
-          past12MonthSales: 520000,
-          cooperationYears: '3年以上',
-          status: 'active',
-          statusName: '已批复',
-          effectiveDate: '2026-02-01',
-          expiryDate: '2027-01-31',
-          lastShipmentDate: '2026-05-10',
-          idleDays: 12,
-          concentrationRate: 32
-        },
-        {
-          id: 'CL2026002',
-          buyerName: 'DEF GmbH',
-          buyerCountry: '德国',
-          appliedLimit: 300000,
-          currency: 'USD',
-          usedLimit: 150000,
-          remainingLimit: 150000,
-          usageRate: 50,
-          paymentTerms: 'OA 90天',
-          paymentMethod: 'OA',
-          past12MonthSales: 380000,
-          cooperationYears: '1-3年',
-          status: 'active',
-          statusName: '已批复',
-          effectiveDate: '2026-03-01',
-          expiryDate: '2027-02-28',
-          lastShipmentDate: '2026-05-01',
-          idleDays: 21,
-          concentrationRate: 20
-        },
-        {
-          id: 'CL2026003',
-          buyerName: 'GHI Ltd',
-          buyerCountry: '英国',
-          appliedLimit: 400000,
-          currency: 'USD',
-          usedLimit: 400000,
-          remainingLimit: 0,
-          usageRate: 100,
-          paymentTerms: 'OA 60天',
-          paymentMethod: 'OA',
-          past12MonthSales: 300000,
-          cooperationYears: '3年以上',
-          status: 'exhausted',
-          statusName: '已用罄',
-          effectiveDate: '2026-04-01',
-          expiryDate: '2027-03-31',
-          lastShipmentDate: '2026-04-28',
-          idleDays: 24,
-          concentrationRate: 25
-        },
-        {
-          id: 'CL2026004',
-          buyerName: 'JKL Co',
-          buyerCountry: '日本',
-          appliedLimit: 200000,
-          currency: 'USD',
-          usedLimit: 50000,
-          remainingLimit: 150000,
-          usageRate: 25,
-          paymentTerms: 'OA 45天',
-          paymentMethod: 'OA',
-          past12MonthSales: 250000,
-          cooperationYears: '1-3年',
-          status: 'frozen',
-          statusName: '已冻结',
-          effectiveDate: '2026-01-15',
-          expiryDate: '2027-01-14',
-          lastShipmentDate: '2026-03-10',
-          idleDays: 73,
-          freezeDate: '2026-05-10',
-          freezeReason: '买方逾期超30天且未回应催款通知',
-          canUnfreeze: false,
-          concentrationRate: 15
-        },
-        {
-          id: 'CL2026005',
-          buyerName: 'PQR Ltd',
-          buyerCountry: '新加坡',
-          appliedLimit: 350000,
-          currency: 'USD',
-          usedLimit: 0,
-          remainingLimit: 350000,
-          usageRate: 0,
-          paymentTerms: 'LC at sight',
-          paymentMethod: 'LC',
-          past12MonthSales: 280000,
-          cooperationYears: '1-3年',
-          status: 'pending',
-          statusName: '待审批',
-          effectiveDate: '',
-          expiryDate: '',
-          lastShipmentDate: null,
-          idleDays: 0,
-          concentrationRate: 18
-        },
-        {
-          id: 'CL2026006',
-          buyerName: 'MNO Inc',
-          buyerCountry: '韩国',
-          appliedLimit: 250000,
-          currency: 'USD',
-          usedLimit: 0,
-          remainingLimit: 250000,
-          usageRate: 0,
-          paymentTerms: 'OA 30天',
-          paymentMethod: 'OA',
-          past12MonthSales: 200000,
-          cooperationYears: '1年以内',
-          status: 'revoked',
-          statusName: '已撤销',
-          effectiveDate: '2026-01-01',
-          expiryDate: '2026-12-31',
-          lastShipmentDate: '2026-02-15',
-          idleDays: 96,
-          revokeDate: '2026-05-16',
-          revokeReason: '连续90天无出运，系统自动撤销',
-          concentrationRate: 12
-        },
-        {
-          id: 'CL2026007',
-          buyerName: 'STV SA',
-          buyerCountry: '法国',
-          appliedLimit: 180000,
-          currency: 'USD',
-          usedLimit: 180000,
-          remainingLimit: 0,
-          usageRate: 100,
-          paymentTerms: 'OA 60天',
-          paymentMethod: 'OA',
-          past12MonthSales: 200000,
-          cooperationYears: '1-3年',
-          status: 'expired',
-          statusName: '已过期',
-          effectiveDate: '2025-06-01',
-          expiryDate: '2026-05-31',
-          lastShipmentDate: '2026-04-15',
-          idleDays: 37,
-          concentrationRate: 22
-        }
-      ]
-      this.shipments = [
-        {
-          id: 'SD2026001',
-          declarationNo: 'SD20260510001',
-          buyerName: 'ABC Corporation',
-          relatedPolicyNo: 'PI2026001234',
-          shipmentDate: '2026-05-10',
-          destinationPort: 'New York, USA',
-          shipmentAmount: 50000,
-          currency: 'USD',
-          declarationType: 'single',
-          declarationTypeName: '逐笔申报',
-          deadline: '2026-05-25',
-          status: 'declared',
-          statusName: '已申报',
-          isOverdue: false
-        },
-        {
-          id: 'SD2026002',
-          declarationNo: 'SD20260501002',
-          buyerName: 'DEF GmbH',
-          relatedPolicyNo: 'PI2026001235',
-          shipmentDate: '2026-05-01',
-          destinationPort: 'Hamburg, Germany',
-          shipmentAmount: 30000,
-          currency: 'USD',
-          declarationType: 'single',
-          declarationTypeName: '逐笔申报',
-          deadline: '2026-05-16',
-          status: 'pending_declare',
-          statusName: '待申报',
-          isOverdue: false
-        },
-        {
-          id: 'SD2026003',
-          declarationNo: 'SD20260428003',
-          buyerName: 'GHI Ltd',
-          relatedPolicyNo: 'PI2025000987',
-          shipmentDate: '2026-04-28',
-          destinationPort: 'Hong Kong',
-          shipmentAmount: 80000,
-          currency: 'USD',
-          declarationType: 'single',
-          declarationTypeName: '逐笔申报',
-          deadline: '2026-05-01',
-          status: 'pending_declare',
-          statusName: '待申报',
-          isOverdue: true
-        },
-        {
-          id: 'SD2026004',
-          declarationNo: 'SD20260420004',
-          buyerName: 'JKL Co',
-          relatedPolicyNo: 'PI2025008765',
-          shipmentDate: '2026-04-20',
-          destinationPort: 'Tokyo, Japan',
-          shipmentAmount: 45000,
-          currency: 'USD',
-          declarationType: 'monthly',
-          declarationTypeName: '月度汇总',
-          deadline: '2026-05-10',
-          status: 'declared',
-          statusName: '已申报',
-          isOverdue: false
-        }
-      ]
-      this.shipments = this.shipments.map(normalizeShipment)
-      this.claims = [
-        {
-          id: 'CL2026001',
-          claimNo: 'CL20260520001',
-          relatedPolicyNo: 'PI2026001234',
-          insuranceCompany: '人保财险',
-          buyerName: 'ABC Corporation',
-          claimType: 'arrears',
-          claimTypeName: '买方拖欠',
-          lossDescription: '买方ABC Corporation拖欠货款USD 50,000，逾期已超过60天，多次催收无果',
-          estimatedLossAmount: 50000,
-          claimAmount: null,
-          lossDate: '2026-05-01',
-          lossCurrency: 'USD',
-          lossLocation: '深圳港',
-          currentStep: 1,
-          currentStepName: '报案提交',
-          warningLevel: 'warning',
-          clerkId: null,
-          clerkName: null,
-          delegationAgreement: [],
-          serviceFeePaid: false,
-          serviceFeeVoucher: [],
-          deductible: null,
-          claimDecision: null,
-          calculatedLoss: null,
-          payoutVoucher: [],
-          evidenceMaterials: [{ name: '催收记录.pdf', category: 'collection' }, { name: '贸易合同扫描件.pdf', category: 'contract' }],
-          relevantDocuments: [{ name: '商业发票.pdf', category: 'invoice' }, { name: '提单副本.pdf', category: 'billoflading' }],
-          rwaSyncStatus: 'pending',
-          docStatus: 'pending',
-          docReviewComment: '',
-          supplementCount: 0,
-          preparedDocs: [],
-          supplementedDocs: [],
-          clerkConfirmed: false,
-          lossNotified: false,
-          lossNotifiedTime: null,
-          insurerNotified: false,
-          insurerNotifiedTime: null,
-          status: 'pending',
-          statusName: '待接收报案',
-          createTime: '2026-05-20 09:30:00',
-          claimContact: '张三',
-          claimPhone: '13800138001',
-          claimEmail: 'zhangsan@example.com',
-          bankAccount: '中国工商银行深圳分行 6222****1234'
-        },
-        {
-          id: 'CL2026002',
-          claimNo: 'CL20260518002',
-          relatedPolicyNo: 'PI2025009876',
-          insuranceCompany: '中国信保',
-          buyerName: 'GHI Ltd',
-          claimType: 'bankruptcy',
-          claimTypeName: '破产',
-          lossDescription: '买方GHI Ltd已向当地法院申请破产保护，涉及应收账款USD 120,000',
-          estimatedLossAmount: 120000,
-          claimAmount: null,
-          lossDate: '2026-05-10',
-          lossCurrency: 'USD',
-          lossLocation: '伦敦',
-          currentStep: 1,
-          currentStepName: '报案提交',
-          warningLevel: 'danger',
-          clerkId: 'C002',
-          clerkName: '赵敏',
-          delegationAgreement: [],
-          serviceFeePaid: false,
-          serviceFeeVoucher: [],
-          deductible: null,
-          claimDecision: null,
-          calculatedLoss: null,
-          payoutVoucher: [],
-          evidenceMaterials: [{ name: '破产公告.pdf', category: 'bankruptcy' }, { name: '债权申报表.pdf', category: 'claimForm' }],
-          relevantDocuments: [{ name: '贸易合同.pdf', category: 'contract' }, { name: '应收账款明细.xlsx', category: 'receivable' }],
-          rwaSyncStatus: 'pending',
-          docStatus: 'pending',
-          docReviewComment: '',
-          supplementCount: 0,
-          preparedDocs: [],
-          supplementedDocs: [],
-          clerkConfirmed: false,
-          lossNotified: false,
-          lossNotifiedTime: null,
-          insurerNotified: true,
-          insurerNotifiedTime: '2026-05-18 15:00:00',
-          status: 'assigned',
-          statusName: '待接单',
-          createTime: '2026-05-18 10:00:00',
-          claimContact: '李四',
-          claimPhone: '13900139002',
-          claimEmail: 'lisi@example.com',
-          bankAccount: '中国建设银行深圳分行 6227****5678'
-        },
-        {
-          id: 'CL2026003',
-          claimNo: 'CL20260515003',
-          relatedPolicyNo: 'PI2025008765',
-          insuranceCompany: '太平洋保险',
-          buyerName: 'JKL Co',
-          claimType: 'rejection',
-          claimTypeName: '拒收',
-          lossDescription: '买方JKL Co以质量异议为由拒收货物，货物滞留目的港产生高额滞港费',
-          estimatedLossAmount: 35000,
-          claimAmount: null,
-          lossDate: '2026-05-08',
-          lossCurrency: 'USD',
-          lossLocation: '东京港',
-          currentStep: 1,
-          currentStepName: '报案提交',
-          warningLevel: 'safe',
-          clerkId: 'C001',
-          clerkName: '李明',
-          delegationAgreement: [],
-          serviceFeePaid: false,
-          serviceFeeVoucher: [],
-          deductible: null,
-          claimDecision: null,
-          calculatedLoss: null,
-          payoutVoucher: [],
-          evidenceMaterials: [{ name: '拒收通知函.pdf', category: 'rejectionLetter' }, { name: '质量检验报告.pdf', category: 'inspection' }],
-          relevantDocuments: [{ name: '商业发票.pdf', category: 'invoice' }, { name: '提单.pdf', category: 'billoflading' }, { name: '滞港费清单.pdf', category: 'demurrage' }],
-          rwaSyncStatus: 'pending',
-          docStatus: 'reviewing',
-          docReviewComment: '',
-          supplementCount: 0,
-          preparedDocs: [
-            { name: '可能损失通知书.pdf', category: 'appNotice' },
-            { name: '索赔申请书.pdf', category: 'claimForm' },
-            { name: '贸易合同.pdf', category: 'tradeContract' },
-            { name: '商业发票.pdf', category: 'invoice' }
-          ],
-          supplementedDocs: [],
-          clerkConfirmed: false,
-          lossNotified: false,
-          lossNotifiedTime: null,
-          insurerNotified: true,
-          insurerNotifiedTime: '2026-05-15 16:00:00',
-          status: 'pending_receive',
-          statusName: '待接收',
-          createTime: '2026-05-15 14:00:00',
-          claimContact: '王五',
-          claimPhone: '13700137003',
-          claimEmail: 'wangwu@example.com',
-          bankAccount: '中国农业银行广州分行 6228****9012'
-        },
-        {
-          id: 'CL2026004',
-          claimNo: 'CL20260512004',
-          relatedPolicyNo: 'PI2026004567',
-          insuranceCompany: '大地保险',
-          buyerName: 'MNO GmbH',
-          claimType: 'arrears',
-          claimTypeName: '买方拖欠',
-          lossDescription: '买方MNO GmbH拖欠货款USD 28,000，逾期已超90天，邮件及电话催收无效',
-          estimatedLossAmount: 28000,
-          claimAmount: null,
-          lossDate: '2026-04-20',
-          lossCurrency: 'USD',
-          lossLocation: '汉堡',
-          currentStep: 1,
-          currentStepName: '报案提交',
-          warningLevel: 'safe',
-          clerkId: 'C001',
-          clerkName: '李明',
-          delegationAgreement: [],
-          serviceFeePaid: false,
-          serviceFeeVoucher: [],
-          deductible: null,
-          claimDecision: null,
-          calculatedLoss: null,
-          payoutVoucher: [],
-          evidenceMaterials: [{ name: '催收邮件记录.pdf', category: 'collection' }],
-          relevantDocuments: [{ name: '贸易合同.pdf', category: 'contract' }, { name: '商业发票.pdf', category: 'invoice' }],
-          rwaSyncStatus: 'pending',
-          docStatus: 'passed',
-          docReviewComment: '资料完整，初审通过',
-          supplementCount: 0,
-          preparedDocs: [
-            { name: '可能损失通知书.pdf', category: 'appNotice' },
-            { name: '索赔申请书.pdf', category: 'claimForm' },
-            { name: '贸易合同.pdf', category: 'tradeContract' },
-            { name: '商业发票.pdf', category: 'invoice' }
-          ],
-          supplementedDocs: [],
-          clerkConfirmed: true,
-          lossNotified: true,
-          lossNotifiedTime: '2026-05-13 10:30:00',
-          insurerNotified: true,
-          insurerNotifiedTime: '2026-05-12 16:30:00',
-          status: 'pending_contract_sign',
-          statusName: '待签署委托合同',
-          createTime: '2026-05-12 09:00:00',
-          claimContact: '赵六',
-          claimPhone: '13600136004',
-          claimEmail: 'zhaoliu@example.com',
-          bankAccount: '招商银行上海分行 6214****3456'
-        },
-        {
-          id: 'CL2026005',
-          claimNo: 'CL20260510005',
-          relatedPolicyNo: 'PI2026005678',
-          insuranceCompany: '中国信保',
-          buyerName: 'PQR Ltd',
-          claimType: 'arrears',
-          claimTypeName: '买方拖欠',
-          lossDescription: '买方PQR Ltd拖欠货款USD 65,000，已通过三方催收仍无进展',
-          estimatedLossAmount: 65000,
-          claimAmount: null,
-          lossDate: '2026-04-01',
-          lossCurrency: 'USD',
-          lossLocation: '新加坡',
-          currentStep: 1,
-          currentStepName: '报案提交',
-          warningLevel: 'safe',
-          clerkId: 'C003',
-          clerkName: '王芳',
-          delegationAgreement: [
-            { name: '委托追偿合同_cayk_legal_2026.pdf', signed: true },
-            { name: '授权委托书_authorization_2026.pdf', signed: true }
-          ],
-          serviceFeePaid: false,
-          serviceFeeVoucher: [],
-          deductible: null,
-          claimDecision: null,
-          calculatedLoss: null,
-          payoutVoucher: [],
-          evidenceMaterials: [{ name: '催收记录汇总.pdf', category: 'collection' }, { name: '三方催收报告.pdf', category: 'thirdParty' }],
-          relevantDocuments: [{ name: '贸易合同.pdf', category: 'contract' }, { name: '形式发票.pdf', category: 'invoice' }],
-          rwaSyncStatus: 'pending',
-          docStatus: 'passed',
-          docReviewComment: '资料完整，初审通过，合同已签署',
-          supplementCount: 0,
-          preparedDocs: [
-            { name: '可能损失通知书.pdf', category: 'appNotice' },
-            { name: '索赔申请书.pdf', category: 'claimForm' },
-            { name: '贸易合同.pdf', category: 'tradeContract' },
-            { name: '商业发票.pdf', category: 'invoice' }
-          ],
-          supplementedDocs: [],
-          clerkConfirmed: true,
-          lossNotified: true,
-          lossNotifiedTime: '2026-05-11 11:00:00',
-          insurerNotified: true,
-          insurerNotifiedTime: '2026-05-10 15:00:00',
-          status: 'pending_payment',
-          statusName: '待支付服务费',
-          createTime: '2026-05-10 11:00:00',
-          claimContact: '钱七',
-          claimPhone: '13500135005',
-          claimEmail: 'qianqi@example.com',
-          bankAccount: '中国银行杭州分行 6217****7890'
-        },
-        {
-          id: 'CL2026006',
-          claimNo: 'CL20260506006',
-          relatedPolicyNo: 'PI2026006789',
-          insuranceCompany: '大地保险',
-          buyerName: 'STV SA',
-          claimType: 'goods_damage',
-          claimTypeName: '货物损失',
-          lossDescription: '货物在运输途中因海运事故受损，经检验损失比例约60%',
-          estimatedLossAmount: 45000,
-          claimAmount: null,
-          lossDate: '2026-04-25',
-          lossCurrency: 'USD',
-          lossLocation: '马六甲海峡',
-          currentStep: 5,
-          currentStepName: '理赔收回',
-          warningLevel: 'safe',
-          clerkId: 'C001',
-          clerkName: '李明',
-          delegationAgreement: [
-            { name: '委托追偿合同_cayk_legal_2026.pdf', signed: true },
-            { name: '授权委托书_authorization_2026.pdf', signed: true }
-          ],
-          serviceFeePaid: true,
-          serviceFeeVoucher: [{ name: '服务费支付凭证_20260507.png', size: 512000 }],
-          deductible: 1500,
-          claimDecision: 'approved',
-          calculatedLoss: 45000,
-          claimAmount: 34500,
-          payoutVoucher: [{ name: '赔付到账水单_20260509.pdf', size: 1024000 }],
-          evidenceMaterials: [{ name: '货损检验报告.pdf', category: 'surveyReport' }, { name: '海事声明.pdf', category: 'seaProtests' }],
-          relevantDocuments: [{ name: '提单.pdf', category: 'billoflading' }, { name: '商业发票.pdf', category: 'invoice' }, { name: '装箱单.pdf', category: 'packingList' }],
-          rwaSyncStatus: 'pending',
-          docStatus: 'passed',
-          docReviewComment: '资料完整，损失核定确认',
-          supplementCount: 0,
-          preparedDocs: [
-            { name: '可能损失通知书.pdf', category: 'appNotice' },
-            { name: '索赔申请书.pdf', category: 'claimForm' },
-            { name: '贸易合同.pdf', category: 'tradeContract' },
-            { name: '商业发票.pdf', category: 'invoice' },
-            { name: '货损检验报告.pdf', category: 'surveyReport' }
-          ],
-          supplementedDocs: [],
-          clerkConfirmed: true,
-          lossNotified: true,
-          lossNotifiedTime: '2026-05-07 09:00:00',
-          insurerNotified: true,
-          insurerNotifiedTime: '2026-05-06 16:00:00',
-          status: 'payment_received',
-          statusName: '赔付到账',
-          createTime: '2026-05-06 14:00:00',
-          claimContact: '孙八',
-          claimPhone: '13400134006',
-          claimEmail: 'sunba@example.com',
-          bankAccount: '中国工商银行成都分行 6222****2345'
-        },
-        {
-          id: 'CL2026007',
-          claimNo: 'CL20260425007',
-          relatedPolicyNo: 'PI2026001234',
-          insuranceCompany: '人保财险',
-          buyerName: 'ABC Corporation',
-          claimType: 'arrears',
-          claimTypeName: '买方拖欠',
-          lossDescription: '买方ABC Corporation拖欠货款已全额赔付，案件结清',
-          estimatedLossAmount: 80000,
-          claimAmount: 64000,
-          lossDate: '2026-03-15',
-          lossCurrency: 'USD',
-          lossLocation: '深圳',
-          currentStep: 5,
-          currentStepName: '理赔收回',
-          warningLevel: 'safe',
-          clerkId: 'C001',
-          clerkName: '李明',
-          delegationAgreement: [
-            { name: '委托追偿合同_cayk_legal_2026.pdf', signed: true },
-            { name: '授权委托书_authorization_2026.pdf', signed: true }
-          ],
-          serviceFeePaid: true,
-          serviceFeeVoucher: [{ name: '服务费支付凭证_20260426.png', size: 480000 }],
-          deductible: 2000,
-          claimDecision: 'approved',
-          calculatedLoss: 80000,
-          payoutVoucher: [{ name: '赔付到账水单_20260430.pdf', size: 2048000 }],
-          evidenceMaterials: [{ name: '催收记录.pdf', category: 'collection' }],
-          relevantDocuments: [{ name: '贸易合同.pdf', category: 'contract' }, { name: '商业发票.pdf', category: 'invoice' }],
-          rwaSyncStatus: 'synced',
-          docStatus: 'passed',
-          docReviewComment: '资料完整，已全额赔付',
-          supplementCount: 0,
-          preparedDocs: [
-            { name: '可能损失通知书.pdf', category: 'appNotice' },
-            { name: '索赔申请书.pdf', category: 'claimForm' },
-            { name: '贸易合同.pdf', category: 'tradeContract' },
-            { name: '商业发票.pdf', category: 'invoice' }
-          ],
-          supplementedDocs: [],
-          clerkConfirmed: true,
-          lossNotified: true,
-          lossNotifiedTime: '2026-04-26 10:00:00',
-          insurerNotified: true,
-          insurerNotifiedTime: '2026-04-25 15:00:00',
-          status: 'completed',
-          statusName: '已完成',
-          createTime: '2026-04-25 10:00:00',
-          claimContact: '张三',
-          claimPhone: '13800138001',
-          claimEmail: 'zhangsan@example.com',
-          bankAccount: '中国工商银行深圳分行 6222****1234'
-        }
-      ]
-      this.processTasks = [
-        {
-          id: 'PT20260522001',
-          policyNo: 'PI2026008901',
-          companyName: '广州AA进出口公司',
-          taskType: '投保流程',
-          status: 'pending',
-          statusName: '待处理',
-          currentStep: 1,
-          stepsCompleted: 0,
-          startTime: '2026-05-22 09:00:00',
-          endTime: '',
-          stepOptions: [
-            { label: '提交投保申请', value: 1 },
-            { label: '资料审核', value: 2 },
-            { label: '资信调查', value: 3 },
-            { label: '信用限额审批', value: 4 },
-            { label: '核保出单', value: 5 },
-            { label: '缴费生效', value: 6 }
-          ],
-          stepInfo: [
-            { handler: '张经理(广州AA)', startTime: '2026-05-22 09:00:00', endTime: '2026-05-22 09:30:00' },
-            { handler: '', startTime: '', endTime: '' },
-            { handler: '', startTime: '', endTime: '' },
-            { handler: '', startTime: '', endTime: '' },
-            { handler: '', startTime: '', endTime: '' },
-            { handler: '', startTime: '', endTime: '' }
-          ],
-          formData: {
-            step1: {
-              insurancePlan: 'planA',
-              insuranceCompany: 'company1',
-              matchRule: '根据买方资信评估结果推荐短期出口信用保险方案。',
-              approvalResult: '',
-              auditOpinion: ''
-            },
-            step2: { approvalResult: '', auditOpinion: '' },
-            step3: { approvalResult: '', auditOpinion: '' },
-            step4: { checkedItems: [], approvalResult: '', auditOpinion: '' },
-            step5: { policyNo: '', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
-            step6: { premiumAmount: '', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
-          },
-          step2Docs: { applicationForm: false, buyerInfoForm: false },
-          planLabels: {
-            planA: '方案A - 短期出口信用保险',
-            planB: '方案B - 中长期出口信用保险',
-            planC: '方案C - 国内贸易信用保险'
-          },
-          companyLabels: {
-            company1: '中国出口信用保险公司',
-            company2: '平安财产保险',
-            company3: '太平洋财产保险'
-          }
-        },
-        {
-          id: 'PT20260521002',
-          policyNo: 'PI2026005679',
-          companyName: '杭州BB科技有限公司',
-          taskType: '投保流程',
-          status: 'processing',
-          statusName: '处理中',
-          currentStep: 2,
-          stepsCompleted: 1,
-          startTime: '2026-05-21 10:00:00',
-          endTime: '',
-          stepOptions: [
-            { label: '提交投保申请', value: 1 },
-            { label: '资料审核', value: 2 },
-            { label: '资信调查', value: 3 },
-            { label: '信用限额审批', value: 4 },
-            { label: '核保出单', value: 5 },
-            { label: '缴费生效', value: 6 }
-          ],
-          stepInfo: [
-            { handler: '李敏(杭州BB)', startTime: '2026-05-21 10:00:00', endTime: '2026-05-21 10:30:00' },
-            { handler: '刘主管(跟单员)', startTime: '2026-05-21 14:00:00', endTime: '' },
-            { handler: '', startTime: '', endTime: '' },
-            { handler: '', startTime: '', endTime: '' },
-            { handler: '', startTime: '', endTime: '' },
-            { handler: '', startTime: '', endTime: '' }
-          ],
-          formData: {
-            step1: {
-              insurancePlan: 'planB',
-              insuranceCompany: 'company2',
-              matchRule: '根据买方资信评估结果，推荐中长期出口信用保险方案。',
-              approvalResult: 'approved',
-              auditOpinion: '方案合理，同意提交。'
-            },
-            step2: { approvalResult: '', auditOpinion: '' },
-            step3: { approvalResult: '', auditOpinion: '' },
-            step4: { checkedItems: [], approvalResult: '', auditOpinion: '' },
-            step5: { policyNo: '', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
-            step6: { premiumAmount: '', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
-          },
-          step2Docs: { applicationForm: true, buyerInfoForm: false },
-          planLabels: {
-            planA: '方案A - 短期出口信用保险',
-            planB: '方案B - 中长期出口信用保险',
-            planC: '方案C - 国内贸易信用保险'
-          },
-          companyLabels: {
-            company1: '中国出口信用保险公司',
-            company2: '平安财产保险',
-            company3: '太平洋财产保险'
-          }
-        },
-        {
-          id: 'PT20260520003',
-          policyNo: 'PI2026001234',
-          companyName: '深圳XX国际贸易有限公司',
-          taskType: '投保流程',
-          status: 'processing',
-          statusName: '处理中',
-          currentStep: 3,
-          stepsCompleted: 2,
-          startTime: '2026-05-20 09:00:00',
-          endTime: '',
-          stepOptions: [
-            { label: '提交投保申请', value: 1 },
-            { label: '资料审核', value: 2 },
-            { label: '资信调查', value: 3 },
-            { label: '信用限额审批', value: 4 },
-            { label: '核保出单', value: 5 },
-            { label: '缴费生效', value: 6 }
-          ],
-          stepInfo: [
-            { handler: '张经理(深圳XX)', startTime: '2026-05-20 09:00:00', endTime: '2026-05-20 09:45:00' },
-            { handler: '刘主管(跟单员)', startTime: '2026-05-20 10:00:00', endTime: '2026-05-20 14:00:00' },
-            { handler: '王五(资信调查)', startTime: '2026-05-21 09:00:00', endTime: '' },
-            { handler: '', startTime: '', endTime: '' },
-            { handler: '', startTime: '', endTime: '' },
-            { handler: '', startTime: '', endTime: '' }
-          ],
-          formData: {
-            step1: {
-              insurancePlan: 'planA',
-              insuranceCompany: 'company1',
-              matchRule: '根据各保险公司行业风险清单、国家（地区）分类表设定匹配规则，结合买方资质、贸易背景等因素综合评估后推荐此方案。',
-              approvalResult: 'approved',
-              auditOpinion: '方案符合客户需求，风险等级可控，同意通过。'
-            },
-            step2: {
-              approvalResult: 'approved',
-              auditOpinion: '申请资料齐全，同意提交资信调查。'
-            },
-            step3: { approvalResult: '', auditOpinion: '' },
-            step4: { checkedItems: [], approvalResult: '', auditOpinion: '' },
-            step5: { policyNo: '', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
-            step6: { premiumAmount: '', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
-          },
-          step2Docs: { applicationForm: true, buyerInfoForm: true },
-          planLabels: {
-            planA: '方案A - 短期出口信用保险',
-            planB: '方案B - 中长期出口信用保险',
-            planC: '方案C - 国内贸易信用保险'
-          },
-          companyLabels: {
-            company1: '中国出口信用保险公司',
-            company2: '平安财产保险',
-            company3: '太平洋财产保险'
-          }
-        },
-        {
-          id: 'PT20260519004',
-          policyNo: 'PI2026003456',
-          companyName: '成都CC贸易有限公司',
-          taskType: '投保流程',
-          status: 'processing',
-          statusName: '处理中',
-          currentStep: 4,
-          stepsCompleted: 3,
-          startTime: '2026-05-19 09:00:00',
-          endTime: '',
-          stepOptions: [
-            { label: '提交投保申请', value: 1 },
-            { label: '资料审核', value: 2 },
-            { label: '资信调查', value: 3 },
-            { label: '信用限额审批', value: 4 },
-            { label: '核保出单', value: 5 },
-            { label: '缴费生效', value: 6 }
-          ],
-          stepInfo: [
-            { handler: '王芳(成都CC)', startTime: '2026-05-19 09:00:00', endTime: '2026-05-19 09:30:00' },
-            { handler: '刘主管(跟单员)', startTime: '2026-05-19 10:00:00', endTime: '2026-05-19 15:00:00' },
-            { handler: '王五(资信调查)', startTime: '2026-05-20 09:00:00', endTime: '2026-05-20 17:00:00' },
-            { handler: '赵六(限额审批)', startTime: '2026-05-21 09:00:00', endTime: '' },
-            { handler: '', startTime: '', endTime: '' },
-            { handler: '', startTime: '', endTime: '' }
-          ],
-          formData: {
-            step1: {
-              insurancePlan: 'planA',
-              insuranceCompany: 'company1',
-              matchRule: '根据买方资信评估结果推荐短期出口信用保险方案。',
-              approvalResult: 'approved',
-              auditOpinion: '方案合理，同意。'
-            },
-            step2: {
-              approvalResult: 'approved',
-              auditOpinion: '资料齐全，审核通过。'
-            },
-            step3: {
-              approvalResult: 'approved',
-              auditOpinion: '资信调查完成，买方信用评级为A级，建议通过。'
-            },
-            step4: { checkedItems: ['basicInfo', 'documentCheck', 'riskAssessment'], approvalResult: '', auditOpinion: '' },
-            step5: { policyNo: '', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
-            step6: { premiumAmount: '', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
-          },
-          step2Docs: { applicationForm: true, buyerInfoForm: true },
-          planLabels: {
-            planA: '方案A - 短期出口信用保险',
-            planB: '方案B - 中长期出口信用保险',
-            planC: '方案C - 国内贸易信用保险'
-          },
-          companyLabels: {
-            company1: '中国出口信用保险公司',
-            company2: '平安财产保险',
-            company3: '太平洋财产保险'
-          }
-        },
-        {
-          id: 'PT20260517005',
-          policyNo: 'PI2026007788',
-          companyName: '武汉DD工贸有限公司',
-          taskType: '投保流程',
-          status: 'processing',
-          statusName: '处理中',
-          currentStep: 5,
-          stepsCompleted: 4,
-          startTime: '2026-05-17 09:00:00',
-          endTime: '',
-          stepOptions: [
-            { label: '提交投保申请', value: 1 },
-            { label: '资料审核', value: 2 },
-            { label: '资信调查', value: 3 },
-            { label: '信用限额审批', value: 4 },
-            { label: '核保出单', value: 5 },
-            { label: '缴费生效', value: 6 }
-          ],
-          stepInfo: [
-            { handler: '李敏(武汉DD)', startTime: '2026-05-17 09:00:00', endTime: '2026-05-17 09:30:00' },
-            { handler: '刘主管(跟单员)', startTime: '2026-05-17 10:00:00', endTime: '2026-05-17 14:00:00' },
-            { handler: '王五(资信调查)', startTime: '2026-05-18 09:00:00', endTime: '2026-05-18 16:00:00' },
-            { handler: '赵六(限额审批)', startTime: '2026-05-19 09:00:00', endTime: '2026-05-19 15:00:00' },
-            { handler: '钱七(核保出单)', startTime: '2026-05-20 09:00:00', endTime: '' },
-            { handler: '', startTime: '', endTime: '' }
-          ],
-          formData: {
-            step1: {
-              insurancePlan: 'planC',
-              insuranceCompany: 'company3',
-              matchRule: '根据国内贸易信用保险方案评估推荐。',
-              approvalResult: 'approved',
-              auditOpinion: '方案合理，同意。'
-            },
-            step2: {
-              approvalResult: 'approved',
-              auditOpinion: '资料审核通过。'
-            },
-            step3: {
-              approvalResult: 'approved',
-              auditOpinion: '资信调查完成，买方信用评级为AA级。'
-            },
-            step4: {
-              checkedItems: ['basicInfo', 'documentCheck', 'riskAssessment'],
-              approvalResult: 'approved',
-              auditOpinion: '信息校验通过，风险评估为低风险，同意审批。'
-            },
-            step5: { policyNo: 'POL20260602005', issueDate: '', policyFile: [], approvalResult: '', auditOpinion: '' },
-            step6: { premiumAmount: '¥18,000.00', paymentStatus: 'unpaid', paymentReceipt: [], policyDetailFile: [], rateFile: [], approvalResult: '', auditOpinion: '' }
-          },
-          step2Docs: { applicationForm: true, buyerInfoForm: true },
-          planLabels: {
-            planA: '方案A - 短期出口信用保险',
-            planB: '方案B - 中长期出口信用保险',
-            planC: '方案C - 国内贸易信用保险'
-          },
-          companyLabels: {
-            company1: '中国出口信用保险公司',
-            company2: '平安财产保险',
-            company3: '太平洋财产保险'
-          }
-        },
-        {
-          id: 'PT20260510006',
-          policyNo: 'PI2026009900',
-          companyName: '上海EE国际贸易有限公司',
-          taskType: '投保流程',
-          status: 'completed',
-          statusName: '已完成',
-          currentStep: 6,
-          stepsCompleted: 6,
-          startTime: '2026-05-10 09:00:00',
-          endTime: '2026-05-18 17:00:00',
-          stepOptions: [
-            { label: '提交投保申请', value: 1 },
-            { label: '资料审核', value: 2 },
-            { label: '资信调查', value: 3 },
-            { label: '信用限额审批', value: 4 },
-            { label: '核保出单', value: 5 },
-            { label: '缴费生效', value: 6 }
-          ],
-          stepInfo: [
-            { handler: '陈经理(上海EE)', startTime: '2026-05-10 09:00:00', endTime: '2026-05-10 11:00:00' },
-            { handler: '刘主管(跟单员)', startTime: '2026-05-11 10:00:00', endTime: '2026-05-11 15:00:00' },
-            { handler: '王五(资信调查)', startTime: '2026-05-12 09:00:00', endTime: '2026-05-12 12:00:00' },
-            { handler: '赵六(限额审批)', startTime: '2026-05-13 09:00:00', endTime: '2026-05-14 11:00:00' },
-            { handler: '钱七(核保出单)', startTime: '2026-05-15 09:00:00', endTime: '2026-05-15 16:30:00' },
-            { handler: '孙八(缴费处理)', startTime: '2026-05-18 09:00:00', endTime: '2026-05-18 15:00:00' }
-          ],
-          formData: {
-            step1: {
-              insurancePlan: 'planB',
-              insuranceCompany: 'company2',
-              matchRule: '根据买方资信评估结果，推荐中长期出口信用保险方案。',
-              approvalResult: 'approved',
-              auditOpinion: '方案合理，同意。'
-            },
-            step2: {
-              approvalResult: 'approved',
-              auditOpinion: '资料已审核，无误。'
-            },
-            step3: {
-              approvalResult: 'approved',
-              auditOpinion: '申请已提交。'
-            },
-            step4: {
-              checkedItems: ['basicInfo', 'documentCheck'],
-              approvalResult: 'approved',
-              auditOpinion: '校验通过。'
-            },
-            step5: {
-              policyNo: 'POL20260602002',
-              issueDate: '2026-05-18',
-              policyFile: [{ name: '保单文件.pdf' }],
-              approvalResult: 'approved',
-              auditOpinion: '保单已签发。'
-            },
-            step6: {
-              premiumAmount: '¥10,000.00',
-              paymentStatus: 'paid',
-              paymentReceipt: [{ name: '支付凭证.pdf' }],
-              policyDetailFile: [],
-              rateFile: [],
-              approvalResult: 'approved',
-              auditOpinion: '已支付。'
-            }
-          },
-          step2Docs: { applicationForm: true, buyerInfoForm: true },
-          planLabels: {
-            planA: '方案A - 短期出口信用保险',
-            planB: '方案B - 中长期出口信用保险',
-            planC: '方案C - 国内贸易信用保险'
-          },
-          companyLabels: {
-            company1: '中国出口信用保险公司',
-            company2: '平安财产保险',
-            company3: '太平洋财产保险'
-          }
-        },
-        {
-          id: 'PT20260508007',
-          policyNo: 'PI2026005678',
-          companyName: '北京ZZ贸易集团',
-          taskType: '投保流程',
-          status: 'completed',
-          statusName: '已完成',
-          currentStep: 6,
-          stepsCompleted: 6,
-          startTime: '2026-05-08 09:00:00',
-          endTime: '2026-05-16 17:00:00',
-          stepOptions: [
-            { label: '提交投保申请', value: 1 },
-            { label: '资料审核', value: 2 },
-            { label: '资信调查', value: 3 },
-            { label: '信用限额审批', value: 4 },
-            { label: '核保出单', value: 5 },
-            { label: '缴费生效', value: 6 }
-          ],
-          stepInfo: [
-            { handler: '赵经理(北京ZZ)', startTime: '2026-05-08 09:00:00', endTime: '2026-05-08 10:30:00' },
-            { handler: '刘主管(跟单员)', startTime: '2026-05-09 10:00:00', endTime: '2026-05-09 14:00:00' },
-            { handler: '王五(资信调查)', startTime: '2026-05-10 09:00:00', endTime: '2026-05-10 16:00:00' },
-            { handler: '赵六(限额审批)', startTime: '2026-05-13 09:00:00', endTime: '2026-05-14 11:00:00' },
-            { handler: '钱七(核保出单)', startTime: '2026-05-15 09:00:00', endTime: '2026-05-15 16:30:00' },
-            { handler: '孙八(缴费处理)', startTime: '2026-05-16 09:00:00', endTime: '2026-05-16 17:00:00' }
-          ],
-          formData: {
-            step1: {
-              insurancePlan: 'planA',
-              insuranceCompany: 'company1',
-              matchRule: '根据买方资信评估结果，推荐短期出口信用保险方案。',
-              approvalResult: 'approved',
-              auditOpinion: '方案合理，同意。'
-            },
-            step2: {
-              approvalResult: 'approved',
-              auditOpinion: '资料齐全，审核通过。'
-            },
-            step3: {
-              approvalResult: 'approved',
-              auditOpinion: '资信调查完成，买方信用评级为A+级。'
-            },
-            step4: {
-              checkedItems: ['basicInfo', 'documentCheck', 'riskAssessment'],
-              approvalResult: 'approved',
-              auditOpinion: '所有校验通过，同意审批。'
-            },
-            step5: {
-              policyNo: 'POL20260602007',
-              issueDate: '2026-05-15',
-              policyFile: [{ name: '保单文件.pdf' }],
-              approvalResult: 'approved',
-              auditOpinion: '保单已签发。'
-            },
-            step6: {
-              premiumAmount: '¥15,000.00',
-              paymentStatus: 'paid',
-              paymentReceipt: [{ name: '支付凭证.pdf' }],
-              policyDetailFile: [{ name: '保单明细表.pdf' }],
-              rateFile: [{ name: '费率表.pdf' }],
-              approvalResult: 'approved',
-              auditOpinion: '保费已支付，流程完成。'
-            }
-          },
-          step2Docs: { applicationForm: true, buyerInfoForm: true },
-          planLabels: {
-            planA: '方案A - 短期出口信用保险',
-            planB: '方案B - 中长期出口信用保险',
-            planC: '方案C - 国内贸易信用保险'
-          },
-          companyLabels: {
-            company1: '中国出口信用保险公司',
-            company2: '平安财产保险',
-            company3: '太平洋财产保险'
-          }
-        }
-      ]
-      // Seed external policies - 电子保单上传列表
-      if (this.externalPolicies.length === 0) {
-        this.externalPolicies = [
-          {
-            id: 'EP2026001',
-            customerCompany: '深圳XX国际贸易有限公司',
-            originalFileName: 'export_credit_policy_2026.pdf',
-            originalFile: [{ name: 'export_credit_policy_2026.pdf', url: '#', size: 4567890, type: 'application/pdf' }],
-            ocrStatus: 'pending',
-            status: 'pending_ocr',
-            rejectReason: '',
-            policyNo: '',
-            insuranceCompany: '',
-            insurerName: '',
-            policyholder: '深圳XX国际贸易有限公司',
-            insured: '',
-            beneficiary: '',
-            effectiveDate: '',
-            expiryDate: '',
-            insurancePeriod: '',
-            renewalFlag: '否',
-            coverageAmount: 0,
-            currency: 'USD',
-            premiumRate: 0,
-            premium: 0,
-            maxCompensationLimit: 0,
-            buyerCreditLimit: 0,
-            deductible: 0,
-            coveredRisks: '',
-            clauseVersion: '',
-            countryRiskVersion: '',
-            declarationMethod: '',
-            declarationCycle: '',
-            declarationDeadline: '',
-            tradeBusinessType: '',
-            selfControlledLimit: '',
-            idlePeriod: 0,
-            surrenderFee: '',
-            recoveryPayee: '',
-            premiumPaymentMethod: '',
-            premiumPaymentDeadline: '',
-            fileSize: '4.5 MB',
-            uploadUser: '张伟华',
-            createTime: '2026-05-20 14:30:00',
-            updateTime: '2026-05-20 14:30:00'
-          },
-          {
-            id: 'EP2026002',
-            customerCompany: '深圳XX国际贸易有限公司',
-            originalFileName: 'trade_credit_policy.pdf',
-            originalFile: [{ name: 'trade_credit_policy.pdf', url: '#', size: 2890123, type: 'application/pdf' }],
-            ocrStatus: 'completed',
-            status: 'ocr_completed',
-            rejectReason: '',
-            policyNo: 'EXTPI2025002',
-            insuranceCompany: '太保产险',
-            insurerName: '太保产险广东分公司',
-            policyholder: '深圳XX国际贸易有限公司',
-            insured: 'ABC Corporation',
-            beneficiary: '深圳XX国际贸易有限公司',
-            effectiveDate: '2026-02-01',
-            expiryDate: '2027-02-01',
-            insurancePeriod: '12个月',
-            renewalFlag: '否',
-            coverageAmount: 200000,
-            currency: 'USD',
-            premiumRate: 0.022,
-            premium: 4400,
-            maxCompensationLimit: 200000,
-            buyerCreditLimit: 150000,
-            deductible: 1500,
-            coveredRisks: '商业风险—买方破产或无力偿付债务；商业风险—买方拖欠；政治风险',
-            clauseVersion: '短期出口信用保险条款v2025',
-            countryRiskVersion: '2026版',
-            declarationMethod: '月度',
-            declarationCycle: '月度',
-            declarationDeadline: '次月15日',
-            tradeBusinessType: '货物贸易',
-            selfControlledLimit: '',
-            idlePeriod: 60,
-            surrenderFee: '',
-            recoveryPayee: '被保险人',
-            premiumPaymentMethod: '一次性',
-            premiumPaymentDeadline: '保险起期前30日',
-            fileSize: '2.8 MB',
-            uploadUser: '张伟华',
-            createTime: '2026-05-18 09:15:00',
-            updateTime: '2026-05-19 11:00:00'
-          },
-          {
-            id: 'EP2026003',
-            customerCompany: '上海YY进出口公司',
-            originalFileName: 'policy_picc_2025.pdf',
-            originalFile: [{ name: 'policy_picc_2025.pdf', url: '#', size: 3210456, type: 'application/pdf' }],
-            ocrStatus: 'completed',
-            status: 'active',
-            rejectReason: '',
-            policyNo: 'EXTPI2025003',
-            insuranceCompany: '人保财险',
-            insurerName: '人保财险上海分公司',
-            policyholder: '上海YY进出口公司',
-            insured: 'DEF GmbH',
-            beneficiary: '上海YY进出口公司',
-            effectiveDate: '2025-10-01',
-            expiryDate: '2026-10-01',
-            insurancePeriod: '12个月',
-            renewalFlag: '否',
-            coverageAmount: 300000,
-            currency: 'USD',
-            premiumRate: 0.02,
-            premium: 6000,
-            maxCompensationLimit: 300000,
-            buyerCreditLimit: 200000,
-            deductible: 2000,
-            coveredRisks: '商业风险',
-            clauseVersion: '短期出口信用保险条款v2024',
-            countryRiskVersion: '2025版',
-            declarationMethod: '月度',
-            declarationCycle: '月度',
-            declarationDeadline: '次月15日',
-            tradeBusinessType: '货物贸易',
-            selfControlledLimit: '',
-            idlePeriod: 60,
-            surrenderFee: '',
-            recoveryPayee: '被保险人',
-            premiumPaymentMethod: '一次性',
-            premiumPaymentDeadline: '保险起期前30日',
-            fileSize: '3.1 MB',
-            uploadUser: '李明辉',
-            createTime: '2026-05-15 16:45:00',
-            updateTime: '2026-05-17 09:30:00'
-          }
-        ]
-        // Add a policy entry for the active external policy (EP2026003)
-        const ep3 = this.externalPolicies[2]
-        if (!this.policies.find(p => p.policyNo === ep3.policyNo)) {
-          this.policies.unshift({
-            id: 'P_EXT_' + ep3.id,
-            policyNo: ep3.policyNo,
-            insuranceCompany: ep3.insuranceCompany,
-            policyholder: ep3.policyholder,
-            insured: ep3.insured,
-            coverageAmount: ep3.coverageAmount,
-            premium: ep3.premium,
-            effectiveDate: ep3.effectiveDate,
-            expiryDate: ep3.expiryDate,
-            status: 'active',
-            statusName: '有效',
-            usedQuota: 150000,
-            remainingQuota: 150000,
-            currency: ep3.currency
-          })
-        }
-        // For the ocr_completed external policy (EP2026002), create linked insuranceApplication
-        const ep2 = this.externalPolicies[1]
-        if (!this.insuranceApplications.some(a => a.externalPolicyId === ep2.id)) {
-          this.insuranceApplications.unshift({
-            id: `TB_EXT_${ep2.id}`,
-            companyName: ep2.customerCompany,
-            buyerName: ep2.insured,
-            insuranceType: '短期出口信用保险',
-            preferredInsuranceOrgType: '无偏好',
-            insuranceCurrency: ep2.currency,
-            insuranceAmount: ep2.coverageAmount,
-            expectedInsurancePeriod: [ep2.effectiveDate, ep2.expiryDate],
-            status: 'ocr_pending',
-            createTime: ep2.createTime,
-            updateTime: ep2.updateTime,
-            ocrSource: true,
-            externalPolicyId: ep2.id,
-            ocrPolicyNo: ep2.policyNo,
-            ocrInsuranceCompany: ep2.insuranceCompany,
-            ocrPolicyholder: ep2.policyholder,
-            ocrInsurerName: ep2.insurerName,
-            ocrBeneficiary: ep2.beneficiary,
-            ocrCoverageAmount: ep2.coverageAmount,
-            ocrPremium: ep2.premium,
-            ocrPremiumRate: ep2.premiumRate,
-            ocrMaxCompensation: ep2.maxCompensationLimit,
-            ocrBuyerCreditLimit: ep2.buyerCreditLimit,
-            ocrBusinessType: ep2.tradeBusinessType
-          })
-        }
-      }
-      // Seed OCR-based insurance applications for 长安银科 (direct OCR, not from upload)
-      if (!this.insuranceApplications.some(a => a.ocrSource && !a.externalPolicyId)) {
-        const now = new Date()
-        this.insuranceApplications.push({
-          id: `TB${now.getFullYear()}OCR01`,
-          companyName: '长安银科',
-          buyerName: 'Global Tech Inc.',
-          insuranceType: '短期出口信用保险',
-          preferredInsuranceOrgType: '无偏好',
-          insuranceCurrency: 'USD',
-          insuranceAmount: 300000,
-          expectedInsurancePeriod: ['2026-06-01', '2027-05-31'],
-          status: 'ocr_pending',
-          createTime: formatDateTime(now),
-          updateTime: formatDateTime(now),
-          ocrSource: true,
-          ocrPolicyNo: `PI${now.getFullYear()}OCR001`,
-          ocrInsuranceCompany: '人保财险',
-          ocrPolicyholder: '长安银科',
-          ocrCoverageAmount: 300000,
-          ocrPremium: 7500,
-          ocrBusinessType: 'goods'
-        })
-      }
-      // Seed contracts at various signing flow statuses
-      if (this.contracts.length === 0) {
-        this.contracts = [
-          {
-            id: 'CT20260520001',
-            policyNo: 'PI2026006789',
-            companyName: '成都DD商贸有限公司',
-            insuredName: 'PQR Ltd',
-            insuranceCompany: '太保产险',
-            coverageAmount: 450000,
-            premium: 11250,
-            policyStartDate: '2026-05-20',
-            policyEndDate: '2027-05-20',
-            status: 'inkasso_signed',
-            paymentStatus: 'unpaid',
-            paymentMethod: '',
-            paymentDate: '',
-            signDate: '2026-05-21 10:30:00',
-            signatory: '长安银科',
-            createdAt: '2026-05-20 14:00:00',
-            updatedAt: '2026-05-21 10:30:00'
-          },
-          {
-            id: 'CT20260518001',
-            policyNo: 'PI2026005678',
-            companyName: '杭州CC贸易有限公司',
-            insuredName: 'MNO Inc',
-            insuranceCompany: '人保财险',
-            coverageAmount: 250000,
-            premium: 6250,
-            policyStartDate: '2026-05-15',
-            policyEndDate: '2027-05-15',
-            status: 'paid',
-            paymentStatus: 'paid',
-            paymentMethod: 'alipay',
-            paymentDate: '2026-05-18 09:15:00',
-            signDate: '2026-05-16 11:00:00',
-            signatory: '长安银科',
-            createdAt: '2026-05-15 10:00:00',
-            updatedAt: '2026-05-18 09:15:00'
-          },
-          {
-            id: 'CT20260512001',
-            policyNo: 'PI2026004567',
-            companyName: '上海YY进出口公司',
-            insuredName: 'DEF GmbH',
-            insuranceCompany: '中国信保',
-            coverageAmount: 300000,
-            premium: 7500,
-            policyStartDate: '2026-06-01',
-            policyEndDate: '2027-06-01',
-            status: 'underwriting_submitted',
-            paymentStatus: 'paid',
-            paymentMethod: 'bank_transfer',
-            paymentDate: '2026-05-10 14:00:00',
-            signDate: '2026-05-08 09:30:00',
-            signatory: '长安银科',
-            underwritingDate: '2026-05-12 16:00:00',
-            underwritingSubmittedBy: '赵敏',
-            createdAt: '2026-05-08 08:00:00',
-            updatedAt: '2026-05-12 16:00:00'
-          },
-          {
-            id: 'CT20260425001',
-            policyNo: 'PI2025009876',
-            companyName: '北京ZZ贸易集团',
-            insuredName: 'GHI Ltd',
-            insuranceCompany: '太保产险',
-            coverageAmount: 400000,
-            premium: 10000,
-            policyStartDate: '2026-04-01',
-            policyEndDate: '2027-04-01',
-            status: 'policy_issued',
-            paymentStatus: 'paid',
-            paymentMethod: 'alipay',
-            paymentDate: '2026-04-20 10:00:00',
-            signDate: '2026-04-18 14:30:00',
-            signatory: '长安银科',
-            underwritingDate: '2026-04-22 11:00:00',
-            underwritingSubmittedBy: '李明',
-            policyIssuedDate: '2026-04-25 15:00:00',
-            createdAt: '2026-04-15 09:00:00',
-            updatedAt: '2026-04-25 15:00:00'
-          },
-          {
-            id: 'CT20251018001',
-            policyNo: 'PI2025008765',
-            companyName: '广州AA实业公司',
-            insuredName: 'JKL Co',
-            insuranceCompany: '平安产险',
-            coverageAmount: 200000,
-            premium: 5000,
-            policyStartDate: '2025-10-01',
-            policyEndDate: '2026-10-01',
-            status: 'policy_info_uploaded',
-            paymentStatus: 'paid',
-            paymentMethod: 'wechat',
-            paymentDate: '2025-10-10 09:00:00',
-            signDate: '2025-10-08 11:00:00',
-            signatory: '长安银科',
-            underwritingDate: '2025-10-12 10:00:00',
-            underwritingSubmittedBy: '张伟',
-            policyIssuedDate: '2025-10-15 14:00:00',
-            policyInfo: { policyDocNo: 'PICC2025GZ001', fileType: 'pdf' },
-            policyInfoUploadDate: '2025-10-18 16:00:00',
-            createdAt: '2025-10-05 08:30:00',
-            updatedAt: '2025-10-18 16:00:00'
-          },
-          {
-            id: 'CT20260515002',
-            policyNo: 'PI2026009999',
-            companyName: '南京FF进出口有限公司',
-            insuredName: 'STG Ltd',
-            insuranceCompany: '人保财险',
-            coverageAmount: 350000,
-            premium: 8750,
-            policyStartDate: '2026-04-01',
-            policyEndDate: '2027-04-01',
-            status: 'offline_paid',
-            paymentStatus: 'paid',
-            paymentMethod: 'bank_transfer',
-            paymentDate: '2026-04-20 11:00:00',
-            signDate: '2026-04-08 14:00:00',
-            signatory: '长安银科',
-            underwritingDate: '2026-04-12 09:00:00',
-            underwritingSubmittedBy: '李明',
-            policyIssuedDate: '2026-04-15 15:00:00',
-            policyInfo: { policyDocNo: 'PICC2026NJ001', fileType: 'pdf' },
-            policyInfoUploadDate: '2026-04-16 10:00:00',
-            offlinePaymentReceipt: [{ name: '缴费凭证_南京FF_202604.pdf', url: '#' }],
-            offlinePaymentDate: '2026-04-20 09:30:00',
-            offlinePaymentMethod: 'bank_transfer',
-            offlinePaymentAmount: 8750,
-            createdAt: '2026-04-01 08:00:00',
-            updatedAt: '2026-04-20 09:30:00'
-          },
-          {
-            id: 'CT20260501001',
-            policyNo: 'PI2026008888',
-            companyName: '武汉DD物流有限公司',
-            insuredName: 'UVW Corp',
-            insuranceCompany: '平安产险',
-            coverageAmount: 280000,
-            premium: 7000,
-            policyStartDate: '2026-03-01',
-            policyEndDate: '2027-03-01',
-            status: 'insurance_active',
-            paymentStatus: 'paid',
-            paymentMethod: 'alipay',
-            paymentDate: '2026-03-10 15:00:00',
-            signDate: '2026-03-05 10:00:00',
-            signatory: '长安银科',
-            underwritingDate: '2026-03-12 11:00:00',
-            underwritingSubmittedBy: '王芳',
-            policyIssuedDate: '2026-03-15 14:00:00',
-            policyInfo: { policyDocNo: 'PAIC2026WH001', fileType: 'pdf' },
-            policyInfoUploadDate: '2026-03-16 16:00:00',
-            offlinePaymentReceipt: [{ name: '缴费凭证_武汉DD_202603.pdf', url: '#' }],
-            offlinePaymentDate: '2026-03-18 09:00:00',
-            offlinePaymentMethod: 'bank_transfer',
-            offlinePaymentAmount: 7000,
-            insuranceActiveDate: '2026-03-20 10:00:00',
-            createdAt: '2026-03-01 08:00:00',
-            updatedAt: '2026-03-20 10:00:00'
-          }
-        ]
-      }
-      // Seed payment records for contracts
-      if (this.payments.length === 0) {
-        this.payments = [
-          { id: 'PAY20260518091500', policyNo: 'PI2026005678', companyName: '杭州CC贸易有限公司', amount: 6250, method: 'alipay', status: 'success', paidAt: '2026-05-18 09:15:00' },
-          { id: 'PAY20260510140000', policyNo: 'PI2026004567', companyName: '上海YY进出口公司', amount: 7500, method: 'bank_transfer', status: 'success', paidAt: '2026-05-10 14:00:00' },
-          { id: 'PAY20260420100000', policyNo: 'PI2025009876', companyName: '北京ZZ贸易集团', amount: 10000, method: 'alipay', status: 'success', paidAt: '2026-04-20 10:00:00' },
-          { id: 'PAY20251010090000', policyNo: 'PI2025008765', companyName: '广州AA实业公司', amount: 5000, method: 'wechat', status: 'success', paidAt: '2025-10-10 09:00:00' },
-          { id: 'PAY20260420093000', policyNo: 'PI2026009999', companyName: '南京FF进出口有限公司', amount: 8750, method: 'bank_transfer', status: 'success', paidAt: '2026-04-20 09:30:00' },
-          { id: 'PAY20260318100000', policyNo: 'PI2026008888', companyName: '武汉DD物流有限公司', amount: 7000, method: 'alipay', status: 'success', paidAt: '2026-03-18 10:00:00' }
-        ]
-      }
-      this.clerkList = [
-        { id: 'C001', workNo: 'C001', name: '李明', department: '业务部', phone: '138****1234', email: 'liming@cayk.com', status: 'active', customerCount: 8, joinDate: '2023-01-15', role: 'senior', permissions: ['insurance_view', 'insurance_edit', 'policy_view', 'policy_edit', 'claim_view', 'stats_view'] },
-        { id: 'C002', workNo: 'C002', name: '赵敏', department: '业务部', phone: '139****5678', email: 'zhaomin@cayk.com', status: 'active', customerCount: 6, joinDate: '2023-03-20', role: 'normal', permissions: ['insurance_view', 'policy_view', 'claim_view', 'stats_view'] },
-        { id: 'C003', workNo: 'C003', name: '王芳', department: '客服部', phone: '137****9012', email: 'wangfang@cayk.com', status: 'active', customerCount: 5, joinDate: '2024-06-01', role: 'normal', permissions: ['insurance_view', 'policy_view', 'claim_view'] },
-        { id: 'C004', workNo: 'C004', name: '张伟', department: '业务部', phone: '136****3456', email: 'zhangwei@cayk.com', status: 'probation', customerCount: 3, joinDate: '2026-04-01', role: 'normal', permissions: ['insurance_view', 'policy_view'] },
-        { id: 'C005', workNo: 'C005', name: '刘强', department: '风控部', phone: '135****7890', email: 'liuqiang@cayk.com', status: 'active', customerCount: 0, joinDate: '2024-02-28', role: 'admin', permissions: ['insurance_view', 'insurance_edit', 'policy_view', 'policy_edit', 'claim_view', 'claim_edit', 'clerk_view', 'clerk_manage', 'stats_view', 'stats_export'] }
-      ]
-      // Seed trade information
-      if (this.tradeInfos.length === 0) {
-        this.tradeInfos = [
-          {
-            id: 'TR2026001',
-            contractNo: 'CT20260001',
-            enterpriseName: '深圳XX国际贸易有限公司',
-            buyerName: 'ABC Corporation',
-            buyerCountry: '美国',
-            productInfo: '消费电子产品及零部件',
-            transactionAmount: 500000,
-            currency: 'USD',
-            paymentTerms: 'OA 60天',
-            signDate: '2026-01-15',
-            expireDate: '2027-01-14',
-            status: '进行中',
-            relatedPolicyNo: 'PI2026001234'
-          },
-          {
-            id: 'TR2026002',
-            contractNo: 'CT20260002',
-            enterpriseName: '上海YY进出口公司',
-            buyerName: 'DEF GmbH',
-            buyerCountry: '德国',
-            productInfo: '工业机械设备及配件',
-            transactionAmount: 300000,
-            currency: 'USD',
-            paymentTerms: 'OA 90天',
-            signDate: '2026-03-01',
-            expireDate: '2027-02-28',
-            status: '进行中',
-            relatedPolicyNo: 'PI2026004567'
-          },
-          {
-            id: 'TR2026003',
-            contractNo: 'CT20250003',
-            enterpriseName: '北京ZZ贸易集团',
-            buyerName: 'GHI Ltd',
-            buyerCountry: '英国',
-            productInfo: '机械设备及零部件',
-            transactionAmount: 400000,
-            currency: 'USD',
-            paymentTerms: 'OA 60天',
-            signDate: '2025-10-01',
-            expireDate: '2026-09-30',
-            status: '已完成',
-            relatedPolicyNo: 'PI2025009876'
-          },
-          {
-            id: 'TR2026004',
-            contractNo: 'CT20260004',
-            enterpriseName: '广州AA实业公司',
-            buyerName: 'JKL Co',
-            buyerCountry: '日本',
-            productInfo: '日用百货及工艺品',
-            transactionAmount: 200000,
-            currency: 'USD',
-            paymentTerms: 'OA 45天',
-            signDate: '2025-12-01',
-            expireDate: '2026-11-30',
-            status: '进行中',
-            relatedPolicyNo: 'PI2025008765'
-          },
-          {
-            id: 'TR2026005',
-            contractNo: 'CT20260005',
-            enterpriseName: '南京FF进出口有限公司',
-            buyerName: 'STG Ltd',
-            buyerCountry: '新加坡',
-            productInfo: '电子产品及元器件',
-            transactionAmount: 350000,
-            currency: 'USD',
-            paymentTerms: 'LC at sight',
-            signDate: '2026-04-01',
-            expireDate: '2027-03-31',
-            status: '进行中',
-            relatedPolicyNo: 'PI2026009999'
-          },
-          {
-            id: 'TR2026006',
-            contractNo: 'CT20260006',
-            enterpriseName: '武汉DD物流有限公司',
-            buyerName: 'UVW Corp',
-            buyerCountry: '加拿大',
-            productInfo: '物流设备及配件',
-            transactionAmount: 280000,
-            currency: 'USD',
-            paymentTerms: 'OA 30天',
-            signDate: '2026-03-01',
-            expireDate: '2027-02-28',
-            status: '进行中',
-            relatedPolicyNo: 'PI2026008888'
-          }
-        ]
-      }
+      this.insuranceApplications = []
+      this.policies = []
+      this.creditLimits = []
+      this.shipments = []
+      this.claims = []
+      this.processTasks = []
+      this.contracts = []
+      this.payments = []
+      this.clerkList = []
+      this.tradeInfos = []
+      this.notifications = []
     },
     // ===== External policy upload & OCR flow =====
     uploadCustomerPolicy({ file, companyName, uploadUser }) {
@@ -2444,8 +277,8 @@ export const useBusinessStore = defineStore('business', {
       if (!['draft', 'rejected'].includes(cur.status)) {
         return { ok: false, message: '当前状态不允许提交' }
       }
-      // 客户提交后直接确认，交给平台处理
-      this.insuranceApplications[idx] = { ...cur, status: 'approved', updateTime: formatDateTime(now) }
+      // 客户提交后进入平台处理流程
+      this.insuranceApplications[idx] = { ...cur, status: 'pending_review', updateTime: formatDateTime(now) }
       return { ok: true, data: this.insuranceApplications[idx] }
     },
     submitToClerkReview(id) {
@@ -2542,6 +375,212 @@ export const useBusinessStore = defineStore('business', {
         })
       }
       return { ok: true, data: next }
+    },
+    submitToUnderwriting(id) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'approved') return { ok: false, message: '当前状态不允许提交核保' }
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'underwriting',
+        updateTime: formatDateTime(new Date())
+      }
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
+    // 跟单员核保通过 - 录入核保决定和保单信息
+    completeUnderwriting(id, decisionData) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'underwriting') return { ok: false, message: '当前状态不允许核保通过' }
+      const now = new Date()
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'uw_completed',
+        uwDecision: decisionData.decision || 'approved',
+        uwPolicyNo: decisionData.policyNo || '',
+        uwInsuranceCompany: decisionData.insuranceCompany || '',
+        uwCoverageAmount: Number(decisionData.coverageAmount) || 0,
+        uwPremium: Number(decisionData.premium) || 0,
+        uwOpinion: decisionData.opinion || '',
+        uwPolicyDetailFile: decisionData.policyDetailFile || [],
+        uwRateFile: decisionData.rateFile || [],
+        uwCountryCategoryFile: decisionData.countryCategoryFile || [],
+        uwCompleteTime: formatDateTime(now),
+        updateTime: formatDateTime(now)
+      }
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
+    // 跟单员同步保单至平台
+    syncUnderwritingToPlatform(id) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'uw_completed') return { ok: false, message: '当前状态不允许同步' }
+      const now = new Date()
+      const policyNo = cur.uwPolicyNo || `PI${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'platform_synced',
+        policyNo,
+        insuranceCompanyName: cur.uwInsuranceCompany || cur.preferredInsuranceOrgType || '人保财险',
+        policyStartDate: formatDate(now),
+        policyEndDate: addDays(formatDate(now), 365),
+        premium: cur.uwPremium || Math.round(Number(cur.insuranceAmount || 0) * 0.0011),
+        coverageAmount: cur.uwCoverageAmount || Number(cur.insuranceAmount || 0),
+        syncTime: formatDateTime(now),
+        updateTime: formatDateTime(now)
+      }
+      // 同步生成保单记录
+      if (!this.policies.some(p => p.policyholder === cur.companyName && p.insured === cur.buyerName && p.policyNo === policyNo)) {
+        this.policies.unshift({
+          id: createId('P'),
+          policyNo,
+          insuranceCompany: cur.uwInsuranceCompany || '人保财险',
+          policyholder: cur.companyName || '',
+          insured: cur.buyerName || '',
+          coverageAmount: cur.uwCoverageAmount || Number(cur.insuranceAmount || 0),
+          premium: cur.uwPremium || Math.round(Number(cur.insuranceAmount || 0) * 0.0011),
+          effectiveDate: formatDate(now),
+          expiryDate: addDays(formatDate(now), 365),
+          status: 'pending_effect',
+          usedQuota: 0,
+          remainingQuota: Number(cur.insuranceAmount || 0),
+          currency: cur.insuranceCurrency || 'USD',
+          businessType: 'goods',
+          renewalFlag: 'no'
+        })
+      }
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
+    // 长安银科发起保费确认申请
+    initiatePremiumConfirmation(id) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'platform_synced') return { ok: false, message: '当前状态不允许发起保费确认' }
+      const now = formatDateTime(new Date())
+      this.insuranceApplications[idx] = {
+        ...cur,
+        premiumRequested: true,
+        premiumRequestTime: now,
+        updateTime: now
+      }
+      this.notifications = this.notifications || []
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        applicationId: id,
+        companyName: cur.companyName || '',
+        message: `长安银科已发起保费确认申请（投保编号：${id}），请尽快确认保费`,
+        type: 'premium_request',
+        createTime: now,
+        read: false,
+        toRole: 'customer'
+      })
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
+    // 客户确认保费
+    confirmPremium(id) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'platform_synced') return { ok: false, message: '当前状态不允许确认保费' }
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'premium_confirmed',
+        premiumConfirmTime: formatDateTime(new Date()),
+        updateTime: formatDateTime(new Date())
+      }
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
+    // 客户上传支付凭证
+    uploadPaymentProof(id, proofData) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'premium_confirmed') return { ok: false, message: '当前状态不允许上传凭证' }
+      const now = formatDateTime(new Date())
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'payment_uploaded',
+        paymentProof: proofData.proofNo || '',
+        paymentPayer: proofData.payerName || '',
+        paymentDate: proofData.paymentDate || '',
+        paymentRemark: proofData.remark || '',
+        paymentUploadTime: now,
+        paymentNotified: true,
+        updateTime: now
+      }
+      // 同步更新保单缴费状态为"保单生效中"
+      const policyIdx = this.policies.findIndex(p => p.policyholder === cur.companyName && p.policyNo === cur.policyNo)
+      if (policyIdx >= 0) {
+        this.policies[policyIdx] = {
+          ...this.policies[policyIdx],
+          status: 'activating',
+          premiumPaid: true,
+          premiumPaidTime: now
+        }
+      }
+      // 自动通知跟单员保费已缴纳
+      this.notifications = this.notifications || []
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        applicationId: id,
+        companyName: cur.companyName || '',
+        message: `客户 ${cur.companyName || ''} 已完成保费缴纳（投保编号：${id}），请及时处理`,
+        type: 'payment_notification',
+        createTime: now,
+        read: false,
+        toRole: 'clerk'
+      })
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
+    // 平台确认保单生效
+    activatePolicyByPlatform(id) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'payment_uploaded') return { ok: false, message: '当前状态不允许确认生效' }
+      const now = new Date()
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'active',
+        policyStatus: 'active',
+        activateTime: formatDateTime(now),
+        updateTime: formatDateTime(now)
+      }
+      // 同步更新保单状态为生效
+      const policyIdx = this.policies.findIndex(p => p.policyholder === cur.companyName && p.policyNo === cur.policyNo)
+      if (policyIdx >= 0) {
+        this.policies[policyIdx].status = 'active'
+      }
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
+    sendPaymentNotification(applicationId) {
+      const app = this.insuranceApplications.find(a => a.id === applicationId)
+      if (!app) return { ok: false, message: '投保记录不存在' }
+      const now = new Date()
+      this.notifications = this.notifications || []
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        applicationId,
+        companyName: app.companyName || '',
+        message: `客户 ${app.companyName || ''} 已完成保费支付（投保编号：${applicationId}），请及时处理`,
+        type: 'payment_notification',
+        createTime: formatDateTime(now),
+        read: false,
+        toRole: 'clerk'
+      })
+      const idx = this.insuranceApplications.findIndex(a => a.id === applicationId)
+      if (idx >= 0) {
+        this.insuranceApplications[idx] = {
+          ...this.insuranceApplications[idx],
+          paymentNotified: true,
+          paymentNotifyTime: formatDateTime(now)
+        }
+      }
+      return { ok: true, message: '已通知跟单员' }
     },
     rejectInsuranceApplication(id, rejectReason) {
       const idx = this.insuranceApplications.findIndex(it => it.id === id)
@@ -3465,6 +1504,89 @@ export const useBusinessStore = defineStore('business', {
         data: this.policies[pIdx],
         message: `保单已退保（${reasonName}），退保生效日期：${data.surrenderDate || formatDate(new Date())}`
       }
+    },
+    generateDocuments(id) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      const generateableStatuses = ['pending_review', 'clerk_review', 'pending_material', 'ocr_pending', 'ocr_clerk_review', 'approved']
+      if (!generateableStatuses.includes(cur.status)) {
+        return { ok: false, message: '当前状态不允许生成投保资料' }
+      }
+      const now = new Date()
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'contract_signing',
+        updateTime: formatDateTime(now)
+      }
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
+    pushToClerk(id) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'service_fee_paid') {
+        return { ok: false, message: '当前状态不允许推送给跟单员，请完成合同签署和服务费支付' }
+      }
+      const now = new Date()
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'clerk_review',
+        updateTime: formatDateTime(now)
+      }
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
+    signInsuranceContract(id, role) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      const now = new Date()
+      if (role === 'inkasso') {
+        if (cur.status !== 'contract_signing') return { ok: false, message: '当前状态不允许平台签署' }
+        if (cur.inkassoContractSigned) return { ok: false, message: '平台已签署，无需重复签署' }
+        this.insuranceApplications[idx] = {
+          ...cur,
+          inkassoContractSigned: true,
+          inkassoSignTime: formatDateTime(now),
+          status: 'inkasso_signed',
+          updateTime: formatDateTime(now)
+        }
+        return { ok: true, data: this.insuranceApplications[idx] }
+      }
+      if (role === 'customer') {
+        if (cur.status !== 'inkasso_signed') return { ok: false, message: '请等待平台签署后再签署' }
+        if (cur.customerContractSigned) return { ok: false, message: '已签署，无需重复签署' }
+        this.insuranceApplications[idx] = {
+          ...cur,
+          customerContractSigned: true,
+          customerSignTime: formatDateTime(now),
+          status: 'contract_signed',
+          updateTime: formatDateTime(now)
+        }
+        return { ok: true, data: this.insuranceApplications[idx] }
+      }
+      return { ok: false, message: '无效的签署角色' }
+    },
+    payServiceFee(id, paymentInfo) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'contract_signed') return { ok: false, message: '当前状态不允许支付' }
+      if (cur.serviceFeePaid) return { ok: false, message: '服务费已支付，无需重复支付' }
+      const now = new Date()
+      this.insuranceApplications[idx] = {
+        ...cur,
+        serviceFeePaid: true,
+        serviceFeeAmount: paymentInfo.amount || 0,
+        payerType: paymentInfo.payerType || 'enterprise',
+        payerName: paymentInfo.payerName || cur.companyName,
+        paymentSubject: paymentInfo.paymentSubject || cur.companyName,
+        paymentMethod: paymentInfo.paymentMethod || 'online',
+        serviceFeePayTime: formatDateTime(now),
+        status: 'service_fee_paid',
+        updateTime: formatDateTime(now)
+      }
+      return { ok: true, data: this.insuranceApplications[idx] }
     }
   }
 })

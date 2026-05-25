@@ -69,35 +69,155 @@
         </template>
       </div>
 
-      <div class="current-step-panel">
-        <div class="current-step-header">
-          <div class="current-step-info">
-            <span class="current-step-badge">当前步骤</span>
-            <span class="current-step-name">{{ processSteps[getCurrentStepIndex()]?.label || '未开始' }}</span>
-          </div>
-          <div class="current-step-status">
-            <t-tag :theme="getStepTagTheme(getCurrentStepIndex())" variant="light" size="small">
-              {{ getStepStatusText(getCurrentStepIndex()) }}
-            </t-tag>
-          </div>
-        </div>
-
-        <div class="role-action-grid">
+      <!-- 流程步骤详情 -->
+      <div class="process-detail-steps">
+        <div class="detail-steps-title">投保流程详细步骤</div>
+        <div class="detail-steps-list">
           <div
-            v-for="(action, aidx) in getCurrentStepActions()"
-            :key="aidx"
-            class="role-action-card"
-            :class="{ 'is-active': action.isActive }"
+            v-for="(step, idx) in timelineSteps"
+            :key="idx"
+            class="timeline-item"
+            :class="'tl-' + step.status"
           >
-            <div class="action-card-header">
-              <span class="action-role-name">{{ action.role }}</span>
-              <t-tag v-if="action.isActive" theme="primary" variant="light" size="small">当前处理</t-tag>
+            <div class="tl-dot">
+              <t-icon v-if="step.status === 'completed'" name="check" />
+              <span v-else>{{ idx + 1 }}</span>
             </div>
-            <div class="action-desc">{{ action.description }}</div>
+            <div class="tl-content">
+              <!-- 可点击的标题行 -->
+              <div class="tl-header" :class="{ clickable: true }" @click="toggleStep(idx)">
+                <div class="tl-header-left">
+                  <span class="tl-step-name">{{ step.stepName }}</span>
+                  <t-tag
+                    v-if="step.status === 'completed'"
+                    theme="success"
+                    variant="light"
+                    size="small"
+                  >已完成</t-tag>
+                  <t-tag
+                    v-else-if="step.status === 'active'"
+                    theme="primary"
+                    variant="light"
+                    size="small"
+                  >进行中</t-tag>
+                  <t-tag
+                    v-else
+                    theme="default"
+                    variant="light"
+                    size="small"
+                  >待处理</t-tag>
+                </div>
+                <div class="tl-header-right">
+                  <span v-if="step.status !== 'pending'" class="tl-time-summary">{{ step.startTime }}</span>
+                  <t-icon
+                    :name="isStepExpanded(idx) ? 'chevron-up' : 'chevron-down'"
+                    size="16px"
+                    class="tl-expand-icon"
+                  />
+                </div>
+              </div>
+              <!-- 展开的内容 -->
+              <div v-show="isStepExpanded(idx)" class="tl-body">
+                <div class="tl-body-divider"></div>
+                <div class="tl-info-row">
+                  <t-icon name="user" size="14px" />
+                  <span class="tl-info-label">操作人：</span>
+                  <span class="tl-info-value">{{ step.operator }}</span>
+                  <span class="tl-info-role">（{{ step.role }}）</span>
+                </div>
+                <div class="tl-info-row">
+                  <t-icon name="calendar-1" size="14px" />
+                  <span class="tl-info-label">开始时间：</span>
+                  <span class="tl-info-value">{{ step.startTime }}</span>
+                </div>
+                <div class="tl-info-row">
+                  <t-icon name="check-circle" size="14px" />
+                  <span class="tl-info-label">结束时间：</span>
+                  <span class="tl-info-value">{{ step.endTime }}</span>
+                </div>
+                <div class="tl-info-row">
+                  <t-icon name="chat" size="14px" />
+                  <span class="tl-info-label">处理内容：</span>
+                  <span class="tl-info-value">{{ step.description }}</span>
+                </div>
+                <div v-if="step.files && step.files.length > 0" class="tl-info-row">
+                  <t-icon name="file" size="14px" />
+                  <span class="tl-info-label">相关文件：</span>
+                  <span class="tl-info-value">
+                    <template v-for="(f, fi) in step.files" :key="fi">
+                      <t-icon v-if="f.checked" name="check-circle-filled" size="14px" class="file-checked-icon" />
+                      <a v-if="f.url" class="tl-file-link" @click.stop="f.preview">{{ f.name }}</a>
+                      <span v-else>{{ f.name }}</span>
+                      <span v-if="fi < step.files.length - 1">、</span>
+                    </template>
+                  </span>
+                </div>
+                <!-- 审核区域：仅对需要审核的步骤且当前角色匹配时显示 -->
+                <div v-if="step.needReview && step.status === 'active'" class="tl-review-section">
+                  <div class="tl-review-title">审核信息</div>
+                  <div class="tl-review-status">
+                    <span class="tl-info-label">审核状态：</span>
+                    <t-tag v-if="step.reviewStatus === 'approved'" theme="success" variant="light" size="small">已通过</t-tag>
+                    <t-tag v-else-if="step.reviewStatus === 'rejected'" theme="danger" variant="light" size="small">已驳回</t-tag>
+                    <t-tag v-else theme="warning" variant="light" size="small">待审核</t-tag>
+                  </div>
+                  <div class="tl-review-field">
+                    <span class="tl-info-label">审批建议：</span>
+                    <t-textarea
+                      v-if="step.reviewStatus === 'pending'"
+                      v-model="reviewComments[idx]"
+                      placeholder="请输入审批意见..."
+                      :maxlength="500"
+                      :rows="3"
+                    />
+                    <span v-else class="tl-review-comment">{{ step.reviewComment || '无' }}</span>
+                  </div>
+                  <div v-if="step.reviewStatus === 'pending'" class="tl-review-actions">
+                    <t-button variant="outline" theme="danger" size="small" @click="handleRejectStep(idx)">
+                      <template #icon><t-icon name="close-circle" /></template>
+                      驳回
+                    </t-button>
+                    <t-button theme="primary" size="small" @click="handleApproveStep(idx)">
+                      <template #icon><t-icon name="check-circle" /></template>
+                      通过审核
+                    </t-button>
+                  </div>
+                </div>
+                <!-- 审核结果展示（已完成或待处理的审核步骤） -->
+                <div v-else-if="step.needReview && step.reviewStatus && step.reviewStatus !== 'pending'" class="tl-review-section tl-review-readonly">
+                  <div class="tl-review-title">审核信息</div>
+                  <div class="tl-review-status">
+                    <span class="tl-info-label">审核状态：</span>
+                    <t-tag v-if="step.reviewStatus === 'approved'" theme="success" variant="light" size="small">已通过</t-tag>
+                    <t-tag v-else-if="step.reviewStatus === 'rejected'" theme="danger" variant="light" size="small">已驳回</t-tag>
+                  </div>
+                  <div class="tl-review-field">
+                    <span class="tl-info-label">审批建议：</span>
+                    <span class="tl-review-comment">{{ step.reviewComment || '无' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <t-dialog v-model:visible="previewDialogVisible" :header="previewDialogTitle" width="960px" :footer="false" destroy-on-close>
+      <div class="preview-modal">
+        <t-tabs v-if="previewSheets.length > 1" v-model:value="previewActiveSheet" theme="card">
+          <t-tab-panel v-for="sheet in previewSheets" :key="sheet.name" :value="sheet.name" :label="sheet.name">
+            <div class="preview-table-wrap" v-html="sheet.html"></div>
+          </t-tab-panel>
+        </t-tabs>
+        <div v-else-if="previewSheets.length === 1" class="preview-table-wrap" v-html="previewSheets[0].html"></div>
+        <empty-state v-else description="暂无数据" />
+        <div class="modal-footer">
+          <t-button variant="outline" @click="handleDownloadPreview">下载文件</t-button>
+          <t-button variant="outline" @click="previewDialogVisible = false">关闭</t-button>
+        </div>
+      </div>
+    </t-dialog>
 
     <t-card v-if="mode === 'detail'">
       <t-tabs default-value="customer">
@@ -806,10 +926,14 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { useBusinessStore } from '@/stores/business'
+import { useUserStore } from '@/stores/user'
+import * as XLSX from 'xlsx'
+import { generatePolicyApplicationXlsx, generateBuyerInfoXlsx } from '@/utils/templateFiller'
 
 const route = useRoute()
 const router = useRouter()
 const store = useBusinessStore()
+const userStore = useUserStore()
 
 const formRef = ref(null)
 const activeStep = ref(0)
@@ -1397,10 +1521,10 @@ const policyFileColumns = [
 
 const processSteps = [
   { label: '提交投保申请', role: '客户', roleKey: 'customer' },
-  { label: '资料审核', role: '跟单员', roleKey: 'clerk' },
-  { label: '资信调查', role: '长安银科', roleKey: 'inkasso' },
-  { label: '信用限额审批', role: '长安银科 → 保险公司', roleKey: 'insurer' },
-  { label: '核保出单', role: '保险公司（跟单员配合）', roleKey: 'clerk' },
+  { label: '生成投保资料', role: '长安银科', roleKey: 'clerk' },
+  { label: '资信调查', role: '保险公司', roleKey: 'insurer' },
+  { label: '信用限额审批', role: '保险公司', roleKey: 'insurer' },
+  { label: '核保出单', role: '跟单员', roleKey: 'clerk' },
   { label: '缴费生效', role: '客户', roleKey: 'customer' }
 ]
 
@@ -1409,15 +1533,24 @@ const statusStepMap = {
   pending_submit: 0,
   pending_material: 1,
   pending_review: 1,
-  clerk_review: 1,
+  clerk_review: 2,
   ocr_pending: 1,
   ocr_clerk_review: 1,
+  contract_signing: 2,
+  inkasso_signed: 2,
+  contract_signed: 2,
+  service_fee_paid: 2,
   credit_investigating: 2,
   limit_approving: 3,
-  underwriting: 4,
+  underwriting: 2,
+  uw_completed: 4,
+  platform_synced: 5,
+  premium_confirmed: 5,
+  payment_uploaded: 5,
   pending_payment: 5,
-  approved: 5,
-  completed: 5,
+  approved: 2,
+  completed: 6,
+  active: 6,
   rejected: 0
 }
 
@@ -1456,18 +1589,18 @@ const stepActions = [
     description: '填写完整的投保申请信息，上传企业资质文件（营业执照、对外贸易经营者备案登记表），确认投保声明并签字提交',
     isActiveFor: ['draft', 'pending_submit']
   },
-  // Step 1: 资料审核
+  // Step 1: 生成投保资料
+  {
+    role: '系统',
+    roleKey: 'system',
+    description: '系统根据投保信息自动生成投保资料，供下载和预览',
+    isActiveFor: ['pending_review', 'pending_material', 'ocr_pending']
+  },
   {
     role: '跟单员',
     roleKey: 'clerk',
     description: '审核客户提交的投保资料是否完整、准确，核对营业执照、备案登记表、授权文件等附件',
-    isActiveFor: ['pending_review', 'clerk_review', 'pending_material', 'ocr_pending', 'ocr_clerk_review']
-  },
-  {
-    role: '长安银科',
-    roleKey: 'inkasso',
-    description: '复核跟单员的审核结果，确认资料无误后推送至保险公司',
-    isActiveFor: ['clerk_review']
+    isActiveFor: ['clerk_review', 'ocr_clerk_review']
   },
   // Step 2: 资信调查
   {
@@ -1482,7 +1615,7 @@ const stepActions = [
     description: '配合长安银科提供买方资信数据支持（跟单员协调对接）',
     isActiveFor: ['credit_investigating']
   },
-  // Step 3: 信用限额审批
+  // Step 4: 信用限额审批
   {
     role: '长安银科',
     roleKey: 'inkasso',
@@ -1495,7 +1628,7 @@ const stepActions = [
     description: '审批信用限额申请，确认承保条件（由跟单员对接保险公司）',
     isActiveFor: ['limit_approving']
   },
-  // Step 4: 核保出单
+  // Step 5: 核保出单
   {
     role: '保险公司',
     roleKey: 'insurer',
@@ -1508,7 +1641,31 @@ const stepActions = [
     description: '对接保险公司完成核保出单，上传保单文件及费率表至系统',
     isActiveFor: ['underwriting']
   },
-  // Step 5: 缴费生效
+  {
+    role: '跟单员',
+    roleKey: 'clerk',
+    description: '保险公司核保已完成，跟单员同步保单信息至平台',
+    isActiveFor: ['uw_completed']
+  },
+  // Step 6: 缴费生效
+  {
+    role: '客户',
+    roleKey: 'customer',
+    description: '确认保单详情及保费金额，确认无误后发起线下支付',
+    isActiveFor: ['platform_synced']
+  },
+  {
+    role: '客户',
+    roleKey: 'customer',
+    description: '保费金额已确认，请进行线下支付并上传支付凭证',
+    isActiveFor: ['premium_confirmed']
+  },
+  {
+    role: '长安银科',
+    roleKey: 'inkasso',
+    description: '确认保费到账，更新保单状态为生效',
+    isActiveFor: ['payment_uploaded']
+  },
   {
     role: '客户',
     roleKey: 'customer',
@@ -1548,7 +1705,7 @@ const getCurrentStepActions = () => {
 const getStepDefaultDesc = (idx) => {
   const descs = [
     '请填写完整投保信息并提交申请',
-    '跟单员正在审核资料，请耐心等待',
+    '系统正在生成投保资料',
     '长安银科正在进行资信调查',
     '信用限额审批处理中',
     '保险公司核保出单中',
@@ -1557,15 +1714,233 @@ const getStepDefaultDesc = (idx) => {
   return descs[idx] || '处理中'
 }
 
-const processTimeline = computed(() => {
-  const base = detailData.value
-  if (!base) return []
-  const timeline = [
-    { time: base.createTime || '-', content: '创建投保记录', color: 'success' }
+const previewDialogVisible = ref(false)
+const previewDialogTitle = ref('')
+const previewSheets = ref([])
+const previewActiveSheet = ref('')
+const previewWorkbook = ref(null)
+const previewFilename = ref('')
+
+const expandedSteps = ref(new Set())
+const reviewComments = ref({})
+
+const getReviews = () => {
+  const app = detailData.value
+  if (!app) return []
+  return app.stepReviews || []
+}
+
+const getReviewForStep = (stepIdx) => {
+  const reviews = getReviews()
+  return reviews.find(r => r.step === stepIdx)
+}
+
+const isStepExpanded = (idx) => {
+  const step = timelineSteps.value[idx]
+  if (!step) return false
+  if (expandedSteps.value.has(idx)) return true
+  return step.status === 'active'
+}
+
+const toggleStep = (idx) => {
+  const s = new Set(expandedSteps.value)
+  if (s.has(idx)) s.delete(idx)
+  else s.add(idx)
+  expandedSteps.value = s
+}
+
+const handleApproveStep = (idx) => {
+  const app = detailData.value
+  if (!app) return
+  if (!app.stepReviews) app.stepReviews = []
+  const existing = app.stepReviews.find(r => r.step === idx)
+  const review = {
+    step: idx,
+    status: 'approved',
+    reviewer: userStore.userName || '长安银科',
+    comment: reviewComments.value[idx] || '审核通过',
+    time: new Date().toLocaleString('zh-CN', { hour12: false })
+  }
+  if (existing) Object.assign(existing, review)
+  else app.stepReviews.push(review)
+  MessagePlugin.success('审核通过')
+}
+
+const handleRejectStep = (idx) => {
+  const app = detailData.value
+  if (!app) return
+  if (!app.stepReviews) app.stepReviews = []
+  const existing = app.stepReviews.find(r => r.step === idx)
+  const review = {
+    step: idx,
+    status: 'rejected',
+    reviewer: userStore.userName || '长安银科',
+    comment: reviewComments.value[idx] || '驳回',
+    time: new Date().toLocaleString('zh-CN', { hour12: false })
+  }
+  if (existing) Object.assign(existing, review)
+  else app.stepReviews.push(review)
+  MessagePlugin.success('已驳回')
+}
+
+const showTablePreview = (wb, title, filename) => {
+  previewWorkbook.value = wb
+  previewDialogTitle.value = title
+  previewFilename.value = filename
+  const sheets = []
+  wb.SheetNames.forEach(name => {
+    const ws = wb.Sheets[name]
+    const html = XLSX.utils.sheet_to_html(ws, { id: 'preview-' + name })
+    sheets.push({ name, html })
+  })
+  previewSheets.value = sheets
+  previewActiveSheet.value = sheets[0]?.name || ''
+  previewDialogVisible.value = true
+}
+
+const handleDownloadPreview = () => {
+  if (!previewWorkbook.value) return
+  XLSX.writeFile(previewWorkbook.value, previewFilename.value)
+  MessagePlugin.success('文件已下载')
+}
+
+const timelineSteps = computed(() => {
+  const app = detailData.value
+  if (!app) return []
+  const status = app.status
+  const isAdvanced = status !== 'draft' && status !== 'pending_submit' && status !== 'rejected'
+  const contactName = app.contactName || app.companyName || '客户'
+  const createTime = app.createTime || '-'
+  const updateTime = app.updateTime || '-'
+  const reviews = app.stepReviews || []
+
+  const stepStatus = (stepIdx) => {
+    const current = getCurrentStepIndex()
+    if (stepIdx < current) return 'completed'
+    if (stepIdx === current) return 'active'
+    return 'pending'
+  }
+
+  const getReviewByStep = (stepIdx) => reviews.find(r => r.step === stepIdx)
+
+  const baseSteps = [
+    {
+      stepName: '提交投保申请',
+      operator: contactName,
+      role: '客户',
+      startTime: createTime,
+      endTime: createTime,
+      description: '填写完整的投保信息并提交投保申请',
+      files: [{ name: '投保信息申请表' }],
+      needReview: false,
+      reviews: getReviewByStep(0),
+      reviewStatus: null,
+      reviewComment: null
+    },
+    {
+      stepName: '生成投保资料',
+      operator: '长安银科',
+      role: '长安银科',
+      startTime: isAdvanced ? createTime : '待处理',
+      endTime: isAdvanced ? updateTime : '待处理',
+      description: '系统根据投保信息自动生成投保资料',
+      files: [
+        {
+          name: '投保申请书',
+          url: true,
+          checked: true,
+          preview: () => {
+            const wb = generatePolicyApplicationXlsx(app, {})
+            showTablePreview(wb, '投保申请书 - 预览',
+              `投保申请书_${app.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`)
+          }
+        },
+        {
+          name: '买方信息采集表',
+          url: true,
+          checked: true,
+          preview: () => {
+            const wb = generateBuyerInfoXlsx(app)
+            showTablePreview(wb, '买方信息采集表 - 预览',
+              `买方信息采集表_${app.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`)
+          }
+        }
+      ],
+      needReview: false
+    },
+    {
+      stepName: '资信调查',
+      operator: '长安银科风险部',
+      role: '长安银科',
+      startTime: isAdvanced ? updateTime : '待处理',
+      endTime: isAdvanced ? updateTime : '待处理',
+      description: '对买方进行信用评级和资信核查，分析财务状况和历史交易记录',
+      files: [{ name: '买方资信调查报告' }],
+      needReview: true
+    },
+    {
+      stepName: '信用限额审批',
+      operator: '保险公司核保部',
+      role: '保险公司',
+      startTime: isAdvanced ? updateTime : '待处理',
+      endTime: isAdvanced ? updateTime : '待处理',
+      description: '审核信用限额申请，确认承保条件及赔付比例',
+      files: [{ name: '信用限额审批单' }],
+      needReview: true
+    },
+    {
+      stepName: '核保出单',
+      operator: '保险公司（跟单员配合）',
+      role: '保险公司',
+      startTime: isAdvanced ? updateTime : '待处理',
+      endTime: isAdvanced ? updateTime : '待处理',
+      description: '核保通过，签发保单并生成投保资料',
+      files: [
+        {
+          name: '投保申请书',
+          url: true,
+          preview: () => {
+            const wb = generatePolicyApplicationXlsx(app, {})
+            showTablePreview(wb, '投保申请书 - 预览',
+              `投保申请书_${app.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`)
+          }
+        },
+        {
+          name: '买方信息采集表',
+          url: true,
+          preview: () => {
+            const wb = generateBuyerInfoXlsx(app)
+            showTablePreview(wb, '买方信息采集表 - 预览',
+              `买方信息采集表_${app.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`)
+          }
+        }
+      ],
+      needReview: true
+    },
+    {
+      stepName: '缴费生效',
+      operator: contactName,
+      role: '客户',
+      startTime: status === 'completed' ? updateTime : '待处理',
+      endTime: status === 'completed' ? updateTime : '待处理',
+      description: '确认保单信息并缴纳保费，上传支付凭证后保单生效',
+      files: [{ name: '支付凭证' }],
+      needReview: false
+    }
   ]
-  if (base.status === 'credit_investigating') timeline.push({ time: base.updateTime || '-', content: '提交投保申请（资信调查中）', color: 'primary' })
-  if (base.status === 'completed') timeline.push({ time: base.updateTime || '-', content: '投保完成（生成保单/额度）', color: 'success' })
-  return timeline
+
+  return baseSteps.map((step, idx) => {
+    const r = getReviewByStep(idx)
+    const st = stepStatus(idx)
+    return {
+      ...step,
+      status: st,
+      startTime: st === 'pending' ? '待处理' : (step.startTime !== '待处理' ? step.startTime : updateTime),
+      endTime: st === 'pending' ? '待处理' : (st === 'active' ? '处理中' : (step.endTime !== '待处理' ? step.endTime : updateTime)),
+      reviewStatus: r?.status || 'pending',
+      reviewComment: r?.comment || ''
+    }
+  })
 })
 
 const initForm = () => {
@@ -2203,79 +2578,219 @@ onMounted(() => {
 .step-role-tag.role-insurer { background: #fdf2f8; color: #be185d; }
 
 /* ── 当前步骤面板 ── */
-.current-step-panel {
+.process-detail-steps {
   background: #f9fafb;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  overflow: hidden;
+  border-radius: 12px;
+  padding: 8px 0;
+  margin-top: 16px;
 }
 
-.current-step-header {
+.detail-steps-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  padding: 14px 20px 6px;
+}
+
+.detail-steps-list {
+  position: relative;
+  padding: 0;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 16px;
+  padding: 0 0 0 28px;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 36px;
+    bottom: 0;
+    width: 2px;
+    background: #e5e7eb;
+  }
+
+  &:last-child::before {
+    display: none;
+  }
+
+  &.tl-completed::before {
+    background: #10b981;
+  }
+
+  &.tl-active::before {
+    background: #0052D9;
+  }
+}
+
+.tl-dot {
+  position: absolute;
+  left: 10px;
+  top: 18px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #fff;
-}
-
-.current-step-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.current-step-badge {
+  justify-content: center;
   font-size: 11px;
-  font-weight: 600;
-  color: #fff;
-  background: #0052D9;
-  padding: 2px 10px;
-  border-radius: 4px;
+  font-weight: 700;
+  z-index: 1;
+  flex-shrink: 0;
+
+  .tl-completed & {
+    background: #10b981;
+    color: #fff;
+  }
+
+  .tl-active & {
+    background: #0052D9;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(0, 82, 217, 0.15);
+  }
+
+  .tl-pending & {
+    background: #e5e7eb;
+    color: #9ca3af;
+  }
 }
 
-.current-step-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.role-action-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 10px;
-  padding: 14px 18px;
-}
-
-.role-action-card {
+.tl-content {
+  flex: 1;
+  padding: 12px 16px 20px;
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #f0f0f0;
+  margin-bottom: 4px;
   transition: all 0.2s;
+
+  .tl-active & {
+    border-color: #bfdbfe;
+    box-shadow: 0 2px 8px rgba(0, 82, 217, 0.06);
+  }
+
+  .tl-completed & {
+    border-color: #d1fae5;
+  }
 }
 
-.role-action-card.is-active {
-  border-color: #0052D9;
-  box-shadow: 0 0 0 1px rgba(0,82,217,0.12);
-}
-
-.action-card-header {
+.tl-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #f0f0f0;
 }
 
-.action-role-name {
-  font-size: 13px;
+.tl-step-name {
+  font-size: 14px;
   font-weight: 700;
+  color: #111827;
+
+  .tl-active & {
+    color: #0052D9;
+  }
+}
+
+.tl-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tl-info-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #4b5563;
+
+  .t-icon {
+    color: #9ca3af;
+    flex-shrink: 0;
+  }
+}
+
+.tl-info-label {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.tl-info-value {
   color: #374151;
 }
 
-.action-desc {
+.tl-info-role {
+  color: #9ca3af;
   font-size: 12px;
-  color: #6b7280;
-  line-height: 1.6;
+}
+
+.tl-file-link {
+  color: #0052D9;
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+    color: #003da6;
+  }
+}
+
+.file-checked-icon {
+  color: #10b981;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.preview-modal {
+  padding: 8px 0;
+
+  .preview-table-wrap {
+    max-height: 480px;
+    overflow: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+
+    :deep(table) {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 12px;
+    }
+
+    :deep(td), :deep(th) {
+      border: 1px solid #e2e8f0;
+      padding: 6px 8px;
+      text-align: left;
+      white-space: nowrap;
+      min-width: 60px;
+    }
+
+    :deep(th) {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #475569;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    :deep(tr:hover td) {
+      background: #f1f5f9;
+    }
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+  }
 }
 </style>

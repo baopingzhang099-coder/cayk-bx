@@ -81,10 +81,21 @@
         @page-change="handlePageChange"
       >
         <template #status="{ row }">
-          <status-tag :status="userStore.role === 'inkasso' ? 'approved' : row.status" :status-map="statusMap" />
+          <status-tag :status="row.status" :status-map="statusMap" />
         </template>
         <template #coverageAmount="{ row }">
           {{ row.insuranceCurrency || 'USD' }}{{ Number(row.insuranceAmount || 0).toLocaleString() }}
+        </template>
+        <template #premium="{ row }">
+          <span v-if="row.premium" style="font-weight:600;">${{ Number(row.premium || 0).toLocaleString() }}</span>
+          <span v-else style="color:#999;">-</span>
+        </template>
+        <template #serviceFee="{ row }">
+          <template v-if="row.serviceFeePaid">
+            <span style="color:#00a870;font-weight:600;">${{ Number(row.serviceFeeAmount || 0).toLocaleString() }}</span>
+            <t-tag theme="success" variant="light" size="small" style="margin-left:4px;">已支付</t-tag>
+          </template>
+          <span v-else style="color:#999;">-</span>
         </template>
         <template #operation="{ row }">
           <t-space>
@@ -93,6 +104,14 @@
             <t-link v-if="isPendingConfirmation(row.status) && userStore.role === 'customer'" theme="primary" @click="handleShowSubmitModal(row)">提交</t-link>
             <t-link v-if="isPendingConfirmation(row.status) && userStore.role === 'customer'" theme="danger" @click="handleShowDeleteModal(row)">删除</t-link>
             <t-link v-if="userStore.role === 'inkasso'" theme="primary" @click="handleGenerateDocuments(row)">生成投保资料</t-link>
+            <t-link v-if="userStore.role === 'inkasso' && row.status === 'contract_signing'" theme="primary" @click="handleShowContractSigning(row)">在线合同签署</t-link>
+            <t-link v-if="userStore.role === 'customer' && row.status === 'inkasso_signed'" theme="primary" @click="handleShowCustomerSigning(row)">签署合同</t-link>
+            <t-link v-if="userStore.role === 'customer' && row.status === 'contract_signed'" theme="primary" @click="handleShowPayment(row)">支付服务费</t-link>
+            <t-link v-if="userStore.role === 'inkasso' && row.status === 'service_fee_paid'" theme="primary" @click="handlePushToClerk(row)">推送保单给跟单员</t-link>
+            <t-link v-if="userStore.role === 'inkasso' && row.status === 'platform_synced'" theme="primary" @click="handleInkassoPremiumRequest(row)">保费确认申请</t-link>
+            <t-link v-if="userStore.role === 'customer' && row.status === 'platform_synced'" theme="primary" @click="handleShowPremiumConfirm(row)">确认保费</t-link>
+            <t-link v-if="userStore.role === 'customer' && row.status === 'premium_confirmed'" theme="primary" @click="handleShowPayment(row)">发起支付</t-link>
+            <t-link v-if="userStore.role === 'inkasso' && row.status === 'payment_uploaded'" theme="primary" @click="handleActivatePolicy(row)">确认生效</t-link>
           </t-space>
         </template>
       </t-table>
@@ -295,9 +314,167 @@
         </div>
 
         <div class="modal-footer">
-          <t-button variant="outline" @click="documentVisible = false">关闭</t-button>
+          <t-button variant="outline" @click="handleDocumentConfirm">确定</t-button>
         </div>
       </div>
+    </t-dialog>
+
+    <!-- 合同签署弹窗 -->
+    <t-dialog v-model:visible="contractSignVisible" header="在线合同签署" width="900px" :footer="false" destroy-on-close>
+      <div v-if="currentContractData" class="contract-sign-modal">
+        <div class="contract-header">
+          <div class="contract-title">{{ contractTemplate.title || '短期出口信用保险合同' }}</div>
+          <div class="contract-version">版本：{{ contractTemplate.version || 'v2025.1' }}</div>
+        </div>
+        <div class="contract-parties">
+          <div class="party-info-row">
+            <span class="party-label">甲方（保险人）：</span>
+            <span class="party-value">{{ currentContractData.insuranceCompanyName || currentContractData.preferredInsuranceOrgType || '人保财险' }}</span>
+          </div>
+          <div class="party-info-row">
+            <span class="party-label">乙方（被保险人）：</span>
+            <span class="party-value">{{ currentContractData.companyName || '-' }}</span>
+          </div>
+          <div class="party-info-row">
+            <span class="party-label">投保编号：</span>
+            <span class="party-value">{{ currentContractData.id }}</span>
+          </div>
+        </div>
+        <div class="contract-clauses">
+          <div v-for="clause in contractTemplate.clauses" :key="clause.id" class="clause-item">
+            <div class="clause-title">{{ clause.title }}</div>
+            <div class="clause-content">{{ clause.content }}</div>
+          </div>
+        </div>
+        <div class="contract-sign-area">
+          <div class="sign-status-row">
+            <div class="sign-status-item">
+              <t-icon name="usergroup" size="16px" />
+              <span>平台签署：</span>
+              <t-tag v-if="currentContractData.inkassoContractSigned" theme="success" variant="light">已签署 {{ currentContractData.inkassoSignTime || '' }}</t-tag>
+              <t-tag v-else theme="warning" variant="light">待签署</t-tag>
+            </div>
+            <div class="sign-status-item">
+              <t-icon name="user" size="16px" />
+              <span>客户签署：</span>
+              <t-tag v-if="currentContractData.customerContractSigned" theme="success" variant="light">已签署 {{ currentContractData.customerSignTime || '' }}</t-tag>
+              <t-tag v-else theme="warning" variant="light">待签署</t-tag>
+            </div>
+          </div>
+          <div v-if="!currentContractData.inkassoContractSigned && userStore.role === 'inkasso'" class="sign-action-bar">
+            <t-button theme="primary" size="large" @click="handleInkassoSignContract">平台签署合同</t-button>
+          </div>
+          <div v-if="currentContractData.inkassoContractSigned && !currentContractData.customerContractSigned && userStore.role === 'customer'" class="sign-action-bar">
+            <t-button theme="primary" size="large" @click="handleCustomerSignContract">客户签署合同</t-button>
+          </div>
+          <div v-if="currentContractData.inkassoContractSigned && currentContractData.customerContractSigned" class="sign-complete-bar">
+            <t-icon name="check-circle-filled" size="20px" class="complete-icon" />
+            <span>合同已由双方签署完成</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <t-button variant="outline" @click="handlePreviewContract">预览合同</t-button>
+          <t-button variant="outline" @click="handleDownloadContract">下载合同</t-button>
+          <t-button variant="outline" @click="contractSignVisible = false">关闭</t-button>
+        </div>
+      </div>
+      <div v-else class="no-data">暂无数据</div>
+    </t-dialog>
+
+    <!-- 服务费支付弹窗 -->
+    <t-dialog v-model:visible="paymentVisible" header="支付平台服务费" width="700px" :footer="false" destroy-on-close>
+      <div v-if="currentPaymentData" class="payment-modal">
+        <div class="payment-section">
+          <div class="payment-section-title">付款信息</div>
+          <div class="payment-form">
+            <div class="payment-row">
+              <span class="payment-label">支付主体</span>
+              <t-select v-model="paymentForm.paymentSubject" placeholder="请选择支付主体">
+                <t-option value="enterprise">企业</t-option>
+                <t-option value="individual">个人</t-option>
+              </t-select>
+            </div>
+            <div class="payment-row" v-if="paymentForm.paymentSubject === 'enterprise'">
+              <span class="payment-label">付款企业</span>
+              <t-input :value="currentPaymentData.companyName" disabled />
+            </div>
+            <div class="payment-row" v-else>
+              <span class="payment-label">付款人姓名</span>
+              <t-input :value="currentPaymentData.contactName || currentPaymentData.legalRepresentative || '-'" disabled />
+            </div>
+            <div class="payment-row">
+              <span class="payment-label">关联投保</span>
+              <span class="payment-value-text">{{ currentPaymentData.id }}（{{ currentPaymentData.companyName }} - {{ currentPaymentData.buyerName || '无买方' }}）</span>
+            </div>
+          </div>
+        </div>
+        <div class="payment-divider"></div>
+        <div class="payment-section">
+          <div class="payment-section-title">支付详情</div>
+          <div class="payment-form">
+            <div class="payment-row">
+              <span class="payment-label">服务费金额</span>
+              <span class="payment-amount">{{ paymentForm.amount.toLocaleString() }} USD</span>
+            </div>
+            <div class="payment-row">
+              <span class="payment-label">支付方式</span>
+              <t-radio-group v-model="paymentForm.paymentMethod">
+                <t-radio value="online">在线支付</t-radio>
+                <t-radio value="bank_transfer">银行转账</t-radio>
+              </t-radio-group>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <t-button variant="outline" @click="paymentVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handleConfirmPayment" :loading="paymentLoading">确认支付</t-button>
+        </div>
+      </div>
+      <div v-else class="no-data">暂无数据</div>
+    </t-dialog>
+
+    <!-- 支付二维码弹窗 -->
+    <t-dialog v-model:visible="qrVisible" :header="'扫码支付 - ' + (qrSubject || '')" width="500px" :footer="false" destroy-on-close>
+      <div v-if="qrData" class="qr-modal">
+        <div class="qr-header">
+          <div class="qr-icon">📱</div>
+          <div class="qr-title">请使用支付工具扫码付款</div>
+        </div>
+        <div class="qr-code-area">
+          <div class="qr-code-box">
+            <div class="qr-pattern">
+              <div class="qr-corner qr-tl"></div>
+              <div class="qr-corner qr-tr"></div>
+              <div class="qr-corner qr-bl"></div>
+              <div class="qr-corner qr-br"></div>
+              <div class="qr-center-icon">{{ qrData.subjectShort || '' }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="qr-info">
+          <div class="qr-info-row">
+            <span class="qr-label">支付主体</span>
+            <span class="qr-value">{{ qrData.subject }}</span>
+          </div>
+          <div class="qr-info-row">
+            <span class="qr-label">关联投保</span>
+            <span class="qr-value">{{ qrData.applicationId }}</span>
+          </div>
+          <div class="qr-info-row">
+            <span class="qr-label">支付金额</span>
+            <span class="qr-amount">{{ qrData.amount.toLocaleString() }} USD</span>
+          </div>
+          <div class="qr-info-row">
+            <span class="qr-label">支付方式</span>
+            <span class="qr-value">{{ qrData.method === 'online' ? '在线支付' : '银行转账' }}</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <t-button variant="outline" @click="qrVisible = false">取消支付</t-button>
+          <t-button theme="primary" @click="handlePaymentScanComplete" :loading="paymentLoading">已完成支付</t-button>
+        </div>
+      </div>
+      <div v-else class="no-data">暂无数据</div>
     </t-dialog>
 
     <t-dialog v-model:visible="previewVisible" :header="previewTitle" width="960px" :footer="false" destroy-on-close>
@@ -314,6 +491,211 @@
           <t-button variant="outline" @click="previewVisible = false">关闭</t-button>
         </div>
       </div>
+    </t-dialog>
+
+    <!-- 确认保费弹窗 -->
+    <t-dialog v-model:visible="premiumConfirmVisible" header="确认保费" width="550px" :footer="false" destroy-on-close>
+      <div v-if="premiumConfirmData" class="premium-modal">
+        <div class="modal-section-title">💰 保费信息</div>
+        <div class="info-grid mb-16">
+          <div class="info-row">
+            <span class="info-label">投保编号</span>
+            <span class="info-value">{{ premiumConfirmData.id }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">企业名称</span>
+            <span class="info-value">{{ premiumConfirmData.companyName }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">保单号</span>
+            <span class="info-value">{{ premiumConfirmData.policyNo || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">保额</span>
+            <span class="info-value">{{ (premiumConfirmData.insuranceCurrency || 'USD') + ' ' + Number(premiumConfirmData.coverageAmount || premiumConfirmData.insuranceAmount || 0).toLocaleString() }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">保费金额</span>
+            <span class="info-value premium-amount">{{ (premiumConfirmData.insuranceCurrency || 'USD') + ' ' + Number(premiumConfirmData.premium || 0).toLocaleString() }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">保险公司</span>
+            <span class="info-value">{{ premiumConfirmData.uwInsuranceCompany || premiumConfirmData.insuranceCompanyName || '-' }}</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <t-button variant="outline" @click="premiumConfirmVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handlePremiumConfirm">确认保费</t-button>
+        </div>
+      </div>
+      <div v-else class="no-data">暂无数据</div>
+    </t-dialog>
+
+    <!-- 长安银科保费确认申请弹窗 -->
+    <t-dialog v-model:visible="inkassoPremiumVisible" header="保费确认申请" width="600px" :footer="false" destroy-on-close>
+      <div v-if="inkassoPremiumData" class="premium-modal">
+        <div class="modal-section-title">📋 保单信息</div>
+        <div class="info-grid mb-16">
+          <div class="info-row">
+            <span class="info-label">投保编号</span>
+            <span class="info-value">{{ inkassoPremiumData.id }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">保单号</span>
+            <span class="info-value">{{ inkassoPremiumData.policyNo || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">投保人（被保险人）</span>
+            <span class="info-value">{{ inkassoPremiumData.companyName || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">买方名称</span>
+            <span class="info-value">{{ inkassoPremiumData.buyerName || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">买方国家</span>
+            <span class="info-value">{{ inkassoPremiumData.buyerCountry || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">保险类型</span>
+            <span class="info-value">{{ inkassoPremiumData.insuranceType || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">保险公司</span>
+            <span class="info-value">{{ inkassoPremiumData.uwInsuranceCompany || inkassoPremiumData.insuranceCompanyName || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">保单生效日期</span>
+            <span class="info-value">{{ inkassoPremiumData.policyStartDate || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">保单到期日期</span>
+            <span class="info-value">{{ inkassoPremiumData.policyEndDate || '-' }}</span>
+          </div>
+        </div>
+        <div class="modal-section-title">💰 保费明细</div>
+        <div class="info-grid mb-16">
+          <div class="info-row">
+            <span class="info-label">保额</span>
+            <span class="info-value">{{ (inkassoPremiumData.insuranceCurrency || 'USD') + ' ' + Number(inkassoPremiumData.coverageAmount || inkassoPremiumData.insuranceAmount || 0).toLocaleString() }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">费率</span>
+            <span class="info-value">{{ inkassoPremiumData.premiumRate ? (inkassoPremiumData.premiumRate + '%') : '-' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">保费金额</span>
+            <span class="info-value premium-amount">{{ (inkassoPremiumData.insuranceCurrency || 'USD') + ' ' + Number(inkassoPremiumData.premium || 0).toLocaleString() }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">平台服务费</span>
+            <span class="info-value">{{ (inkassoPremiumData.insuranceCurrency || 'USD') + ' ' + Number(inkassoPremiumData.serviceFee || 0).toLocaleString() }}</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <t-button variant="outline" @click="inkassoPremiumVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handleInkassoPremiumRequestSubmit">确认并发送</t-button>
+        </div>
+      </div>
+      <div v-else class="no-data">暂无数据</div>
+    </t-dialog>
+
+    <!-- 发起支付弹窗 -->
+    <t-dialog v-model:visible="paymentInitVisible" header="发起支付" width="650px" :footer="false" destroy-on-close>
+      <div v-if="paymentInitData" class="payment-init-modal">
+        <div class="modal-section-title">💰 支付信息</div>
+        <div class="payment-init-form">
+          <div class="payment-init-row">
+            <span class="payment-init-label">支付主体</span>
+            <t-select v-model="paymentInitForm.paymentSubject" placeholder="请选择支付主体">
+              <t-option value="enterprise" label="企业" />
+              <t-option value="individual" label="个人" />
+            </t-select>
+          </div>
+          <div class="payment-init-row" v-if="paymentInitForm.paymentSubject === 'enterprise'">
+            <span class="payment-init-label">付款企业</span>
+            <t-input :value="paymentInitData.companyName || '-'" disabled />
+          </div>
+          <div class="payment-init-row" v-else>
+            <span class="payment-init-label">付款人</span>
+            <t-input :value="paymentInitData.contactName || paymentInitData.legalRepresentative || '-'" disabled />
+          </div>
+        </div>
+
+        <div class="modal-section-title" style="margin-top: 20px;">📋 保单订单信息</div>
+        <div class="policy-order-table">
+          <table class="order-table">
+            <thead>
+              <tr>
+                <th>保单号</th>
+                <th>保险公司</th>
+                <th>保额</th>
+                <th>保费</th>
+                <th>投保企业</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{{ paymentInitData.policyNo || '-' }}</td>
+                <td>{{ paymentInitData.uwInsuranceCompany || paymentInitData.insuranceCompanyName || '-' }}</td>
+                <td>{{ (paymentInitData.insuranceCurrency || 'USD') + ' ' + Number(paymentInitData.coverageAmount || paymentInitData.insuranceAmount || 0).toLocaleString() }}</td>
+                <td class="premium-cell">{{ (paymentInitData.insuranceCurrency || 'USD') + ' ' + Number(paymentInitData.premium || 0).toLocaleString() }}</td>
+                <td>{{ paymentInitData.companyName || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="modal-footer">
+          <t-button variant="outline" @click="paymentInitVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handlePaymentInitConfirm">确认支付</t-button>
+        </div>
+      </div>
+      <div v-else class="no-data">暂无数据</div>
+    </t-dialog>
+
+    <!-- 支付二维码弹窗 -->
+    <t-dialog v-model:visible="paymentQrVisible" header="扫码支付" width="500px" :footer="false" destroy-on-close>
+      <div v-if="paymentQrData" class="qr-modal">
+        <div class="qr-header">
+          <div class="qr-icon">📱</div>
+          <div class="qr-title">请使用支付工具扫码付款</div>
+        </div>
+        <div class="qr-code-area">
+          <div class="qr-code-box">
+            <div class="qr-pattern">
+              <div class="qr-corner qr-tl"></div>
+              <div class="qr-corner qr-tr"></div>
+              <div class="qr-corner qr-bl"></div>
+              <div class="qr-corner qr-br"></div>
+              <div class="qr-center-icon">{{ paymentQrData.subjectShort || '' }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="qr-info">
+          <div class="qr-info-row">
+            <span class="qr-label">支付主体</span>
+            <span class="qr-value">{{ paymentQrData.subject }}</span>
+          </div>
+          <div class="qr-info-row">
+            <span class="qr-label">投保编号</span>
+            <span class="qr-value">{{ paymentQrData.applicationId }}</span>
+          </div>
+          <div class="qr-info-row">
+            <span class="qr-label">保单号</span>
+            <span class="qr-value">{{ paymentQrData.policyNo || '-' }}</span>
+          </div>
+          <div class="qr-info-row">
+            <span class="qr-label">支付金额</span>
+            <span class="qr-amount">{{ paymentQrData.amount.toLocaleString() }} USD</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <t-button variant="outline" @click="paymentQrVisible = false">取消支付</t-button>
+          <t-button theme="primary" @click="handlePaymentQrComplete">已完成支付</t-button>
+        </div>
+      </div>
+      <div v-else class="no-data">暂无数据</div>
     </t-dialog>
 
     <t-dialog v-model:visible="exportVisible" header="导出预览" width="800px" :footer="false">
@@ -612,6 +994,38 @@ const previewActiveSheet = ref('')
 const previewWorkbook = ref(null)
 const previewFilename = ref('')
 
+const contractSignVisible = ref(false)
+const currentContractData = ref(null)
+const contractTemplate = ref({ clauses: [], title: '', version: '' })
+
+const paymentVisible = ref(false)
+const currentPaymentData = ref(null)
+const paymentLoading = ref(false)
+const paymentForm = reactive({
+  paymentSubject: 'enterprise',
+  paymentMethod: 'online',
+  amount: 0
+})
+
+const qrVisible = ref(false)
+const qrSubject = ref('')
+const qrData = ref(null)
+
+const premiumConfirmVisible = ref(false)
+const premiumConfirmData = ref(null)
+
+const inkassoPremiumVisible = ref(false)
+const inkassoPremiumData = ref(null)
+
+const paymentInitVisible = ref(false)
+const paymentInitData = ref(null)
+const paymentInitForm = reactive({
+  paymentSubject: 'enterprise'
+})
+
+const paymentQrVisible = ref(false)
+const paymentQrData = ref(null)
+
 const showTablePreview = (wb, title, filename) => {
   previewWorkbook.value = wb
   previewTitle.value = title
@@ -667,15 +1081,36 @@ const countryOptions = [
 
 const statusOptions = [
   { value: 'draft', label: '待确认' },
-  { value: 'pending_review', label: '待确认' },
+  { value: 'pending_review', label: '已确认' },
+  { value: 'contract_signing', label: '合同签署' },
+  { value: 'inkasso_signed', label: '平台已签署' },
+  { value: 'contract_signed', label: '合同已签署' },
+  { value: 'service_fee_paid', label: '服务费已支付' },
+  { value: 'platform_synced', label: '待缴纳保单费用' },
+  { value: 'premium_confirmed', label: '保费已确认' },
+  { value: 'payment_uploaded', label: '凭证已上传' },
+  { value: 'active', label: '已生效' },
   { value: 'approved', label: '已确认' }
 ]
 
 const statusMap = {
   draft: '待确认',
-  pending_review: '待确认',
+  pending_review: '已确认',
   clerk_review: '跟单员审核',
+  contract_signing: '合同签署',
+  inkasso_signed: '平台已签署',
+  contract_signed: '合同已签署',
+  service_fee_paid: '服务费已支付',
+  credit_investigating: '资信调查',
+  limit_approving: '限额审批',
+  underwriting: '核保出单',
+  pending_payment: '待缴费',
   approved: '已确认',
+  uw_completed: '核保已完成',
+  platform_synced: '待缴纳保单费用',
+  premium_confirmed: '保费已确认',
+  payment_uploaded: '凭证已上传',
+  active: '已生效',
   rejected: '待确认',
   ocr_pending: '待确认',
   ocr_clerk_review: '待审核',
@@ -684,25 +1119,25 @@ const statusMap = {
 
 const columns = [
   { colKey: 'id', title: '投保编号', width: 130 },
+  { colKey: 'policyNo', title: '保单号', width: 130 },
   { colKey: 'companyName', title: '企业名称', ellipsis: true },
   { colKey: 'buyerName', title: '买方名称', ellipsis: true },
   { colKey: 'buyerCountry', title: '买方国别', width: 100 },
   { colKey: 'insuranceType', title: '投保类型', width: 120 },
   { colKey: 'preferredInsuranceOrgType', title: '机构类型', width: 120 },
   { colKey: 'insuranceAmount', title: '投保金额', align: 'right', width: 130 },
+  { colKey: 'premium', title: '保费金额', align: 'right', width: 130, slot: 'premium' },
+  { colKey: 'serviceFee', title: '服务费', width: 130, slot: 'serviceFee' },
   { colKey: 'status', title: '状态', width: 110, slot: 'status' },
   { colKey: 'createTime', title: '申请日期', width: 120 },
-  { colKey: 'operation', title: '操作', width: 220, fixed: 'right', slot: 'operation' }
+  { colKey: 'operation', title: '操作', width: 420, fixed: 'right', slot: 'operation' }
 ]
 
 const pendingStats = computed(() => {
   const list = store.insuranceApplications || []
-  if (userStore.role === 'inkasso') {
-    return { pending_all: 0, approved: list.length }
-  }
   return {
-    pending_all: list.filter(it => it.status === 'draft' || it.status === 'pending_review' || it.status === 'rejected').length,
-    approved: list.filter(it => it.status === 'approved').length
+    pending_all: list.filter(it => ['draft', 'pending_review', 'contract_signing', 'inkasso_signed', 'contract_signed', 'service_fee_paid', 'credit_investigating', 'platform_synced', 'premium_confirmed', 'payment_uploaded', 'rejected'].includes(it.status)).length,
+    approved: list.filter(it => it.status === 'approved' || it.status === 'completed').length
   }
 })
 
@@ -809,7 +1244,7 @@ const generateExcel = () => {
 const handleAdd = () => { router.push('/insurance/purchase/new') }
 const handleView = (row) => { router.push(`/insurance/purchase/${row.id}`) }
 const handleEdit = (row) => { router.push(`/insurance/purchase/${row.id}/edit`) }
-const pendingStatuses = ['draft', 'pending_review', 'rejected', 'ocr_pending']
+const pendingStatuses = ['draft', 'rejected', 'ocr_pending']
 const isPendingConfirmation = (status) => pendingStatuses.includes(status)
 
 const handleShowSubmitModal = (row) => {
@@ -826,8 +1261,48 @@ const handleConfirmSubmit = () => {
   MessagePlugin.success('提交成功，状态已变更为已确认')
 }
 const handleGenerateDocuments = (row) => {
+  // 已处于合同签署及后续阶段，说明投保资料已生成，不能重复生成
+  if (['contract_signing', 'inkasso_signed', 'contract_signed', 'service_fee_paid', 'clerk_review', 'credit_investigating', 'limit_approving', 'underwriting', 'pending_payment', 'approved', 'completed'].includes(row.status)) {
+    MessagePlugin.warning('该投保记录的投保资料已生成，不能重复生成')
+    return
+  }
   currentDocumentData.value = row
   documentVisible.value = true
+}
+
+const handlePushToClerk = (row) => {
+  const result = store.pushToClerk(row.id)
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    MessagePlugin.success('投保资料已推送至跟单员')
+  } else {
+    MessagePlugin.error(result.message || '操作失败')
+  }
+}
+
+const handleDocumentConfirm = () => {
+  const row = currentDocumentData.value
+  if (!row) return
+  // 生成投保资料
+  try {
+    generatePolicyApplicationXlsx(row, statusMap)
+  } catch (e) {
+    console.error('生成投保申请书失败', e)
+  }
+  try {
+    generateBuyerInfoXlsx(row)
+  } catch (e) {
+    console.error('生成买方信息采集表失败', e)
+  }
+  // 更新状态流转到下一步
+  const result = store.generateDocuments(row.id)
+  if (result.ok) {
+    documentVisible.value = false
+    store.touchInsuranceApplications()
+    MessagePlugin.success('投保资料已生成，流程已流转至合同签署阶段')
+  } else {
+    MessagePlugin.error(result.message || '操作失败')
+  }
 }
 
 const handlePreviewPolicyApplication = (row) => {
@@ -960,6 +1435,257 @@ const handleConfirmInsuranceApply = () => {
 
   MessagePlugin.success('投保申请成功！已成功应用数字化推荐方案（赔付比90%、0免赔、0.11%优惠费率），保单已同步生成并激活！')
   insuranceInfoVisible.value = false
+}
+
+const handleShowContractSigning = (row) => {
+  currentContractData.value = row
+  contractTemplate.value = store.getContractTemplate('default')
+  contractSignVisible.value = true
+}
+
+const handleShowCustomerSigning = (row) => {
+  currentContractData.value = row
+  contractTemplate.value = store.getContractTemplate('default')
+  contractSignVisible.value = true
+}
+
+const handleInkassoSignContract = () => {
+  const row = currentContractData.value
+  if (!row) return
+  const result = store.signInsuranceContract(row.id, 'inkasso')
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    const updated = store.insuranceApplications.find(it => it.id === row.id)
+    if (updated) currentContractData.value = updated
+    MessagePlugin.success('平台已签署合同')
+  } else {
+    MessagePlugin.error(result.message || '签署失败')
+  }
+}
+
+const handleCustomerSignContract = () => {
+  const row = currentContractData.value
+  if (!row) return
+  const result = store.signInsuranceContract(row.id, 'customer')
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    const updated = store.insuranceApplications.find(it => it.id === row.id)
+    if (updated) currentContractData.value = updated
+    MessagePlugin.success('客户已签署合同')
+  } else {
+    MessagePlugin.error(result.message || '签署失败')
+  }
+}
+
+const handleDownloadContract = () => {
+  const row = currentContractData.value
+  if (!row) return
+  const wb = generateContractXlsx(row, contractTemplate.value)
+  const filename = `保险合同_${row.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
+  XLSX.writeFile(wb, filename)
+  MessagePlugin.success('合同已下载')
+}
+
+const handlePreviewContract = () => {
+  const row = currentContractData.value
+  if (!row) return
+  const wb = generateContractXlsx(row, contractTemplate.value)
+  const filename = `保险合同_${row.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`
+  showTablePreview(wb, '保险合同 - 预览', filename)
+}
+
+const generateContractXlsx = (row, template) => {
+  const wb = XLSX.utils.book_new()
+  const statusText = row.inkassoContractSigned && row.customerContractSigned
+    ? '双方已签署'
+    : row.inkassoContractSigned
+      ? '平台已签署，待客户签署'
+      : '待签署'
+  const infoData = [
+    ['短期出口信用保险合同'],
+    [],
+    ['版本', template.version || 'v2025.1'],
+    ['甲方（保险人）', row.insuranceCompanyName || row.preferredInsuranceOrgType || '人保财险'],
+    ['乙方（被保险人）', row.companyName || '-'],
+    ['投保编号', row.id],
+    [],
+    ['签署状态', statusText],
+    ['平台签署时间', row.inkassoSignTime || '-'],
+    ['客户签署时间', row.customerSignTime || '-'],
+  ]
+  const infoSheet = XLSX.utils.aoa_to_sheet(infoData)
+  XLSX.utils.book_append_sheet(wb, infoSheet, '合同信息')
+  const clauseData = [['条款编号', '条款名称', '条款内容']]
+  template.clauses.forEach((clause, i) => {
+    clauseData.push([String(i + 1), clause.title, clause.content])
+  })
+  const clauseSheet = XLSX.utils.aoa_to_sheet(clauseData)
+  XLSX.utils.book_append_sheet(wb, clauseSheet, '合同条款')
+  return wb
+}
+
+const handleShowPayment = (row) => {
+  if (row.status === 'premium_confirmed') {
+    // Premium payment flow
+    paymentInitData.value = row
+    paymentInitForm.paymentSubject = 'enterprise'
+    paymentInitVisible.value = true
+  } else {
+    // Service fee payment flow (contract_signed)
+    currentPaymentData.value = row
+    const amount = Math.round(Number(row.insuranceAmount || 0) * 0.0011)
+    paymentForm.paymentSubject = 'enterprise'
+    paymentForm.paymentMethod = 'online'
+    paymentForm.amount = amount
+    paymentVisible.value = true
+  }
+}
+
+const handleConfirmPayment = () => {
+  const row = currentPaymentData.value
+  if (!row) return
+  const displayName = paymentForm.paymentSubject === 'enterprise'
+    ? row.companyName
+    : (row.contactName || row.legalRepresentative || '个人')
+  if (!displayName) {
+    MessagePlugin.warning('请选择支付主体')
+    return
+  }
+  qrSubject.value = displayName
+  const short = (displayName || '').length > 4 ? (displayName || '').substring(0, 4) + '..' : (displayName || '')
+  qrData.value = {
+    subject: displayName,
+    subjectShort: short,
+    applicationId: row.id,
+    amount: paymentForm.amount,
+    method: paymentForm.paymentMethod
+  }
+  paymentVisible.value = false
+  qrVisible.value = true
+}
+
+const handlePaymentScanComplete = async () => {
+  const row = currentPaymentData.value
+  if (!row) return
+  paymentLoading.value = true
+  await new Promise(resolve => setTimeout(resolve, 1500))
+  const payerName = paymentForm.paymentSubject === 'enterprise' ? row.companyName : (row.contactName || row.legalRepresentative)
+  const result = store.payServiceFee(row.id, {
+    payerType: paymentForm.paymentSubject,
+    payerName,
+    paymentSubject: payerName,
+    paymentMethod: paymentForm.paymentMethod,
+    amount: paymentForm.amount
+  })
+  paymentLoading.value = false
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    qrVisible.value = false
+    MessagePlugin.success('服务费支付成功')
+  } else {
+    paymentLoading.value = false
+    MessagePlugin.error(result.message || '支付失败')
+  }
+}
+
+const handleInkassoPremiumRequest = (row) => {
+  inkassoPremiumData.value = row
+  inkassoPremiumVisible.value = true
+}
+
+const handleInkassoPremiumRequestSubmit = () => {
+  const row = inkassoPremiumData.value
+  if (!row) return
+  const res = store.initiatePremiumConfirmation(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '申请失败')
+    return
+  }
+  store.touchInsuranceApplications()
+  inkassoPremiumVisible.value = false
+  MessagePlugin.success('保费确认申请已发送，请客户登录确认')
+}
+
+const handleShowPremiumConfirm = (row) => {
+  premiumConfirmData.value = row
+  premiumConfirmVisible.value = true
+}
+
+const handlePremiumConfirm = () => {
+  const row = premiumConfirmData.value
+  if (!row) return
+  const res = store.confirmPremium(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '确认失败')
+    return
+  }
+  store.touchInsuranceApplications()
+  premiumConfirmVisible.value = false
+  MessagePlugin.success('保费已确认，请进行线下支付并上传支付凭证')
+}
+
+const handlePaymentInitConfirm = () => {
+  const row = paymentInitData.value
+  if (!row) return
+  const displayName = paymentInitForm.paymentSubject === 'enterprise'
+    ? row.companyName
+    : (row.contactName || row.legalRepresentative || '个人')
+  if (!displayName) {
+    MessagePlugin.warning('请选择支付主体')
+    return
+  }
+  const short = (displayName || '').length > 4 ? (displayName || '').substring(0, 4) + '..' : (displayName || '')
+  paymentQrData.value = {
+    subject: displayName,
+    subjectShort: short,
+    applicationId: row.id,
+    policyNo: row.policyNo || '',
+    amount: Number(row.premium || 0)
+  }
+  paymentInitVisible.value = false
+  paymentQrVisible.value = true
+}
+
+const handlePaymentQrComplete = () => {
+  const row = paymentInitData.value
+  if (!row) return
+  const payerName = paymentInitForm.paymentSubject === 'enterprise' ? row.companyName : (row.contactName || row.legalRepresentative)
+  const res = store.uploadPaymentProof(row.id, {
+    payerName: payerName || '',
+    paymentDate: new Date().toISOString().split('T')[0],
+    proofNo: '',
+    remark: '扫码支付'
+  })
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '支付确认失败')
+    return
+  }
+  store.touchInsuranceApplications()
+  // 客户缴纳保费 → 完成缴费生效(step6)，标记整个投保流程完成
+  store.approveInsuranceTaskStep(row.id + '_flow', {
+    handler: row.companyName || '客户',
+    approvalResult: 'approved',
+    auditOpinion: '客户已完成保费缴纳'
+  })
+  paymentQrVisible.value = false
+  paymentInitData.value = null
+  MessagePlugin.success('保费支付完成，请等待平台确认生效')
+}
+
+const handleActivatePolicy = (row) => {
+  const res = store.activatePolicyByPlatform(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '确认生效失败')
+    return
+  }
+  store.touchInsuranceApplications()
+  // 平台确认生效 → 完成缴费生效(step6)，标记整个流程完成
+  store.approveInsuranceTaskStep(row.id + '_flow', {
+    handler: '长安银科',
+    approvalResult: 'approved',
+    auditOpinion: '保单已确认为生效'
+  })
+  MessagePlugin.success('保单已确认为生效状态')
 }
 
 onMounted(() => {
@@ -1591,6 +2317,375 @@ onMounted(() => {
   }
 }
 
+.contract-sign-modal {
+  padding: 8px 0;
+  max-height: 70vh;
+  overflow-y: auto;
+
+  .contract-header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #1e293b;
+
+    .contract-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 4px;
+    }
+
+    .contract-version {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+  }
+
+  .contract-parties {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+
+    .party-info-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .party-label {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 500;
+        min-width: 120px;
+      }
+
+      .party-value {
+        font-size: 13px;
+        color: #1e293b;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .contract-clauses {
+    margin-bottom: 20px;
+
+    .clause-item {
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      background: #fafbfc;
+      border: 1px solid #e8ecf0;
+      border-radius: 8px;
+
+      .clause-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 8px;
+      }
+
+      .clause-content {
+        font-size: 13px;
+        color: #475569;
+        line-height: 1.8;
+      }
+    }
+  }
+
+  .contract-sign-area {
+    padding: 20px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    text-align: center;
+
+    .sign-status-row {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-bottom: 16px;
+
+      .sign-status-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+        color: #475569;
+      }
+    }
+
+    .sign-action-bar {
+      margin-top: 12px;
+    }
+
+    .sign-complete-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #16a34a;
+
+      .complete-icon {
+        color: #16a34a;
+      }
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+  }
+}
+
+.qr-modal {
+  padding: 8px 0;
+  text-align: center;
+
+  .qr-header {
+    margin-bottom: 20px;
+
+    .qr-icon {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    .qr-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+  }
+
+  .qr-code-area {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+
+    .qr-code-box {
+      width: 200px;
+      height: 200px;
+      background: #fff;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+
+      .qr-pattern {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .qr-corner {
+          position: absolute;
+          width: 36px;
+          height: 36px;
+          border: 4px solid #1e293b;
+
+          &.qr-tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+          &.qr-tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+          &.qr-bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+          &.qr-br { bottom: 0; right: 0; border-left: none; border-top: none; }
+        }
+
+        .qr-center-icon {
+          font-size: 13px;
+          font-weight: 700;
+          color: #1e293b;
+          background: #fff;
+          padding: 4px 8px;
+          border-radius: 4px;
+          border: 2px solid #e2e8f0;
+        }
+      }
+    }
+  }
+
+  .qr-info {
+    text-align: left;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 16px;
+
+    .qr-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+
+      &:not(:last-child) {
+        border-bottom: 1px dashed #e2e8f0;
+      }
+
+      .qr-label {
+        font-size: 13px;
+        color: #64748b;
+      }
+
+      .qr-value {
+        font-size: 13px;
+        color: #1e293b;
+        font-weight: 500;
+      }
+
+      .qr-amount {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0052d9;
+      }
+    }
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
+.payment-modal {
+  padding: 8px 0;
+
+  .payment-section {
+    margin-bottom: 16px;
+
+    .payment-section-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 12px;
+      padding-left: 10px;
+      border-left: 4px solid #0052d9;
+    }
+  }
+
+  .payment-divider {
+    height: 1px;
+    background: #e2e8f0;
+    margin: 16px 0;
+  }
+
+  .payment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .payment-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .payment-label {
+      min-width: 100px;
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .payment-value-text {
+      font-size: 13px;
+      color: #1e293b;
+    }
+
+    .payment-amount {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0052d9;
+    }
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
+.premium-modal {
+  padding: 8px 0;
+
+  .premium-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0052d9;
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
+.proof-modal {
+  padding: 8px 0;
+
+  .proof-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .proof-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .proof-label {
+      min-width: 90px;
+      font-size: 13px;
+      color: #333;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .proof-value-text {
+      font-size: 13px;
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    :deep(.t-input),
+    :deep(.t-date-picker),
+    :deep(.t-textarea) {
+      flex: 1;
+    }
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
 .confirmation-box {
   margin-top: 18px;
   padding: 14px;
@@ -1604,5 +2699,53 @@ onMounted(() => {
     font-weight: 500;
     line-height: 1.6;
   }
+}
+
+.payment-init-modal {
+  padding: 8px 0;
+}
+.payment-init-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+.payment-init-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.payment-init-label {
+  min-width: 80px;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.policy-order-table {
+  margin-top: 12px;
+}
+.order-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.order-table th,
+.order-table td {
+  border: 1px solid #e2e8f0;
+  padding: 10px 8px;
+  text-align: center;
+}
+.order-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+}
+.order-table td {
+  color: #333;
+}
+.order-table .premium-cell {
+  color: #e34d59;
+  font-weight: 600;
 }
 </style>

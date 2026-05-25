@@ -340,7 +340,7 @@ const formRules = {
   currency: [{ required: true, message: '请选择币种', type: 'error' }],
   paymentTermsDays: [{ required: true, message: '请输入账期天数', type: 'error' }],
   paymentMethod: [{ required: true, message: '请选择支付方式', type: 'error' }],
-  authorizationDocument: [{ required: true, message: '请上传授权文件', type: 'error' }]
+  authorizationDocument: []
 }
 
 const handleSearch = (params) => {

@@ -91,7 +91,7 @@ const formData = reactive({
 
 const formRules = {
   surrenderReason: [{ required: true, message: '请输入退保原因', type: 'error' }],
-  surrenderApplication: [{ required: true, message: '请上传退保申请书', type: 'error' }]
+  surrenderApplication: []
 }
 
 const handleSubmit = async ({ validateResult }) => {

@@ -1140,11 +1140,11 @@ const rules = {
   involvesControlledGoods: [{ required: true, message: '请选择是否涉及管制商品', trigger: 'change' }],
   hasTitleRetentionClause: [{ required: true, message: '请选择贸易合同是否含物权保留条款', trigger: 'change' }],
   // 补充资料
-  businessLicense: [{ required: true, message: '请上传企业法人营业执照扫描件', trigger: 'change' }],
-  importExportQualification: [{ required: true, message: '请上传对外贸易经营者备案登记表', trigger: 'change' }],
-  tradeContract: [{ required: true, message: '请上传近期贸易合同扫描件', trigger: 'change' }],
-  customsDeclaration: [{ required: true, message: '请上传出口报关单扫描件', trigger: 'change' }],
-  authorizationDocument: [{ required: true, message: '请上传授权保险公司联系买方的签字文件', trigger: 'change' }],
+  businessLicense: [],
+  importExportQualification: [],
+  tradeContract: [],
+  customsDeclaration: [],
+  authorizationDocument: [],
   // 买方补充信息（新增，可选字段）
   historicalOverdueStatus: [],
   buyerHasPublicFinancials: [],
@@ -1156,7 +1156,7 @@ const rules = {
   // 投保声明
   declarationSignature: [{ required: true, message: '请输入投保人授权人签字', trigger: 'blur' }],
   declarationDate: [{ required: true, message: '请选择声明日期', trigger: 'change' }],
-  companySeal: [{ required: true, message: '请上传加盖公司公章的声明文件', trigger: 'change' }]
+  companySeal: [],
 }
 
 const detailData = computed(() => {

@@ -82,7 +82,7 @@ const formData = reactive({
 const formRules = {
   changeType: [{ required: true, message: '请选择变更类型', type: 'error' }],
   changeReason: [{ required: true, message: '请输入变更原因', type: 'error' }],
-  changeApplication: [{ required: true, message: '请上传变更申请书', type: 'error' }]
+  changeApplication: []
 }
 
 const handleChangeType = (value) => {

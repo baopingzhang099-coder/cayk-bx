@@ -133,7 +133,8 @@ const allMenuItems = [
       { key: 'policy-shipment', title: '出运申报管理', path: '/policy/shipment', roles: ['customer', 'inkasso', 'clerk'], icon: 'airplane' },
       { key: 'policy-process', title: '保单流程管理', path: '/policy/process', roles: ['inkasso', 'clerk'], icon: 'fork' },
       { key: 'policy-performance', title: '保单履约报表', path: '/policy/performance', roles: ['inkasso'], icon: 'chart' },
-      { key: 'policy-contract', title: '委托合同签署', path: '/policy/contract', roles: ['customer', 'inkasso', 'clerk'], icon: 'edit-1' }
+      { key: 'policy-contract', title: '委托合同签署', path: '/policy/contract', roles: ['customer', 'inkasso', 'clerk'], icon: 'edit-1' },
+      { key: 'policy-change', title: '保单变更管理', path: '/policy/change', roles: ['customer', 'inkasso', 'clerk'], icon: 'edit-1' }
     ]
   },
   { 
@@ -193,6 +194,7 @@ const menuConfig = {
   'policy-process': { parent: '保单管理', current: '保单流程管理' },
   'policy-performance': { parent: '保单管理', current: '保单履约报表' },
   'policy-contract': { parent: '保单管理', current: '委托合同签署' },
+  'policy-change': { parent: '保单管理', current: '保单变更管理' },
   'claim-list': { parent: '保险理赔', current: '理赔信息管理' },
   'claim-process': { parent: '保险理赔', current: '理赔流程管理' },
   'claim-report': { parent: '保险理赔', current: '理赔报表管理' },

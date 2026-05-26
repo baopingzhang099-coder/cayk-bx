@@ -50,6 +50,18 @@ const routes = [
         meta: { title: '保单信息管理', menuKey: 'policy-list', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
+        path: '/policy/change',
+        name: 'PolicyChangeList',
+        component: () => import('@/pages/policy/PolicyChangeList.vue'),
+        meta: { title: '保单变更管理', menuKey: 'policy-change', roles: ['customer', 'inkasso', 'clerk'] }
+      },
+      {
+        path: '/policy/change/new',
+        name: 'PolicyChangeCreate',
+        component: () => import('@/pages/policy/PolicyChangeForm.vue'),
+        meta: { title: '保单变更申请', menuKey: 'policy-change', roles: ['customer'] }
+      },
+      {
         path: '/policy/contract',
         name: 'ContractSigning',
         component: () => import('@/pages/policy/ContractSigning.vue'),

@@ -90,6 +90,7 @@ const saveStateToStorage = (state) => {
       clerkList: state.clerkList,
       tradeInfos: state.tradeInfos,
       notifications: state.notifications,
+      policyChangeApplications: state.policyChangeApplications,
       _savedAt: new Date().toISOString()
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
@@ -123,7 +124,8 @@ export const useBusinessStore = defineStore('business', {
     clerkList: [],
     tradeInfos: [],
     claimUpdateVersion: 0,
-    insuranceUpdateVersion: 0
+    insuranceUpdateVersion: 0,
+    policyChangeApplications: []
   }),
   getters: {
     insuranceStats(state) {
@@ -180,8 +182,10 @@ export const useBusinessStore = defineStore('business', {
         this.clerkList = saved.clerkList || []
         this.tradeInfos = saved.tradeInfos || []
         this.notifications = saved.notifications || []
+        this.policyChangeApplications = saved.policyChangeApplications || []
         return
       }
+      this.policyChangeApplications = []
       this.insuranceApplications = []
       this.policies = []
       this.creditLimits = []
@@ -331,7 +335,7 @@ export const useBusinessStore = defineStore('business', {
       const cur = this.externalPolicies.find(p => p.id === id)
       if (!cur) return { ok: false, message: '记录不存在' }
       if (cur.status !== 'returned') return { ok: false, message: '当前状态不允许重新提交' }
-      cur.status = cur.clerkInitiated ? 'clerk_confirm' : 'clerk_review'
+      cur.status = 'clerk_review'
       cur.rejectReason = ''
       cur.updateTime = formatDateTime(new Date())
       saveStateToStorage(this.$state)
@@ -1415,17 +1419,17 @@ export const useBusinessStore = defineStore('business', {
       const cur = this.externalPolicies.find(p => p.id === id)
       if (!cur) return { ok: false, message: '记录不存在' }
       if (cur.status !== 'clerk_review') return { ok: false, message: '当前状态不允许通过' }
-      cur.status = 'active'
-      cur.updateTime = formatDateTime(new Date())
-      // Create corresponding policy entry
       const now = new Date()
-      if (!this.policies.find(p => p.policyNo === cur.policyNo)) {
+      cur.status = cur.clerkInitiated ? 'clerk_active' : 'active'
+      cur.updateTime = formatDateTime(now)
+      // Create corresponding policy entry
+      if (!this.policies.find(p => p.externalPolicyId === cur.id)) {
         this.policies.unshift({
-          id: 'P_EXT_' + cur.id,
+          id: cur.clerkInitiated ? 'P_EXT_CLERK_' + cur.id : 'P_EXT_' + cur.id,
           policyNo: cur.policyNo,
           insuranceCompany: cur.insuranceCompany,
-          policyholder: cur.policyholder,
-          insured: cur.insured,
+          policyholder: cur.policyholder || cur.customerCompany,
+          insured: cur.insured || '',
           coverageAmount: cur.coverageAmount,
           premium: cur.premium,
           effectiveDate: cur.effectiveDate,
@@ -1640,7 +1644,7 @@ export const useBusinessStore = defineStore('business', {
       const cur = this.externalPolicies.find(p => p.id === id)
       if (!cur) return { ok: false, message: '记录不存在' }
       if (cur.status !== 'clerk_auth_authorized') return { ok: false, message: '当前状态不允许推送平台审核' }
-      cur.status = 'clerk_platform_review'
+      cur.status = 'platform_review'
       cur.updateTime = formatDateTime(new Date())
       saveStateToStorage(this.$state)
       return { ok: true, data: cur }
@@ -1650,13 +1654,13 @@ export const useBusinessStore = defineStore('business', {
       const epIdx = this.externalPolicies.findIndex(p => p.id === id)
       if (epIdx < 0) return { ok: false, message: '记录不存在' }
       const cur = this.externalPolicies[epIdx]
-      if (cur.status !== 'clerk_platform_review') return { ok: false, message: '当前状态不允许OCR完成' }
+      if (cur.status !== 'platform_review' && cur.status !== 'returned') return { ok: false, message: '当前状态不允许OCR完成' }
       const now = new Date()
       this.externalPolicies[epIdx] = {
         ...cur,
         ...ocrFields,
         ocrStatus: 'completed',
-        status: 'clerk_confirm',
+        status: cur.clerkInitiated ? 'clerk_review' : cur.status,
         updateTime: formatDateTime(now)
       }
       saveStateToStorage(this.$state)
@@ -1899,6 +1903,268 @@ export const useBusinessStore = defineStore('business', {
         updateTime: formatDateTime(now)
       }
       return { ok: true, data: this.insuranceApplications[idx] }
+    },
+
+    // ===== Policy Change Application Flow =====
+    createPolicyChangeApp(policyNo, formData) {
+      const policy = this.policies.find(p => p.policyNo === policyNo)
+      if (!policy) return { ok: false, message: '保单不存在' }
+      const now = new Date()
+      const chgTypeLabels = {
+        add_buyer: '增加买方', remove_buyer: '减少买方', extend: '展期',
+        adjust_limit: '额度调整', change_insured: '被保险人变更',
+        change_contact: '联系人变更', change_address: '地址变更', other: '其他变更'
+      }
+      const record = {
+        id: createId('CHG'),
+        policyNo,
+        policyId: policy.id || '',
+        companyName: policy.policyholder || '',
+        changeType: formData.changeType || 'other',
+        changeTypeName: chgTypeLabels[formData.changeType] || '其他变更',
+        changeReason: formData.changeReason || '',
+        beforeContent: formData.beforeContent || '',
+        afterContent: formData.afterContent || '',
+        effectiveDate: formData.effectiveDate || '',
+        endorsementNo: '',
+        changeApplication: formData.changeApplication || [],
+        supportingDocs: formData.supportingDocs || [],
+        serviceFeePaid: false,
+        serviceFeeAmount: 0,
+        serviceFeePayTime: '',
+        generatedChangeForm: [],
+        generatedChecklist: [],
+        insurerDecision: '',
+        insurerOpinion: '',
+        insurerDecisionTime: '',
+        insurerAttachments: [],
+        clerkUpdateRecord: '',
+        clerkSyncTime: '',
+        platformSyncTime: '',
+        rejectReason: '',
+        supplementRequest: '',
+        status: 'chg_draft',
+        createTime: formatDateTime(now),
+        updateTime: formatDateTime(now),
+        submitTime: '',
+        platformReviewTime: '',
+        clerkReviewTime: '',
+        insurerReviewTime: '',
+        completedTime: ''
+      }
+      this.policyChangeApplications.unshift(record)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: record }
+    },
+
+    payPolicyChangeServiceFee(id, paymentInfo) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_draft') return { ok: false, message: '当前状态不允许支付' }
+      const now = new Date()
+      cur.serviceFeePaid = true
+      cur.serviceFeeAmount = paymentInfo?.amount || 0
+      cur.serviceFeePayTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    submitChangeToPlatform(id) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_draft') return { ok: false, message: '当前状态不允许提交' }
+      // if (!cur.serviceFeePaid) return { ok: false, message: '请先支付服务费' }
+      const now = new Date()
+      cur.status = 'chg_platform_review'
+      cur.submitTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    generateChangeDocuments(id) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_platform_review') return { ok: false, message: '当前状态不允许生成文档' }
+      // Simulate generating change application form + checklist
+      cur.generatedChangeForm = [{ name: `变更申请表_${cur.policyNo}.pdf`, size: '0.3 MB' }]
+      cur.generatedChecklist = [{ name: `变更材料清单_${cur.policyNo}.pdf`, size: '0.2 MB' }]
+      cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    pushChangeToClerk(id) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_platform_review') return { ok: false, message: '当前状态不允许推送' }
+      const now = new Date()
+      cur.status = 'chg_clerk_review'
+      cur.platformReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    clerkSubmitToInsurer(id) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_clerk_review') return { ok: false, message: '当前状态不允许提交保险公司' }
+      const now = new Date()
+      cur.status = 'chg_insurer_review'
+      cur.clerkReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    clerkRejectChange(id, reason) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_clerk_review') return { ok: false, message: '当前状态不允许驳回' }
+      if (!reason?.trim()) return { ok: false, message: '请填写驳回原因' }
+      const now = new Date()
+      cur.status = 'chg_platform_review'
+      cur.rejectReason = reason
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    insurerApproveChange(id, decisionData) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_insurer_review') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'chg_insurer_approved'
+      cur.insurerDecision = 'approved'
+      cur.insurerOpinion = decisionData?.opinion || ''
+      cur.insurerDecisionTime = formatDateTime(now)
+      cur.insurerAttachments = decisionData?.attachments || [
+        ...(cur.generatedChangeForm || []),
+        ...(cur.generatedChecklist || []),
+        { name: `变更决定书_${cur.policyNo}.pdf`, size: '0.4 MB' }
+      ]
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    insurerRejectChange(id, reason) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_insurer_review') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'chg_insurer_rejected'
+      cur.insurerDecision = 'rejected'
+      cur.insurerOpinion = reason || ''
+      cur.insurerDecisionTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    clerkUpdateRecord(id, updateData) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_insurer_approved') return { ok: false, message: '当前状态不允许录入变更记录' }
+      const now = new Date()
+      cur.clerkUpdateRecord = updateData?.record || formatDateTime(now) + ' 变更记录已录入'
+      cur.clerkSyncTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    syncChangeToPlatform(id) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_insurer_approved') return { ok: false, message: '当前状态不允许同步' }
+      const now = new Date()
+      cur.status = 'chg_completed'
+      cur.platformSyncTime = formatDateTime(now)
+      cur.completedTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      // Update the original policy's endorsement info
+      const policy = this.policies.find(p => p.policyNo === cur.policyNo)
+      if (policy) {
+        policy.changeRecord = { changeType: cur.changeType, changeTypeName: cur.changeTypeName, completedTime: formatDateTime(now) }
+      }
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    initiateSupplement(id, request) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_insurer_rejected') return { ok: false, message: '当前状态不允许发起补充' }
+      const now = new Date()
+      cur.status = 'chg_supplement'
+      cur.supplementRequest = request || '请补充相关材料'
+      cur.rejectReason = ''
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    platformSupplementMaterial(id, supplementData) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_supplement') return { ok: false, message: '当前状态不允许平台补充' }
+      const now = new Date()
+      cur.status = 'chg_platform_supplemented'
+      if (supplementData?.supplementNote) cur.supplementNote = supplementData.supplementNote
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    submitCustomerSupplement(id, supplementData) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_supplement' && cur.status !== 'chg_platform_supplemented') return { ok: false, message: '当前状态不允许客户补充' }
+      const now = new Date()
+      cur.status = 'chg_customer_supplement'
+      if (supplementData?.files) cur.supportingDocs = [...(cur.supportingDocs || []), ...supplementData.files]
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    resubmitPlatform(id) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_customer_supplement') return { ok: false, message: '请等待客户补充完成后提交' }
+      const now = new Date()
+      cur.status = 'chg_platform_review'
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    generateEndorsement(id) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_completed') return { ok: false, message: '变更未完成，无法生成批单' }
+      if (cur.endorsementNo) return { ok: false, message: '批单已生成' }
+      const now = new Date()
+      cur.endorsementNo = `PD${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+      cur.endorsementTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    resubmitClerk(id) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_platform_review') return { ok: false, message: '当前状态不允许提交' }
+      const now = new Date()
+      cur.status = 'chg_clerk_review'
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
     }
   }
 })

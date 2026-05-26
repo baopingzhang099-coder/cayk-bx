@@ -62,12 +62,6 @@ const routes = [
         meta: { title: '保单变更申请', menuKey: 'policy-change', roles: ['customer'] }
       },
       {
-        path: '/policy/contract',
-        name: 'ContractSigning',
-        component: () => import('@/pages/policy/ContractSigning.vue'),
-        meta: { title: '委托合同签署', menuKey: 'policy-contract', roles: ['customer', 'inkasso', 'clerk'] }
-      },
-      {
         path: '/policy/trade',
         name: 'PolicyTrade',
         component: () => import('@/pages/policy/PolicyTrade.vue'),
@@ -77,7 +71,7 @@ const routes = [
         path: '/policy/limit',
         name: 'CreditLimit',
         component: () => import('@/pages/policy/CreditLimit.vue'),
-        meta: { title: '信用限额管理', menuKey: 'policy-limit', roles: ['inkasso', 'clerk'] }
+        meta: { title: '信用限额管理', menuKey: 'policy-limit', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/policy/shipment',

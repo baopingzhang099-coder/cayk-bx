@@ -40,19 +40,57 @@
       @page-change="handlePageChange"
     >
       <template #status="{ row }">
-        <status-tag :status="row.status" :status-map="statusMap" />
-      </template>
-      <template #isOverdue="{ row }">
-        <t-tag v-if="row.isOverdue" theme="danger">超时</t-tag>
-        <t-tag v-else-if="row.isDueSoon" theme="warning">即将到期</t-tag>
-        <t-tag v-else theme="success">正常</t-tag>
-      </template>
-      <template #operation="{ row }">
-        <t-space>
-          <t-link @click="handleView(row)">查看</t-link>
-          <t-link @click="handleEdit(row)">编辑</t-link>
-        </t-space>
-      </template>
+                <status-tag :status="row.status" :status-map="statusMap" />
+              </template>
+              <template #financingStatus="{ row }">
+                <t-tag v-if="row.financingStatus === 'financed'" theme="warning" variant="light">已融资</t-tag>
+                <t-tag v-else-if="row.financingStatus === 'not_financed'" theme="default" variant="light">未融资</t-tag>
+                <t-tag v-else theme="info" variant="light">待校验</t-tag>
+              </template>
+              <template #isOverdue="{ row }">
+                <t-tag v-if="row.isOverdue" theme="danger">超时</t-tag>
+                <t-tag v-else-if="row.isDueSoon" theme="warning">即将到期</t-tag>
+                <t-tag v-else theme="success">正常</t-tag>
+              </template>
+              <template #operation="{ row }">
+                <t-space>
+                  <t-link @click="handleView(row)">查看</t-link>
+                  <template v-if="row.status === 'sd_docs_generated' || (row.status === 'sd_clerk_pending' && row.docsDownloaded)">
+                    <t-link @click="handleViewDocs(row)">查看资料</t-link>
+                  </template>
+                  <template v-if="row.status === 'sd_clerk_pending' && !row.docsDownloaded">
+                    <t-link @click="handleDownloadDocs(row)">下载资料</t-link>
+                  </template>
+                  <template v-if="row.status === 'sd_clerk_pending' && row.docsDownloaded">
+                    <t-link @click="handleClerkSubmit(row)">线下提交</t-link>
+                  </template>
+                  <template v-if="row.status === 'sd_insurer_review'">
+                    <t-link @click="handleReturnResult(row)">回传结果</t-link>
+                  </template>
+                  <template v-if="row.status === 'sd_insurer_rejected' || row.limitWarning">
+                    <t-link @click="handleViewRejection(row)">查看驳回原因</t-link>
+                    <t-link @click="handleReSubmit(row)">重新申报</t-link>
+                  </template>
+                  <template v-if="row.status === 'pending_premium'">
+                    <t-link @click="handleMarkAsPaid(row)">已缴费</t-link>
+                  </template>
+                  <template v-if="row.status === 'premium_paid'">
+                    <t-link @click="handleUploadVoucher(row)">上传凭证</t-link>
+                  </template>
+                  <template v-if="row.status === 'premium_uploaded'">
+                    <t-link @click="handleVerifyVoucher(row)">核验凭证</t-link>
+                  </template>
+                  <template v-if="row.status === 'premium_verified' && userStore.role === 'customer'">
+                    <t-link @click="handleCustomerConfirm(row)">确认缴费完成</t-link>
+                  </template>
+                  <template v-if="row.status === 'customer_confirmed' && userStore.role !== 'customer'">
+                    <t-link @click="handleClerkComplete(row)">完成</t-link>
+                  </template>
+                  <template v-if="row.status === 'completed'">
+                    <t-link @click="handleArchive(row)">归档资料</t-link>
+                  </template>
+                </t-space>
+              </template>
     </data-table>
 
     <t-dialog v-model:visible="formVisible" :header="formMode === 'create' ? '新建出运申报' : formMode === 'edit' ? '编辑出运申报' : '出运申报详情'" width="700px">
@@ -204,47 +242,184 @@
         </t-space>
       </template>
     </t-dialog>
+
+    <!-- 查看生成资料对话框 -->
+    <t-dialog v-model:visible="docsVisible" header="出运申报资料" width="600px">
+      <div>
+        <t-alert theme="info" class="mb-16">
+          <template #message>以下资料已由系统自动生成，可供下载</template>
+        </t-alert>
+        <t-table v-if="currentDocs.length" :data="currentDocs" :columns="[
+          { colKey: 'name', title: '文件名' },
+          { colKey: 'size', title: '大小', width: 80 },
+          { colKey: 'generatedAt', title: '生成时间', width: 160 }
+        ]" row-key="name" size="small" :pagination="false">
+          <template #name="{ row }">
+            <t-link theme="primary"><t-icon name="file-pdf" /> {{ row.name }}</t-link>
+          </template>
+        </t-table>
+        <t-empty v-else description="暂无生成资料" />
+      </div>
+    </t-dialog>
+
+    <!-- 回传保险公司审批结果对话框 -->
+    <t-dialog v-model:visible="resultVisible" header="回传保险公司审批结果" width="500px">
+      <t-form ref="resultFormRef" :data="resultForm" label-width="120px">
+        <t-form-item label="审批结果" name="approved">
+          <t-radio-group v-model="resultForm.approved">
+            <t-radio :value="true">通过</t-radio>
+            <t-radio :value="false">驳回</t-radio>
+          </t-radio-group>
+        </t-form-item>
+        <t-form-item label="审批编号" name="insurerRefNo">
+          <t-input v-model="resultForm.insurerRefNo" placeholder="请输入保险公司审批编号" />
+        </t-form-item>
+        <t-form-item label="审批意见" name="insurerOpinion">
+          <t-textarea v-model="resultForm.insurerOpinion" placeholder="请输入保险公司审批意见" :rows="3" />
+        </t-form-item>
+      </t-form>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="resultVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handleConfirmResult">确定</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- 上传缴费凭证对话框 -->
+    <t-dialog v-model:visible="voucherVisible" header="上传缴费凭证" width="500px">
+      <t-form ref="voucherFormRef" :data="voucherForm" label-width="120px">
+        <t-form-item label="缴费日期" name="paymentDate">
+          <t-date-picker v-model="voucherForm.paymentDate" placeholder="请选择缴费日期" clearable />
+        </t-form-item>
+        <t-form-item label="缴费金额（元）" name="paymentAmount">
+          <t-input-number v-model="voucherForm.paymentAmount" :min="0" placeholder="请输入缴费金额" />
+        </t-form-item>
+        <t-form-item label="流水号" name="paymentRefNo">
+          <t-input v-model="voucherForm.paymentRefNo" placeholder="请输入银行流水号" />
+        </t-form-item>
+        <t-form-item label="缴费凭证" name="paymentVouchers">
+          <t-upload v-model="voucherForm.paymentVouchers" action="https://demo.com/upload" accept="image/*,.pdf" />
+        </t-form-item>
+      </t-form>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="voucherVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handleConfirmVoucher">提交凭证</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- 核验缴费凭证对话框 -->
+    <t-dialog v-model:visible="verifyVisible" header="核验缴费凭证" width="500px">
+      <div>
+        <t-descriptions title="凭证信息" :columns="2" bordered>
+          <t-descriptions-item label="缴费日期">{{ verifyForm.paymentDate }}</t-descriptions-item>
+          <t-descriptions-item label="缴费金额">{{ verifyForm.paymentAmount }}</t-descriptions-item>
+          <t-descriptions-item label="流水号">{{ verifyForm.paymentRefNo }}</t-descriptions-item>
+        </t-descriptions>
+        <t-divider />
+        <t-form ref="verifyFormRef" :data="verifyForm" label-width="120px" style="margin-top: 16px;">
+          <t-form-item label="核验结果" name="verified">
+            <t-radio-group v-model="verifyForm.verified">
+              <t-radio :value="true">核验通过</t-radio>
+              <t-radio :value="false">核验不通过</t-radio>
+            </t-radio-group>
+          </t-form-item>
+          <t-form-item label="核验备注" name="verifyNote">
+            <t-textarea v-model="verifyForm.verifyNote" placeholder="请输入核验备注" :rows="3" />
+          </t-form-item>
+        </t-form>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="verifyVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handleConfirmVerify">确认核验</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import SearchFilter from '@/components/common/SearchFilter.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 import { useBusinessStore } from '@/stores/business'
-import { checkPremiumStatus, checkRenewalGap } from '@/utils/rules/shipmentRules'
+import { useUserStore } from '@/stores/user'
+import { checkRenewalGap } from '@/utils/rules/shipmentRules'
 import { checkFrozenStatus } from '@/utils/rules/creditLimitRules'
 
+const formatDateTime = (d) => {
+  if (!d) return ''
+  const dt = typeof d === 'string' ? new Date(d) : d
+  const Y = dt.getFullYear()
+  const M = String(dt.getMonth() + 1).padStart(2, '0')
+  const D = String(dt.getDate()).padStart(2, '0')
+  const h = String(dt.getHours()).padStart(2, '0')
+  const m = String(dt.getMinutes()).padStart(2, '0')
+  const s = String(dt.getSeconds()).padStart(2, '0')
+  return `${Y}-${M}-${D} ${h}:${m}:${s}`
+}
+
 const store = useBusinessStore()
+const userStore = useUserStore()
 const loading = computed(() => false)
 const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRange: [] })
 
 const statusOptions = [
-  { value: 'pending_declare', label: '待申报' },
-  { value: 'declaring', label: '申报中' },
-  { value: 'declared', label: '已申报' },
-  { value: 'timeout_warning', label: '超时预警' },
-  { value: 'pending_premium', label: '待支付保费' },
-  { value: 'completed', label: '已完成' }
-]
+          { value: 'pending_declare', label: '待申报' },
+          { value: 'declaring', label: '申报中' },
+          { value: 'declared', label: '已申报' },
+          { value: 'sd_platform_review', label: '平台校验中' },
+          { value: 'sd_finance_checked', label: '融资校验完成' },
+          { value: 'sd_docs_generated', label: '资料已生成' },
+          { value: 'sd_clerk_pending', label: '待跟单员处理' },
+          { value: 'sd_insurer_review', label: '保险公司审批中' },
+          { value: 'sd_insurer_approved', label: '保险公司已通过' },
+          { value: 'sd_insurer_rejected', label: '保险公司已驳回' },
+          { value: 'sd_limit_updated', label: '限额已更新' },
+          { value: 'pending_premium', label: '待支付保费' },
+          { value: 'premium_uploaded', label: '凭证已上传' },
+          { value: 'premium_verified', label: '凭证已核验' },
+          { value: 'timeout_warning', label: '超时预警' },
+          { value: 'completed', label: '已完成' },
+          { value: 'premium_paid', label: '已缴费' },
+          { value: 'customer_confirmed', label: '客户已确认' },
+          { value: 'archived', label: '已归档' }
+        ]
 
-const statusMap = {
-  pending_declare: '待申报',
-  declaring: '申报中',
-  declared: '已申报',
-  timeout_warning: '超时预警',
-  premium_calculating: '保费计算中',
-  pending_premium: '待支付保费',
-  completed: '已完成'
-}
+        const statusMap = {
+          pending_declare: '待申报',
+          declaring: '申报中',
+          declared: '已申报',
+          timeout_warning: '超时预警',
+          premium_calculating: '保费计算中',
+          sd_platform_review: '平台校验中',
+          sd_finance_checked: '融资校验完成',
+          sd_docs_generated: '资料已生成',
+          sd_clerk_pending: '待跟单员处理',
+          sd_insurer_review: '保险公司审批中',
+          sd_insurer_approved: '保险公司已通过',
+          sd_insurer_rejected: '保险公司已驳回',
+          sd_limit_updated: '限额已更新',
+          pending_premium: '待支付保费',
+          premium_uploaded: '凭证已上传',
+          premium_verified: '凭证已核验',
+          premium_paid: '已缴费',
+          customer_confirmed: '客户已确认',
+          completed: '已完成',
+          archived: '已归档'
+        }
 
 const columns = [
   { colKey: 'declarationNo', title: '申报单号', width: 140 },
   { colKey: 'buyerName', title: '买方' },
   { colKey: 'relatedPolicyNo', title: '关联保单' },
+  { colKey: 'financingStatus', title: '融资状态', width: 100, slot: 'financingStatus' },
   { colKey: 'shipmentDate', title: '出运日期', width: 110 },
   { colKey: 'shipmentAmount', title: '出运金额', align: 'right' },
   { colKey: 'currency', title: '币种', width: 80 },
@@ -252,8 +427,8 @@ const columns = [
   { colKey: 'declarationTypeName', title: '申报类型', width: 100 },
   { colKey: 'deadline', title: '申报期限', width: 110 },
   { colKey: 'isOverdue', title: '超期状态', width: 100, slot: 'isOverdue' },
-  { colKey: 'status', title: '状态', width: 100, slot: 'status' },
-  { colKey: 'operation', title: '操作', width: 120, fixed: 'right', slot: 'operation' }
+  { colKey: 'status', title: '状态', width: 110, slot: 'status' },
+  { colKey: 'operation', title: '操作', width: 200, fixed: 'right', slot: 'operation' }
 ]
 
 const pagination = reactive({
@@ -375,6 +550,8 @@ const detailColumns = [
   { label: '申报单号', key: 'declarationNo' },
   { label: '关联保单', key: 'relatedPolicyNo' },
   { label: '买方名称', key: 'buyerName' },
+  { label: '融资状态', key: 'financingStatus', formatter: (v) => v === 'financed' ? '已融资' : v === 'not_financed' ? '未融资' : '待校验' },
+  { label: '融资合同号', key: 'financeContractNo' },
   { label: '出运日期', key: 'shipmentDate' },
   { label: '目的港', key: 'destinationPort' },
   { label: '出运金额', key: 'shipmentAmount' },
@@ -382,13 +559,33 @@ const detailColumns = [
   { label: '付款条件', key: 'paymentTerms' },
   { label: '申报类型', key: 'declarationTypeName' },
   { label: '申报期限', key: 'deadline' },
-  { label: '状态', key: 'statusName' }
+  { label: '状态', key: 'statusName' },
+  { label: '保险公司审批意见', key: 'insurerOpinion' },
+  { label: '保险公司审批编号', key: 'insurerRefNo' },
+  { label: '保险公司审批时间', key: 'insurerReviewTime' },
+  { label: '缴费日期', key: 'paymentDate' },
+  { label: '缴费金额', key: 'paymentAmount' },
+  { label: '缴费流水号', key: 'paymentRefNo' },
+  { label: '核验时间', key: 'verifyTime' },
+  { label: '核验备注', key: 'verifyNote' },
+  { label: '生成资料数', key: 'generatedDocs', formatter: (v) => Array.isArray(v) ? `${v.length} 份` : '0 份' }
 ]
 
 const isHongKong = computed(() => {
   const port = formData.destinationPort || ''
   return port.includes('香港') || port.toLowerCase().includes('hong kong')
 })
+
+const addWorkingDays = (date, days) => {
+  const result = new Date(date)
+  let added = 0
+  while (added < days) {
+    result.setDate(result.getDate() + 1)
+    const dow = result.getDay()
+    if (dow !== 0 && dow !== 6) added++
+  }
+  return result
+}
 
 const computedDeadline = computed(() => {
   if (!formData.shipmentDate) return '请先选择出运日期'
@@ -402,8 +599,8 @@ const computedDeadline = computed(() => {
     date.setDate(10)
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} (月度汇总，次月10日前)`
   }
-  date.setDate(date.getDate() + 15)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} (出运后15日内)`
+  const workingDate = addWorkingDays(new Date(formData.shipmentDate), 10)
+  return `${workingDate.getFullYear()}-${String(workingDate.getMonth() + 1).padStart(2, '0')}-${String(workingDate.getDate()).padStart(2, '0')} (出运后10个工作日内)`
 })
 
 const quotaWarning = computed(() => {
@@ -529,7 +726,7 @@ const handleSubmit = ({ validateResult }) => {
       return
     }
     if (formMode.value === 'create') {
-      store.createShipment({
+      const shipment = store.createShipment({
         relatedPolicyNo: formData.relatedPolicyNo,
         buyerName: formData.buyerName,
         shipmentDate: formData.shipmentDate,
@@ -553,7 +750,19 @@ const handleSubmit = ({ validateResult }) => {
         status: 'declared',
         statusName: '已申报'
       })
-      MessagePlugin.success('出运申报已提交')
+      MessagePlugin.success('出运申报已提交，系统正在自动处理')
+
+      // Auto-chain: finance check → doc gen → push to clerk
+      const autoResult = store.autoProcessShipment(shipment.id)
+      if (autoResult.ok) {
+        const financedMsg = autoResult.data.isFinanced ? '（已标记融资状态）' : ''
+        MessagePlugin.success('融资校验' + financedMsg + '已完成')
+        MessagePlugin.success('申报资料已自动生成，共 ' + autoResult.data.docs.length + ' 份文件')
+        MessagePlugin.success('申报单已推送至跟单员工作台')
+      } else {
+        MessagePlugin.error(autoResult.message || '自动处理失败，请联系管理员')
+      }
+      formVisible.value = false
     } else if (currentRow.value) {
       Object.assign(currentRow.value, {
         relatedPolicyNo: formData.relatedPolicyNo,
@@ -578,8 +787,8 @@ const handleSubmit = ({ validateResult }) => {
         receiptProof: formData.receiptProof
       })
       MessagePlugin.success('出运申报已更新')
+      formVisible.value = false
     }
-    formVisible.value = false
   }
 
   // 空窗期温和提醒
@@ -602,6 +811,264 @@ const handleSubmit = ({ validateResult }) => {
   } else {
     doSubmit()
   }
+}
+
+// ===== New Business Flow Handlers =====
+
+const docsVisible = ref(false)
+const currentDocs = ref([])
+
+const handleViewDocs = (row) => {
+  currentDocs.value = row.generatedDocs || []
+  docsVisible.value = true
+}
+
+const handleDownloadDocs = (row) => {
+  const result = store.clerkDownloadDocs(row.id)
+  if (result.ok) {
+    MessagePlugin.success('资料下载完成，可线下提交保险公司审批')
+  } else {
+    MessagePlugin.error(result.message)
+  }
+  handleViewDocs(row)
+}
+
+const handleMarkAsPaid = (row) => {
+  const result = store.markAsPaid(row.id)
+  if (result.ok) {
+    MessagePlugin.success('已标记为已缴费，请上传缴费凭证')
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const handleCustomerConfirm = (row) => {
+  DialogPlugin.confirm({
+    title: '确认缴费完成',
+    content: '确认已完成线下保费缴纳？确认后将通知跟单员进行最终确认',
+    confirmBtnText: '确认完成',
+    cancelBtnText: '取消',
+    onConfirm: () => {
+      const result = store.customerConfirmPayment(row.id)
+      if (result.ok) {
+        MessagePlugin.success('缴费确认已提交，等待跟单员完成确认')
+      } else {
+        MessagePlugin.error(result.message)
+      }
+    }
+  })
+}
+
+const handleClerkSubmit = (row) => {
+  DialogPlugin.confirm({
+    title: '确认线下提交',
+    content: '确认已将出运申报资料线下提交至保险公司审批？',
+    confirmBtnText: '确认提交',
+    cancelBtnText: '取消',
+    onConfirm: () => {
+      const result = store.clerkOfflineSubmit(row.id)
+      if (result.ok) {
+        MessagePlugin.success('已确认资料线下提交，等待保险公司审批')
+      } else {
+        MessagePlugin.error(result.message)
+      }
+    }
+  })
+}
+
+const resultVisible = ref(false)
+const resultFormRef = ref(null)
+const resultForm = reactive({
+  approved: true,
+  insurerRefNo: '',
+  insurerOpinion: ''
+})
+let currentResultRow = null
+
+const handleReturnResult = (row) => {
+  currentResultRow = row
+  resultForm.approved = true
+  resultForm.insurerRefNo = ''
+  resultForm.insurerOpinion = ''
+  resultVisible.value = true
+}
+
+const handleViewRejection = (row) => {
+  const opinion = row.insurerOpinion || '无详细驳回意见'
+  DialogPlugin.alert({
+    title: '保险公司驳回原因',
+    message: `<div style="margin-bottom:8px;"><strong>审批编号：</strong>${row.insurerRefNo || '-'}</div>
+              <div><strong>驳回意见：</strong>${opinion}</div>
+              <div style="margin-top:8px;color:#999;font-size:12px;">审批时间：${row.insurerReviewTime || '-'}</div>`,
+    confirmBtnText: '知道了'
+  })
+}
+
+const handleReSubmit = (row) => {
+  DialogPlugin.confirm({
+    title: '重新申报',
+    content: row.limitWarning
+      ? '因限额不足需重新申报。确认将申报状态重置为"已申报"，调整申报金额后重新完成后续流程？'
+      : '确认要基于原申报信息重新提交？系统将重置申报状态为"已申报"，您需要重新完成后续流程。',
+    confirmBtnText: '确认重新申报',
+    cancelBtnText: '取消',
+    onConfirm: () => {
+      const result = store.resubmitShipment(row.id)
+      if (result.ok) {
+        MessagePlugin.success('已重置为已申报状态，系统正在重新处理')
+        const autoResult = store.autoProcessShipment(row.id)
+        if (autoResult.ok) {
+          MessagePlugin.success('申报单已重新处理并推送至跟单员工作台')
+        } else {
+          MessagePlugin.error(autoResult.message || '重新处理失败，请联系管理员')
+        }
+      } else {
+        MessagePlugin.error(result.message)
+      }
+    }
+  })
+}
+
+const handleConfirmResult = () => {
+  if (!currentResultRow) return
+  const result = store.processInsurerResult(currentResultRow.id, {
+    approved: resultForm.approved,
+    insurerOpinion: resultForm.insurerOpinion,
+    insurerRefNo: resultForm.insurerRefNo
+  })
+  if (result.ok) {
+    if (result.data.approved) {
+      if (result.data.limitOk) {
+        MessagePlugin.success('保险公司审批通过，限额已自动更新，申报状态已转入"待支付保费"')
+        DialogPlugin.confirm({
+          title: '保费缴纳指引',
+          content: '请引导客户线下缴纳保费，并在系统上传缴费凭证',
+          confirmBtnText: '知道了',
+          cancelBtnText: ''
+        })
+      } else {
+        DialogPlugin.alert({
+          title: '限额不足预警',
+          message: `<div style="margin-bottom:12px;">${result.data.message}</div>
+                     <div style="color:#999;font-size:13px;margin-bottom:8px;">建议操作：</div>
+                     <ul style="color:#666;font-size:13px;padding-left:20px;margin:0;">
+                       <li>申请信用限额增额，提高可用额度</li>
+                       <li>调整本次申报金额，降低至可用限额以内</li>
+                     </ul>`,
+          confirmBtnText: '知道了'
+        })
+      }
+    } else {
+      MessagePlugin.success('保险公司驳回结果已回传')
+    }
+    resultVisible.value = false
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const voucherVisible = ref(false)
+const voucherFormRef = ref(null)
+const voucherForm = reactive({
+  paymentDate: '',
+  paymentAmount: 0,
+  paymentRefNo: '',
+  paymentVouchers: []
+})
+let currentVoucherRow = null
+
+const handleUploadVoucher = (row) => {
+  currentVoucherRow = row
+  voucherForm.paymentDate = ''
+  voucherForm.paymentAmount = 0
+  voucherForm.paymentRefNo = ''
+  voucherForm.paymentVouchers = []
+  voucherVisible.value = true
+}
+
+const handleConfirmVoucher = () => {
+  if (!currentVoucherRow) return
+  const result = store.uploadPremiumVoucher(currentVoucherRow.id, {
+    paymentVouchers: voucherForm.paymentVouchers,
+    paymentDate: voucherForm.paymentDate,
+    paymentAmount: voucherForm.paymentAmount,
+    paymentRefNo: voucherForm.paymentRefNo
+  })
+  if (result.ok) {
+    MessagePlugin.success('缴费凭证已上传，待核验')
+    voucherVisible.value = false
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const verifyVisible = ref(false)
+const verifyFormRef = ref(null)
+const verifyForm = reactive({
+  verified: true,
+  verifyNote: '',
+  paymentDate: '',
+  paymentAmount: 0,
+  paymentRefNo: ''
+})
+let currentVerifyRow = null
+
+const handleVerifyVoucher = (row) => {
+  currentVerifyRow = row
+  verifyForm.paymentDate = row.paymentDate || ''
+  verifyForm.paymentAmount = row.paymentAmount || 0
+  verifyForm.paymentRefNo = row.paymentRefNo || ''
+  verifyForm.verified = true
+  verifyForm.verifyNote = ''
+  verifyVisible.value = true
+}
+
+const handleConfirmVerify = () => {
+  if (!currentVerifyRow) return
+  const result = store.verifyPremiumVoucher(currentVerifyRow.id, {
+    verified: verifyForm.verified,
+    verifyNote: verifyForm.verifyNote
+  })
+  if (result.ok) {
+    MessagePlugin.success(result.data.verified ? '缴费凭证核验通过' : '核验不通过，请重新上传')
+    verifyVisible.value = false
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const handleClerkComplete = (row) => {
+  DialogPlugin.confirm({
+    title: '确认完成',
+    content: '确认客户已缴费？确认后将完成全部出运申报流程，保单状态更新为"已缴费"',
+    confirmBtnText: '确认完成',
+    cancelBtnText: '取消',
+    onConfirm: () => {
+      const result = store.clerkCompleteShipment(row.id)
+      if (result.ok) {
+        MessagePlugin.success('出运申报已完成，保单保费状态已更新')
+      } else {
+        MessagePlugin.error(result.message)
+      }
+    }
+  })
+}
+
+const handleArchive = (row) => {
+  DialogPlugin.confirm({
+    title: '确认归档',
+    content: '确认将申报资料归档？归档后数据将进入历史档案，仅供查阅',
+    confirmBtnText: '确认归档',
+    cancelBtnText: '取消',
+    onConfirm: () => {
+      const result = store.archiveShipment(row.id)
+      if (result.ok) {
+        MessagePlugin.success('申报资料已归档')
+      } else {
+        MessagePlugin.error(result.message)
+      }
+    }
+  })
 }
 
 onMounted(() => { store.ensureSeeded() })

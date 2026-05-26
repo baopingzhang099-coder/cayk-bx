@@ -778,7 +778,16 @@ const shipmentStats = computed(() => {
     total: shipments.length,
     totalAmount: Number(shipments.reduce((s, it) => s + (Number(it.shipmentAmount) || 0), 0)).toLocaleString(),
     declared: shipments.filter(s => s.status === 'declared').length,
-    pending: shipments.filter(s => s.status === 'pending_declare' || s.status === 'timeout_warning').length
+    pending: shipments.filter(s => s.status === 'pending_declare' || s.status === 'timeout_warning').length,
+    platformReview: shipments.filter(s => s.status === 'sd_platform_review' || s.status === 'sd_finance_checked' || s.status === 'sd_docs_generated').length,
+    clerkPending: shipments.filter(s => s.status === 'sd_clerk_pending').length,
+    insurerReview: shipments.filter(s => s.status === 'sd_insurer_review').length,
+    insurerApproved: shipments.filter(s => s.status === 'sd_insurer_approved').length,
+    limitUpdated: shipments.filter(s => s.status === 'sd_limit_updated').length,
+    pendingPremium: shipments.filter(s => s.status === 'pending_premium' || s.status === 'premium_uploaded' || s.status === 'premium_verified').length,
+    completed: shipments.filter(s => s.status === 'completed').length,
+    archived: shipments.filter(s => s.status === 'archived').length,
+    rejected: shipments.filter(s => s.status === 'sd_insurer_rejected').length
   }
 })
 

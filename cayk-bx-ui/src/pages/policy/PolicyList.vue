@@ -1588,7 +1588,170 @@
       </template>
     </t-dialog>
 
-<!-- 变更申请详情弹窗 -->
+<!-- 限额申请详情弹窗 -->
+    <t-dialog v-model:visible="clAppDetailVisible" :header="'限额申请详情 - ' + (clAppDetailRow?.id || '')" width="800px" :footer="false">
+      <div v-if="clAppDetailRow" class="detail-body">
+        <div class="detail-card">
+          <div class="detail-card-title">基本信息</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">申请编号</span><span class="detail-value">{{ clAppDetailRow.id }}</span></div>
+            <div class="detail-row"><span class="detail-label">保单号</span><span class="detail-value">{{ clAppDetailRow.policyNo }}</span></div>
+            <div class="detail-row"><span class="detail-label">买方名称</span><span class="detail-value">{{ clAppDetailRow.buyerName }}</span></div>
+            <div class="detail-row"><span class="detail-label">申请额度</span><span class="detail-value">${{ Number(clAppDetailRow.appliedLimit || 0).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">币种</span><span class="detail-value">{{ clAppDetailRow.currency }}</span></div>
+            <div class="detail-row"><span class="detail-label">申请日期</span><span class="detail-value">{{ clAppDetailRow.applicationDate }}</span></div>
+            <div class="detail-row"><span class="detail-label">申请原因</span><span class="detail-value">{{ clAppDetailRow.applicationReason || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">状态</span><span class="detail-value"><status-tag :status="clAppDetailRow.status" :status-map="clAppStatusMap" /></span></div>
+          </div>
+        </div>
+        <div v-if="clAppDetailRow.creditQueryResult" class="detail-card">
+          <div class="detail-card-title">资信查询结果（模拟）</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">买方信用评级</span><span class="detail-value">{{ clAppDetailRow.creditQueryResult.buyerCreditRating }}</span></div>
+            <div class="detail-row"><span class="detail-label">资信机构评估额度</span><span class="detail-value">${{ Number(clAppDetailRow.creditQueryResult.buyerCreditLimit).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">历史违约率</span><span class="detail-value">{{ clAppDetailRow.creditQueryResult.historicalDefaultRate }}%</span></div>
+            <div class="detail-row"><span class="detail-label">查询时间</span><span class="detail-value">{{ clAppDetailRow.creditQueryResult.queryTime }}</span></div>
+          </div>
+        </div>
+        <div v-if="clAppDetailRow.overLimitWarning" class="detail-card" style="border-color:#f59e0b;">
+          <div class="detail-card-title" style="color:#f59e0b;">超限预警</div>
+          <div style="padding:8px 12px;color:#92400e;background:#fffbeb;border-radius:4px;">{{ clAppDetailRow.overLimitMessage }}</div>
+        </div>
+        <div v-if="clAppDetailRow.generatedCreditReport?.length > 0" class="detail-card">
+          <div class="detail-card-title">生成文件</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">限额申请表</span><span class="detail-value">{{ clAppDetailRow.generatedApplicationForm?.[0]?.name || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">买方资信报告</span><span class="detail-value">{{ clAppDetailRow.generatedCreditReport?.[0]?.name || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">材料清单</span><span class="detail-value">{{ clAppDetailRow.generatedChecklist?.[0]?.name || '-' }}</span></div>
+          </div>
+        </div>
+        <div v-if="clAppDetailRow.insurerDecision === 'approved'" class="detail-card">
+          <div class="detail-card-title">保险公司批准结果</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">批准额度</span><span class="detail-value" style="color:#00a870;">${{ Number(clAppDetailRow.approvedLimit).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">费率</span><span class="detail-value">{{ clAppDetailRow.approvedRate }}%</span></div>
+            <div class="detail-row"><span class="detail-label">生效日期</span><span class="detail-value">{{ clAppDetailRow.effectiveDate || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">到期日期</span><span class="detail-value">{{ clAppDetailRow.expiryDate || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">特殊条件</span><span class="detail-value">{{ clAppDetailRow.specialConditions || '无' }}</span></div>
+            <div class="detail-row"><span class="detail-label">审核时间</span><span class="detail-value">{{ clAppDetailRow.insurerReviewTime }}</span></div>
+          </div>
+        </div>
+        <div v-if="clAppDetailRow.insurerDecision === 'rejected'" class="detail-card" style="border-color:#e34d57;">
+          <div class="detail-card-title" style="color:#e34d57;">保险公司驳回结果</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">驳回类型</span><span class="detail-value">{{ clAppDetailRow.rejectType === 'refuse_coverage' ? '拒绝承保' : '信用问题' }}</span></div>
+            <div class="detail-row"><span class="detail-label">驳回原因</span><span class="detail-value" style="color:#e34d57;">{{ clAppDetailRow.rejectReason }}</span></div>
+            <div class="detail-row"><span class="detail-label">审核时间</span><span class="detail-value">{{ clAppDetailRow.insurerReviewTime }}</span></div>
+          </div>
+        </div>
+        <div v-if="clAppDetailRow.recordedQuota > 0" class="detail-card">
+          <div class="detail-card-title">配额录入</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">录入配额</span><span class="detail-value">${{ Number(clAppDetailRow.recordedQuota).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">录入时间</span><span class="detail-value">{{ clAppDetailRow.recordedTime }}</span></div>
+          </div>
+        </div>
+        <div v-if="clAppDetailRow.syncRecord" class="detail-card">
+          <div class="detail-card-title">同步记录</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">同步内容</span><span class="detail-value">{{ clAppDetailRow.syncRecord }}</span></div>
+            <div class="detail-row"><span class="detail-label">同步时间</span><span class="detail-value">{{ clAppDetailRow.syncTime }}</span></div>
+          </div>
+        </div>
+      </div>
+    </t-dialog>
+
+<!-- 限额申请创建弹窗 -->
+    <t-dialog v-model:visible="clAppCreateVisible" header="创建限额申请" width="550px" :destroy-on-close="true" @confirm="confirmClAppCreate" @cancel="clAppCreateVisible = false">
+      <t-form ref="clAppCreateFormRef" :data="clAppCreateForm" :rules="clAppCreateRules" label-width="110px">
+        <t-form-item label="保单号" name="policyNo">
+          <t-select v-model="clAppCreateForm.policyNo" :options="clAppPolicyOptions" placeholder="请选择保单" />
+        </t-form-item>
+        <t-form-item label="买方名称" name="buyerName">
+          <t-input v-model="clAppCreateForm.buyerName" placeholder="请输入买方名称" />
+        </t-form-item>
+        <t-form-item label="申请额度" name="appliedLimit">
+          <t-input-adornment prepend="$">
+            <t-input v-model="clAppCreateForm.appliedLimit" type="number" placeholder="请输入申请额度" />
+          </t-input-adornment>
+        </t-form-item>
+        <t-form-item label="币种" name="currency">
+          <t-select v-model="clAppCreateForm.currency" :options="[{value:'USD',label:'USD'},{value:'CNY',label:'CNY'},{value:'EUR',label:'EUR'}]" />
+        </t-form-item>
+        <t-form-item label="申请原因" name="applicationReason">
+          <t-textarea v-model="clAppCreateForm.applicationReason" placeholder="请输入申请原因" :autosize="{minRows:2,maxRows:4}" />
+        </t-form-item>
+      </t-form>
+    </t-dialog>
+
+<!-- 限额申请保险公司批准弹窗 -->
+    <t-dialog v-model:visible="clAppInsurerApproveVisible" header="保险公司批准限额" width="550px" :destroy-on-close="true" @confirm="confirmClAppInsurerApprove" @cancel="clAppInsurerApproveVisible = false">
+      <t-form ref="clAppInsurerApproveFormRef" :data="clAppInsurerApproveForm" :rules="clAppInsurerApproveRules" label-width="110px">
+        <t-form-item label="批准额度" name="approvedLimit">
+          <t-input-adornment prepend="$">
+            <t-input v-model="clAppInsurerApproveForm.approvedLimit" type="number" placeholder="请输入批准额度" />
+          </t-input-adornment>
+        </t-form-item>
+        <t-form-item label="费率" name="approvedRate">
+          <t-input-adornment prepend="%">
+            <t-input v-model="clAppInsurerApproveForm.approvedRate" type="number" placeholder="请输入费率" />
+          </t-input-adornment>
+        </t-form-item>
+        <t-form-item label="生效日期" name="effectiveDate">
+          <t-date-picker v-model="clAppInsurerApproveForm.effectiveDate" placeholder="选择生效日期" />
+        </t-form-item>
+        <t-form-item label="到期日期" name="expiryDate">
+          <t-date-picker v-model="clAppInsurerApproveForm.expiryDate" placeholder="选择到期日期" />
+        </t-form-item>
+        <t-form-item label="特殊条件" name="specialConditions">
+          <t-input v-model="clAppInsurerApproveForm.specialConditions" placeholder="可选项" />
+        </t-form-item>
+        <t-form-item label="审核意见" name="insurerOpinion">
+          <t-textarea v-model="clAppInsurerApproveForm.insurerOpinion" placeholder="请输入审核意见（可选）" :autosize="{minRows:2,maxRows:4}" />
+        </t-form-item>
+      </t-form>
+    </t-dialog>
+
+<!-- 限额申请保险公司驳回弹窗 -->
+    <t-dialog v-model:visible="clAppInsurerRejectVisible" header="保险公司驳回限额" width="500px" :destroy-on-close="true" @confirm="confirmClAppInsurerReject" @cancel="clAppInsurerRejectVisible = false">
+      <t-form ref="clAppInsurerRejectFormRef" :data="clAppInsurerRejectForm" :rules="clAppInsurerRejectRules" label-width="100px">
+        <t-form-item label="驳回类型" name="rejectType">
+          <t-radio-group v-model="clAppInsurerRejectForm.rejectType">
+            <t-radio value="credit_issue">信用问题</t-radio>
+            <t-radio value="refuse_coverage">拒绝承保</t-radio>
+          </t-radio-group>
+        </t-form-item>
+        <t-form-item label="驳回原因" name="rejectReason">
+          <t-textarea v-model="clAppInsurerRejectForm.rejectReason" placeholder="请输入驳回原因" :autosize="{minRows:3,maxRows:5}" />
+        </t-form-item>
+      </t-form>
+    </t-dialog>
+
+    <t-dialog v-model:visible="clAppClerkRejectVisible" header="跟单员驳回限额申请" width="500px" :destroy-on-close="true" @confirm="confirmClAppClerkReject" @cancel="clAppClerkRejectVisible = false">
+      <t-form label-width="100px">
+        <t-form-item label="驳回原因">
+          <t-textarea v-model="clAppClerkRejectReason" placeholder="请填写驳回原因" :autosize="{minRows:3,maxRows:5}" />
+        </t-form-item>
+      </t-form>
+    </t-dialog>
+
+    <t-dialog v-model:visible="clAppQuotaVisible" header="录入配额" width="500px" :destroy-on-close="true" @confirm="confirmClAppRecordQuota" @cancel="clAppQuotaVisible = false">
+      <t-form label-width="100px">
+        <t-form-item label="配额金额">
+          <t-input-adornment prepend="$">
+            <t-input v-model="clAppRecordedQuota" type="number" placeholder="请输入配额金额" />
+          </t-input-adornment>
+        </t-form-item>
+      </t-form>
+    </t-dialog>
+
+    <t-dialog v-model:visible="clAppSyncVisible" header="同步配额至平台" width="500px" :destroy-on-close="true" @confirm="confirmClAppSync" @cancel="clAppSyncVisible = false">
+      <t-form label-width="100px">
+        <t-form-item label="同步备注">
+          <t-textarea v-model="clAppSyncRecord" placeholder="请输入同步备注" :autosize="{minRows:3,maxRows:5}" />
+        </t-form-item>
+      </t-form>
+    </t-dialog>
     <t-dialog v-model:visible="chgDetailVisible" :header="'变更详情 - ' + (chgDetailRow?.id || '')" width="800px" :footer="false">
       <div v-if="chgDetailRow" class="detail-body">
         <div class="detail-card">
@@ -3923,6 +4086,246 @@ const confirmTerminate = () => {
   MessagePlugin.success('退保申请已终止')
 }
 
+// ===== Credit Limit Application tab =====
+const clAppStatusMap = {
+  cl_draft: '限额申请待提交',
+  cl_platform_review: '平台审核中',
+  cl_clerk_review: '跟单员审核中',
+  cl_insurer_review: '保险公司审核中',
+  cl_insurer_approved: '保险公司已批准',
+  cl_insurer_rejected: '保险公司已驳回',
+  cl_quota_recording: '跟单员录入配额中',
+  cl_platform_synced: '平台已同步',
+  cl_customer_confirm: '客户待确认',
+  cl_completed: '已完成'
+}
+const clAppColumns = [
+  { colKey: 'id', title: '申请编号', width: 160 },
+  { colKey: 'policyNo', title: '保单号', width: 140 },
+  { colKey: 'buyerName', title: '买方名称', ellipsis: true },
+  { colKey: 'appliedLimit', title: '申请额度', align: 'right', width: 120, slot: 'appliedLimit' },
+  { colKey: 'currency', title: '币种', width: 70 },
+  { colKey: 'status', title: '状态', width: 100, slot: 'status' },
+  { colKey: 'operation', title: '操作', width: 280, fixed: 'right', slot: 'operation' }
+]
+const clAppPagination = reactive({ total: 0, current: 1, pageSize: 20 })
+const clAppTableData = computed(() => {
+  const list = store.clApplications || []
+  clAppPagination.total = list.length
+  const start = (clAppPagination.current - 1) * clAppPagination.pageSize
+  return list.slice(start, start + clAppPagination.pageSize)
+})
+const clAppTotalCount = computed(() => (store.clApplications || []).length)
+const clAppPendingCount = computed(() => (store.clApplications || []).filter(a => ['cl_platform_review', 'cl_clerk_review', 'cl_insurer_review'].includes(a.status)).length)
+const clAppCompletedCount = computed(() => (store.clApplications || []).filter(a => ['cl_completed'].includes(a.status)).length)
+
+const handleClAppPageChange = (pageInfo) => {
+  clAppPagination.current = pageInfo.current
+  clAppPagination.pageSize = pageInfo.pageSize
+}
+
+// Detail view
+const clAppDetailRow = ref(null)
+const clAppDetailVisible = ref(false)
+const handleClAppView = (row) => {
+  clAppDetailRow.value = row
+  clAppDetailVisible.value = true
+}
+
+// Create application
+const clAppCreateVisible = ref(false)
+const clAppCreateFormRef = ref(null)
+const clAppCreateForm = reactive({ policyNo: '', buyerName: '', appliedLimit: '', currency: 'USD', applicationReason: '' })
+const clAppCreateRules = {
+  policyNo: [{ required: true, message: '请选择保单', type: 'error' }],
+  buyerName: [{ required: true, message: '请填写买方名称', type: 'error' }],
+  appliedLimit: [{ required: true, message: '请填写申请额度', type: 'error' }]
+}
+const clAppPolicyOptions = computed(() => {
+  return (store.policies || [])
+    .filter(p => p.status === 'active' || p.status === 'effective')
+    .map(p => ({ value: p.policyNo, label: `${p.policyNo} - ${p.insured || p.policyholder || ''}` }))
+})
+const handleClAppCreate = () => {
+  clAppCreateForm.policyNo = ''
+  clAppCreateForm.buyerName = ''
+  clAppCreateForm.appliedLimit = ''
+  clAppCreateForm.currency = 'USD'
+  clAppCreateForm.applicationReason = ''
+  clAppCreateVisible.value = true
+}
+const confirmClAppCreate = () => {
+  if (!clAppCreateForm.policyNo) { MessagePlugin.warning('请选择保单'); return }
+  if (!clAppCreateForm.buyerName) { MessagePlugin.warning('请填写买方名称'); return }
+  if (!clAppCreateForm.appliedLimit) { MessagePlugin.warning('请填写申请额度'); return }
+  const res = store.createClApplication(clAppCreateForm.policyNo, { ...clAppCreateForm, appliedLimit: Number(clAppCreateForm.appliedLimit) })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '创建失败'); return }
+  if (res.overLimitWarning) {
+    MessagePlugin.warning('申请额度超出保单总限额，已触发超限预警')
+  }
+  clAppCreateVisible.value = false
+  MessagePlugin.success('限额申请已创建')
+}
+
+// Submit to platform
+const handleClAppSubmit = (row) => {
+  const res = store.submitClToPlatform(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '提交失败'); return }
+  MessagePlugin.success('限额申请已提交至平台审核')
+}
+
+// Generate docs (platform)
+const handleClAppGenDocs = (row) => {
+  const res = store.generateClDocuments(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('申请文件已自动生成')
+}
+
+// Push to clerk (platform)
+const handleClAppPushClerk = (row) => {
+  const res = store.pushClToClerk(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '推送失败'); return }
+  MessagePlugin.success('已推送跟单员审核')
+}
+
+// Clerk approve
+const handleClAppClerkApprove = (row) => {
+  const res = store.clerkApproveCl(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('审核通过，已递交至保险公司核查')
+}
+
+// Clerk reject
+const clAppClerkRejectVisible = ref(false)
+const clAppClerkRejectTarget = ref(null)
+const clAppClerkRejectReason = ref('')
+const handleClAppClerkReject = (row) => {
+  clAppClerkRejectTarget.value = row
+  clAppClerkRejectReason.value = ''
+  clAppClerkRejectVisible.value = true
+}
+const confirmClAppClerkReject = () => {
+  if (!clAppClerkRejectReason.value.trim()) { MessagePlugin.warning('请填写驳回原因'); return }
+  const res = store.clerkRejectCl(clAppClerkRejectTarget.value.id, clAppClerkRejectReason.value)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '驳回失败'); return }
+  clAppClerkRejectVisible.value = false
+  MessagePlugin.success('已驳回，退回至平台')
+}
+
+// Insurer approve
+const clAppInsurerApproveVisible = ref(false)
+const clAppInsurerApproveTarget = ref(null)
+const clAppInsurerApproveFormRef = ref(null)
+const clAppInsurerApproveForm = reactive({ approvedLimit: '', approvedRate: '', effectiveDate: '', expiryDate: '', specialConditions: '', insurerOpinion: '' })
+const clAppInsurerApproveRules = {
+  approvedLimit: [{ required: true, message: '请填写批准额度', type: 'error' }]
+}
+const handleClAppInsurerApprove = (row) => {
+  clAppInsurerApproveTarget.value = row
+  clAppInsurerApproveForm.approvedLimit = String(row.appliedLimit || '')
+  clAppInsurerApproveForm.approvedRate = ''
+  clAppInsurerApproveForm.effectiveDate = ''
+  clAppInsurerApproveForm.expiryDate = ''
+  clAppInsurerApproveForm.specialConditions = ''
+  clAppInsurerApproveForm.insurerOpinion = ''
+  clAppInsurerApproveVisible.value = true
+}
+const confirmClAppInsurerApprove = () => {
+  if (!clAppInsurerApproveForm.approvedLimit) { MessagePlugin.warning('请填写批准额度'); return }
+  const res = store.insurerApproveCl(clAppInsurerApproveTarget.value.id, { ...clAppInsurerApproveForm, approvedLimit: Number(clAppInsurerApproveForm.approvedLimit), approvedRate: Number(clAppInsurerApproveForm.approvedRate || 0) })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  clAppInsurerApproveVisible.value = false
+  MessagePlugin.success('保险公司已批准限额申请')
+}
+
+// Insurer reject
+const clAppInsurerRejectVisible = ref(false)
+const clAppInsurerRejectTarget = ref(null)
+const clAppInsurerRejectFormRef = ref(null)
+const clAppInsurerRejectForm = reactive({ rejectType: 'credit_issue', rejectReason: '' })
+const clAppInsurerRejectRules = {
+  rejectReason: [{ required: true, message: '请填写驳回原因', type: 'error' }]
+}
+const handleClAppInsurerReject = (row) => {
+  clAppInsurerRejectTarget.value = row
+  clAppInsurerRejectForm.rejectType = 'credit_issue'
+  clAppInsurerRejectForm.rejectReason = ''
+  clAppInsurerRejectVisible.value = true
+}
+const handleClAppRefuseCoverage = (row) => {
+  clAppInsurerRejectTarget.value = row
+  clAppInsurerRejectForm.rejectType = 'refuse_coverage'
+  clAppInsurerRejectForm.rejectReason = ''
+  clAppInsurerRejectVisible.value = true
+}
+const confirmClAppInsurerReject = () => {
+  if (!clAppInsurerRejectForm.rejectReason.trim()) { MessagePlugin.warning('请填写驳回原因'); return }
+  const res = store.insurerRejectCl(clAppInsurerRejectTarget.value.id, { ...clAppInsurerRejectForm })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '驳回失败'); return }
+  clAppInsurerRejectVisible.value = false
+  MessagePlugin.success('保险公司已驳回限额申请')
+}
+
+// Clerk record quota
+const clAppQuotaVisible = ref(false)
+const clAppQuotaTarget = ref(null)
+const clAppRecordedQuota = ref('')
+const handleClAppRecordQuota = (row) => {
+  clAppQuotaTarget.value = row
+  clAppRecordedQuota.value = String(row.approvedLimit || row.appliedLimit || '')
+  clAppQuotaVisible.value = true
+}
+const confirmClAppRecordQuota = () => {
+  if (!clAppRecordedQuota.value) { MessagePlugin.warning('请录入配额'); return }
+  const res = store.clerkRecordQuota(clAppQuotaTarget.value.id, { recordedQuota: Number(clAppRecordedQuota.value) })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '录入失败'); return }
+  clAppQuotaVisible.value = false
+  MessagePlugin.success('配额已录入')
+}
+
+// Clerk sync to platform
+const clAppSyncVisible = ref(false)
+const clAppSyncTarget = ref(null)
+const clAppSyncRecord = ref('')
+const handleClAppSync = (row) => {
+  clAppSyncTarget.value = row
+  clAppSyncRecord.value = '配额已核对，同步至平台'
+  clAppSyncVisible.value = true
+}
+const confirmClAppSync = () => {
+  const res = store.clerkSyncToPlatform(clAppSyncTarget.value.id, { syncRecord: clAppSyncRecord.value })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '同步失败'); return }
+  clAppSyncVisible.value = false
+  MessagePlugin.success('配额已同步至平台')
+}
+
+// Platform confirm update
+const handleClAppPlatformConfirm = (row) => {
+  const res = store.platformConfirmUpdate(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('限额数据已更新，新额度已生效')
+}
+
+// Platform push reject to customer
+const handleClAppPushReject = (row) => {
+  const res = store.platformPushClReject(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('驳回结果已推送客户')
+}
+
+// Clerk confirm reject
+const handleClAppClerkConfirmReject = (row) => {
+  const res = store.clerkConfirmReject(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已确认驳回结果')
+}
+
+// Customer confirm reject sync
+const handleClAppCustomerConfirmReject = (row) => {
+  const res = store.customerConfirmClReject(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已确认同步，流程结束')
+}
 
 onMounted(() => { store.ensureSeeded() })
 </script>

@@ -14,53 +14,101 @@
       </div>
     </div>
 
-    <search-filter
-      :status-options="statusOptions"
-      @search="handleSearch"
-      @reset="handleReset"
-    />
+    <t-tabs v-model="activeTab" :default-value="'application'">
+      <t-tab-panel value="application" label="限额申请">
+        <search-filter
+          :status-options="clStatusOptions"
+          @search="handleClSearch"
+          @reset="handleClReset"
+        />
+        <data-table
+          :data="clTableData"
+          :columns="clApplicationColumns"
+          :pagination="clPagination"
+          :loading="loading"
+          row-key="id"
+          @page-change="handleClPageChange"
+        >
+          <template #status="{ row }">
+            <status-tag :status="row.status" :status-map="clStatusMap" />
+          </template>
+          <template #operation="{ row }">
+            <t-space>
+              <t-link @click="handleClViewDetail(row)">查看详情</t-link>
+              <!-- customer: cl_draft → 提交 -->
+              <t-link v-if="row.status === 'cl_draft' && userStore.role === 'customer'" theme="primary" @click="handleClSubmit(row)">提交</t-link>
+              <!-- inkasso: cl_platform_review → 生成文件, 推送跟单员 -->
+              <t-link v-if="row.status === 'cl_platform_review' && userStore.role === 'inkasso'" theme="primary" @click="handleGenerateDocs(row)">生成文件</t-link>
+              <t-link v-if="row.status === 'cl_platform_review' && userStore.role === 'inkasso'" theme="primary" @click="handlePushToClerk(row)">推送跟单员</t-link>
+              <!-- clerk: cl_clerk_review → 通过, 驳回 -->
+              <t-link v-if="row.status === 'cl_clerk_review' && userStore.role === 'clerk'" theme="success" @click="handleClerkApprove(row)">通过</t-link>
+              <t-link v-if="row.status === 'cl_clerk_review' && userStore.role === 'clerk'" theme="danger" @click="handleClerkReject(row)">驳回</t-link>
+              <!-- clerk: cl_insurer_approved → 录入配额, 同步平台 -->
+              <t-link v-if="row.status === 'cl_insurer_approved' && userStore.role === 'clerk'" theme="primary" @click="handleRecordQuota(row)">录入配额</t-link>
+              <!-- clerk: cl_quota_recording → 同步平台 -->
+              <t-link v-if="row.status === 'cl_quota_recording' && userStore.role === 'clerk'" theme="primary" @click="handleSyncToPlatform(row)">同步平台</t-link>
+              <!-- inkasso: cl_platform_synced → 确认更新 -->
+              <t-link v-if="row.status === 'cl_platform_synced' && userStore.role === 'inkasso'" theme="success" @click="handlePlatformConfirm(row)">确认更新</t-link>
+              <!-- clerk: cl_insurer_rejected → 确认驳回 -->
+              <t-link v-if="row.status === 'cl_insurer_rejected' && userStore.role === 'clerk'" theme="warning" @click="handleClerkConfirmReject(row)">确认驳回</t-link>
+              <!-- inkasso: cl_insurer_rejected (已确认) → 推送客户 -->
+              <t-link v-if="row.status === 'cl_insurer_rejected' && row.rejectNotifiedClerk && userStore.role === 'inkasso'" theme="warning" @click="handlePushRejectToCustomer(row)">推送客户</t-link>
+              <!-- customer: cl_customer_confirm → 确认驳回 -->
+              <t-link v-if="row.status === 'cl_customer_confirm' && userStore.role === 'customer'" theme="danger" @click="handleCustomerConfirmReject(row)">确认驳回</t-link>
+            </t-space>
+          </template>
+        </data-table>
+      </t-tab-panel>
 
-    <div class="stats-grid mb-24">
-      <stat-card title="有效限额" :value="activeCount" icon="protect" color="success" />
-      <stat-card title="审批中" :value="pendingCount" icon="loading" color="warning" />
-      <stat-card title="额度总额" :value="`$${appliedSum.toLocaleString()}`" icon="wallet" color="primary" />
-      <stat-card title="已用额度" :value="`$${usedSum.toLocaleString()}`" icon="credit-card" color="danger" />
-    </div>
+      <t-tab-panel value="approved" label="已有限额">
+        <search-filter
+          :status-options="statusOptions"
+          @search="handleSearch"
+          @reset="handleReset"
+        />
+        <div class="stats-grid mb-24">
+          <stat-card title="有效限额" :value="activeCount" icon="protect" color="success" />
+          <stat-card title="审批中" :value="pendingCount" icon="loading" color="warning" />
+          <stat-card title="额度总额" :value="`$${appliedSum.toLocaleString()}`" icon="wallet" color="primary" />
+          <stat-card title="已用额度" :value="`$${usedSum.toLocaleString()}`" icon="credit-card" color="danger" />
+        </div>
+        <data-table
+          :data="tableData"
+          :columns="columns"
+          :pagination="pagination"
+          :loading="loading"
+          row-key="id"
+          @page-change="handlePageChange"
+        >
+          <template #usageRate="{ row }">
+            <t-progress :percentage="row.usageRate" :color="row.usageRate > 80 ? '#E34D57' : '#0052D9'" />
+          </template>
+          <template #status="{ row }">
+            <t-space>
+              <t-tag v-if="row.status === 'frozen'" theme="danger">已冻结</t-tag>
+              <t-tag v-else-if="row.status === 'revoked'" theme="danger">已撤销</t-tag>
+              <t-tag v-else-if="row.status === 'pending'" theme="warning">待审批</t-tag>
+              <t-tag v-else-if="row.status === 'exhausted'" theme="warning">额度用罄</t-tag>
+              <t-tag v-else-if="row.status === 'expired'" theme="default">已过期</t-tag>
+              <t-tag v-else-if="row._frozenStatus?.autoDetected" theme="warning">冻结预警</t-tag>
+              <t-tag v-else-if="row._idleStatus?.level === 'danger'" theme="danger">闲置待撤销</t-tag>
+              <t-tag v-else-if="row._idleStatus?.level === 'warning'" theme="warning">闲置预警</t-tag>
+              <status-tag v-else :status="row.status" :status-map="statusMap" />
+            </t-space>
+          </template>
+          <template #operation="{ row }">
+            <t-space>
+              <t-link @click="handleView(row)">查看</t-link>
+              <t-link v-if="row.status === 'pending' && userStore.role === 'inkasso'" theme="success" @click="handleApprove(row)">通过</t-link>
+              <t-link v-if="row.status === 'pending' && userStore.role === 'inkasso'" theme="danger" @click="handleReject(row)">驳回</t-link>
+              <t-link v-else @click="handleEdit(row)">编辑</t-link>
+            </t-space>
+          </template>
+        </data-table>
+      </t-tab-panel>
+    </t-tabs>
 
-    <data-table
-      :data="tableData"
-      :columns="columns"
-      :pagination="pagination"
-      :loading="loading"
-      row-key="id"
-      @page-change="handlePageChange"
-    >
-      <template #usageRate="{ row }">
-        <t-progress :percentage="row.usageRate" :color="row.usageRate > 80 ? '#E34D57' : '#0052D9'" />
-      </template>
-      <template #status="{ row }">
-        <t-space>
-          <t-tag v-if="row.status === 'frozen'" theme="danger">已冻结</t-tag>
-          <t-tag v-else-if="row.status === 'revoked'" theme="danger">已撤销</t-tag>
-          <t-tag v-else-if="row.status === 'pending'" theme="warning">待审批</t-tag>
-          <t-tag v-else-if="row.status === 'exhausted'" theme="warning">额度用罄</t-tag>
-          <t-tag v-else-if="row.status === 'expired'" theme="default">已过期</t-tag>
-          <t-tag v-else-if="row._frozenStatus?.autoDetected" theme="warning">冻结预警</t-tag>
-          <t-tag v-else-if="row._idleStatus?.level === 'danger'" theme="danger">闲置待撤销</t-tag>
-          <t-tag v-else-if="row._idleStatus?.level === 'warning'" theme="warning">闲置预警</t-tag>
-          <status-tag v-else :status="row.status" :status-map="statusMap" />
-        </t-space>
-      </template>
-      <template #operation="{ row }">
-        <t-space>
-          <t-link @click="handleView(row)">查看</t-link>
-          <t-link v-if="row.status === 'pending' && userStore.role === 'inkasso'" theme="success" @click="handleApprove(row)">通过</t-link>
-          <t-link v-if="row.status === 'pending' && userStore.role === 'inkasso'" theme="danger" @click="handleReject(row)">驳回</t-link>
-          <t-link v-else @click="handleEdit(row)">编辑</t-link>
-        </t-space>
-      </template>
-    </data-table>
-
+    <!-- Existing: creditLimit detail dialog -->
     <t-dialog v-model:visible="detailVisible" header="限额详情" width="600px" :footer="false">
       <t-alert v-if="currentRow?.status === 'frozen'" theme="danger" class="mb-16">
         <template #message>
@@ -77,9 +125,65 @@
       </t-alert>
     </t-dialog>
 
-    <t-dialog v-model:visible="formVisible" :header="formMode === 'create' ? '申请信用限额' : '编辑信用限额'" width="700px">
+    <!-- New: clApplication detail dialog -->
+    <t-dialog v-model:visible="clDetailVisible" header="限额申请详情" width="700px" :footer="false">
+      <template v-if="clCurrentRow">
+        <detail-panel title="基本信息" :columns="clBasicColumns" :data="clCurrentRow" />
+        <template v-if="clCurrentRow.creditQueryResult">
+          <t-divider>资信查询结果</t-divider>
+          <detail-panel title="" :columns="clCreditColumns" :data="clCurrentRow.creditQueryResult" />
+        </template>
+        <template v-if="clCurrentRow.overLimitWarning">
+          <t-alert theme="warning" class="mt-16 mb-16" :message="clCurrentRow.overLimitMessage" />
+        </template>
+        <t-divider>审核进度</t-divider>
+        <div class="timeline">
+          <div class="timeline-item" v-if="clCurrentRow.submitTime">
+            <span class="timeline-dot primary"></span>
+            <span class="timeline-content">客户提交：{{ clCurrentRow.submitTime }}</span>
+          </div>
+          <div class="timeline-item" v-if="clCurrentRow.platformReviewTime">
+            <span class="timeline-dot primary"></span>
+            <span class="timeline-content">平台审核：{{ clCurrentRow.platformReviewTime }}</span>
+          </div>
+          <div class="timeline-item" v-if="clCurrentRow.clerkReviewTime">
+            <span class="timeline-dot primary"></span>
+            <span class="timeline-content">跟单员审核：{{ clCurrentRow.clerkReviewTime }}</span>
+          </div>
+          <div class="timeline-item" v-if="clCurrentRow.insurerReviewTime">
+            <span class="timeline-dot" :class="clCurrentRow.insurerDecision === 'approved' ? 'success' : 'danger'"></span>
+            <span class="timeline-content">保险公司复核：{{ clCurrentRow.insurerReviewTime }}</span>
+            <span v-if="clCurrentRow.insurerDecision === 'approved'" class="timeline-result success">已批准</span>
+            <span v-else-if="clCurrentRow.insurerDecision === 'rejected'" class="timeline-result danger">已驳回</span>
+          </div>
+          <div class="timeline-item" v-if="clCurrentRow.completedTime">
+            <span class="timeline-dot success"></span>
+            <span class="timeline-content">流程完成：{{ clCurrentRow.completedTime }}</span>
+          </div>
+        </div>
+        <template v-if="clCurrentRow.insurerDecision === 'approved' && clCurrentRow.approvedLimit">
+          <t-divider>批准详情</t-divider>
+          <detail-panel title="" :columns="clApprovedColumns" :data="clCurrentRow" />
+        </template>
+        <template v-if="clCurrentRow.insurerDecision === 'rejected' && clCurrentRow.rejectReason">
+          <t-divider>驳回原因</t-divider>
+          <t-alert theme="danger" :message="clCurrentRow.rejectReason" class="mt-8" />
+          <p v-if="clCurrentRow.rejectType" class="mt-8" style="color: #666;">驳回类型：{{ clCurrentRow.rejectType }}</p>
+        </template>
+      </template>
+    </t-dialog>
+
+    <!-- Create/Edit clApplication dialog -->
+    <t-dialog v-model:visible="formVisible" header="申请信用限额" width="700px">
       <div style="max-height: 600px; overflow-y: auto;">
-        <t-form ref="formRef" :data="formData" :rules="formRules" label-width="140px" @submit="handleSubmit">
+        <t-form ref="formRef" :data="formData" :rules="formRules" label-width="140px" @submit="handleFormSubmit">
+          <t-divider>保单选择</t-divider>
+          <t-form-item label="关联保单" name="policyNo">
+            <t-select v-model="formData.policyNo" placeholder="请选择保单" clearable filterable>
+              <t-option v-for="p in store.policies" :key="p.policyNo" :value="p.policyNo" :label="`${p.policyNo} - ${p.insured || p.policyholder || ''}`" />
+            </t-select>
+          </t-form-item>
+
           <t-divider>买方信息</t-divider>
           <t-form-item label="买方名称" name="buyerName">
             <t-input v-model="formData.buyerName" placeholder="请输入买方名称" />
@@ -127,6 +231,9 @@
               <t-option value="其他" label="其他" />
             </t-select>
           </t-form-item>
+          <t-form-item label="申请原因" name="applicationReason">
+            <t-textarea v-model="formData.applicationReason" placeholder="请输入申请原因" :rows="3" />
+          </t-form-item>
           <t-form-item label="过去12个月赊销交易额" name="historicalTransactionAmount">
             <t-input-number v-model="formData.historicalTransactionAmount" :min="0" placeholder="请输入交易额" />
           </t-form-item>
@@ -159,33 +266,37 @@
               <t-radio value="no">否</t-radio>
             </t-radio-group>
           </t-form-item>
-
-          <t-form-item v-if="idleWarning" label="闲置预警">
-            <t-alert :theme="idleWarning.level" :message="idleWarning.message" />
-          </t-form-item>
-          <t-form-item
-            v-for="w in formConcentrationWarnings"
-            :key="w.type"
-            label="集中度提示"
-          >
-            <t-alert :theme="w.level" :message="w.message" />
-          </t-form-item>
-
         </t-form>
       </div>
       <template #footer>
         <t-space>
           <t-button variant="outline" @click="formVisible = false">取消</t-button>
-          <t-button theme="primary" @click="formRef?.submit()">{{ formMode === 'create' ? '提交申请' : '保存' }}</t-button>
+          <t-button theme="primary" @click="formRef?.submit()">提交申请</t-button>
         </t-space>
       </template>
+    </t-dialog>
+
+    <!-- Clerk reject dialog -->
+    <t-dialog v-model:visible="rejectDialogVisible" header="驳回限额申请" width="500px" @confirm="handleRejectConfirm">
+      <p style="margin-bottom: 12px;">请输入驳回原因：</p>
+      <t-input v-model="rejectReason" placeholder="请填写驳回原因" />
+    </t-dialog>
+
+    <!-- Record quota dialog -->
+    <t-dialog v-model:visible="quotaDialogVisible" header="录入配额" width="500px" @confirm="handleQuotaConfirm">
+      <p style="margin-bottom: 12px;">保险公司批准额度：${{ quotaTargetRow?.approvedLimit?.toLocaleString() }}</p>
+      <t-form>
+        <t-form-item label="录入配额">
+          <t-input-number v-model="quotaValue" :min="0" :max="quotaTargetRow?.approvedLimit || 0" placeholder="请输入配额" />
+        </t-form-item>
+      </t-form>
     </t-dialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { MessagePlugin } from 'tdesign-vue-next'
+import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import SearchFilter from '@/components/common/SearchFilter.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
@@ -198,7 +309,105 @@ import { checkIdleStatus, checkConcentration, checkFrozenStatus, getStatusTag } 
 const store = useBusinessStore()
 const userStore = useUserStore()
 const loading = computed(() => false)
+
+// Tab state
+const activeTab = ref('application')
+
+// ===== clApplication (限额申请) state =====
+const clSearchParams = ref({ buyerName: '', status: '' })
+const clPagination = reactive({ total: 0, current: 1, pageSize: 20 })
+const clDetailVisible = ref(false)
+const clCurrentRow = ref(null)
+
+const clStatusOptions = [
+  { value: 'cl_draft', label: '草稿' },
+  { value: 'cl_platform_review', label: '平台审核' },
+  { value: 'cl_clerk_review', label: '跟单员审核' },
+  { value: 'cl_insurer_review', label: '保险审核' },
+  { value: 'cl_insurer_approved', label: '已批准' },
+  { value: 'cl_insurer_rejected', label: '已驳回' },
+  { value: 'cl_customer_confirm', label: '待客户确认' },
+  { value: 'cl_platform_synced', label: '已同步' },
+  { value: 'cl_quota_recording', label: '录入配额' },
+  { value: 'cl_completed', label: '已完成' }
+]
+
+const clStatusMap = {
+  cl_draft: '草稿',
+  cl_platform_review: '平台审核',
+  cl_clerk_review: '跟单员审核',
+  cl_insurer_review: '保险审核',
+  cl_insurer_approved: '已批准',
+  cl_insurer_rejected: '已驳回',
+  cl_customer_confirm: '待客户确认',
+  cl_platform_synced: '已同步',
+  cl_quota_recording: '录入配额',
+  cl_completed: '已完成'
+}
+
+const clApplicationColumns = [
+  { colKey: 'id', title: '申请编号', width: 180, ellipsis: true },
+  { colKey: 'buyerName', title: '买方名称', ellipsis: true },
+  { colKey: 'appliedLimit', title: '申请额度', align: 'right' },
+  { colKey: 'currency', title: '币种', width: 80 },
+  { colKey: 'applicationDate', title: '申请日期', width: 120 },
+  { colKey: 'status', title: '当前状态', width: 100, slot: 'status' },
+  { colKey: 'operation', title: '操作', width: 200, fixed: 'right', slot: 'operation' }
+]
+
+const clBasicColumns = [
+  { label: '申请编号', key: 'id' },
+  { label: '买方名称', key: 'buyerName' },
+  { label: '申请额度', key: 'appliedLimit' },
+  { label: '币种', key: 'currency' },
+  { label: '保单编号', key: 'policyNo' },
+  { label: '申请日期', key: 'applicationDate' },
+  { label: '申请原因', key: 'applicationReason' },
+  { label: '状态', key: 'status', formatter: (v) => clStatusMap[v] || v }
+]
+
+const clCreditColumns = [
+  { label: '买方信用评级', key: 'buyerCreditRating' },
+  { label: '授信建议额度', key: 'buyerCreditLimit' },
+  { label: '历史违约率', key: 'historicalDefaultRate', formatter: (v) => `${v}%` },
+  { label: '查询时间', key: 'queryTime' }
+]
+
+const clApprovedColumns = [
+  { label: '批准额度', key: 'approvedLimit' },
+  { label: '批准率', key: 'approvedRate', formatter: (v) => `${v}%` },
+  { label: '生效日期', key: 'effectiveDate' },
+  { label: '到期日期', key: 'expiryDate' },
+  { label: '特殊条件', key: 'specialConditions' },
+  { label: '记录配额', key: 'recordedQuota' },
+  { label: '配额记录时间', key: 'recordedTime' },
+  { label: '同步记录', key: 'syncRecord' },
+  { label: '同步时间', key: 'syncTime' }
+]
+
+const clFilteredData = computed(() => {
+  const list = store.clApplications || []
+  const p = clSearchParams.value
+  return list.filter((it) => {
+    if (p.buyerName && !String(it.buyerName || '').includes(p.buyerName)) return false
+    if (p.status && it.status !== p.status) return false
+    return true
+  })
+})
+
+const clTableData = computed(() => {
+  clPagination.total = clFilteredData.value.length
+  const start = (clPagination.current - 1) * clPagination.pageSize
+  return clFilteredData.value.slice(start, start + clPagination.pageSize)
+})
+
+// ===== creditLimit (已有限额) state =====
 const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRange: [] })
+const pagination = reactive({ total: 0, current: 1, pageSize: 20 })
+const detailVisible = ref(false)
+const formVisible = ref(false)
+const currentRow = ref(null)
+const formRef = ref(null)
 
 const statusOptions = [
   { value: 'active', label: '已批复' },
@@ -229,12 +438,6 @@ const columns = [
   { colKey: 'status', title: '状态', width: 100, slot: 'status' },
   { colKey: 'operation', title: '操作', width: 120, fixed: 'right', slot: 'operation' }
 ]
-
-const pagination = reactive({
-  total: 0,
-  current: 1,
-  pageSize: 20
-})
 
 const filteredData = computed(() => {
   const list = store.creditLimits || []
@@ -274,11 +477,11 @@ const pendingCount = computed(() => (store.creditLimits || []).filter(it => it.s
 const appliedSum = computed(() => (store.creditLimits || []).reduce((sum, it) => sum + (Number(it.appliedLimit) || 0), 0))
 const usedSum = computed(() => (store.creditLimits || []).reduce((sum, it) => sum + (Number(it.usedLimit) || 0), 0))
 
-const detailVisible = ref(false)
-const formVisible = ref(false)
-const formMode = ref('create')
-const currentRow = ref(null)
-const formRef = ref(null)
+const rejectDialogVisible = ref(false)
+const rejectReason = ref('')
+const quotaDialogVisible = ref(false)
+const quotaTargetRow = ref(null)
+const quotaValue = ref(0)
 
 const detailColumns = [
   { label: '买方名称', key: 'buyerName' },
@@ -297,6 +500,7 @@ const detailColumns = [
 ]
 
 const formData = reactive({
+  policyNo: '',
   buyerName: '',
   buyerCountry: '',
   buyerAddress: '',
@@ -306,6 +510,7 @@ const formData = reactive({
   paymentTermsDays: 0,
   paymentMethod: '',
   cooperationYears: '',
+  applicationReason: '',
   historicalTransactionAmount: 0,
   estimatedAnnualShipment: 0,
   hasGuarantee: 'no',
@@ -316,33 +521,167 @@ const formData = reactive({
   allowContactBuyer: 'yes'
 })
 
-const formConcentrationWarnings = computed(() => {
-  if (!formData.buyerName || !formData.appliedLimit) return []
-  const tempLimit = {
-    buyerName: formData.buyerName,
-    buyerCountry: formData.buyerCountry,
-    appliedLimit: formData.appliedLimit
-  }
-  const allLimits = store.creditLimits || []
-  const { warnings } = checkConcentration(tempLimit, allLimits)
-  return warnings
-})
-
-const idleWarning = computed(() => {
-  if (formMode.value !== 'edit' || !currentRow.value) return null
-  const shipments = store.shipments || []
-  return checkIdleStatus(currentRow.value, shipments)
-})
-
 const formRules = {
+  policyNo: [{ required: true, message: '请选择关联保单', type: 'error' }],
   buyerName: [{ required: true, message: '请输入买方名称', type: 'error' }],
   appliedLimit: [{ required: true, message: '请输入申请额度', type: 'error' }],
   currency: [{ required: true, message: '请选择币种', type: 'error' }],
-  paymentTermsDays: [{ required: true, message: '请输入账期天数', type: 'error' }],
-  paymentMethod: [{ required: true, message: '请选择支付方式', type: 'error' }],
   authorizationDocument: []
 }
 
+// ===== clApplication handlers =====
+const handleClSearch = (params) => {
+  clSearchParams.value = params
+  clPagination.current = 1
+}
+
+const handleClReset = () => {
+  clSearchParams.value = { buyerName: '', status: '' }
+  clPagination.current = 1
+}
+
+const handleClPageChange = (pageInfo) => {
+  clPagination.current = pageInfo.current
+  clPagination.pageSize = pageInfo.pageSize
+}
+
+const handleClViewDetail = (row) => {
+  clCurrentRow.value = row
+  clDetailVisible.value = true
+}
+
+const handleClSubmit = async (row) => {
+  const result = store.submitClToPlatform(row.id)
+  if (result.ok) {
+    MessagePlugin.success(result.message)
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const handleGenerateDocs = async (row) => {
+  const result = store.generateClDocuments(row.id)
+  if (result.ok) {
+    MessagePlugin.success(result.message)
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const handlePushToClerk = async (row) => {
+  const result = store.pushClToClerk(row.id)
+  if (result.ok) {
+    MessagePlugin.success(result.message)
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const handleClerkApprove = async (row) => {
+  const result = store.clerkApproveCl(row.id)
+  if (result.ok) {
+    MessagePlugin.success(result.message)
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const handleClerkReject = async (row) => {
+  rejectReason.value = ''
+  quotaTargetRow.value = row
+  rejectDialogVisible.value = true
+}
+
+const handleRejectConfirm = async () => {
+  if (!rejectReason.value) {
+    MessagePlugin.warning('请填写驳回原因')
+    return
+  }
+  const result = store.clerkRejectCl(quotaTargetRow.value.id, rejectReason.value)
+  if (result.ok) {
+    MessagePlugin.success(result.message)
+  } else {
+    MessagePlugin.error(result.message)
+  }
+  rejectDialogVisible.value = false
+  rejectReason.value = ''
+}
+
+const handleRecordQuota = async (row) => {
+  quotaValue.value = 0
+  quotaTargetRow.value = row
+  quotaDialogVisible.value = true
+}
+
+const handleQuotaConfirm = async () => {
+  if (!quotaValue.value || quotaValue.value <= 0) {
+    MessagePlugin.warning('请录入有效配额')
+    return
+  }
+  const result = store.clerkRecordQuota(quotaTargetRow.value.id, { recordedQuota: quotaValue.value })
+  if (result.ok) {
+    MessagePlugin.success(result.message)
+  } else {
+    MessagePlugin.error(result.message)
+  }
+  quotaDialogVisible.value = false
+}
+
+const handleSyncToPlatform = async (row) => {
+  const result = store.clerkSyncToPlatform(row.id, { syncRecord: '配额已核对，同步至平台' })
+  if (result.ok) {
+    MessagePlugin.success(result.message)
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const handlePlatformConfirm = async (row) => {
+  const result = store.platformConfirmUpdate(row.id)
+  if (result.ok) {
+    MessagePlugin.success(result.message)
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const handleClerkConfirmReject = async (row) => {
+  const result = store.clerkConfirmReject(row.id)
+  if (result.ok) {
+    MessagePlugin.success(result.message)
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const handlePushRejectToCustomer = async (row) => {
+  const result = store.platformPushClReject(row.id)
+  if (result.ok) {
+    MessagePlugin.success(result.message)
+  } else {
+    MessagePlugin.error(result.message)
+  }
+}
+
+const handleCustomerConfirmReject = async (row) => {
+  const dialog = DialogPlugin.confirm({
+    header: '确认驳回结果',
+    body: '保险公司已驳回该限额申请，确认后将结束流程。是否确认？',
+    confirmBtn: '确认',
+    cancelBtn: '取消',
+    onConfirm: async () => {
+      const result = store.customerConfirmClReject(row.id)
+      if (result.ok) {
+        MessagePlugin.success(result.message)
+      } else {
+        MessagePlugin.error(result.message)
+      }
+      dialog.hide()
+    }
+  })
+}
+
+// ===== creditLimit handlers =====
 const handleSearch = (params) => {
   searchParams.value = params
   pagination.current = 1
@@ -359,9 +698,9 @@ const handlePageChange = (pageInfo) => {
 }
 
 const handleAdd = () => {
-  formMode.value = 'create'
-  currentRow.value = null
+  activeTab.value = 'application'
   Object.assign(formData, {
+    policyNo: store.policies?.[0]?.policyNo || '',
     buyerName: '',
     buyerCountry: '',
     buyerAddress: '',
@@ -371,10 +710,12 @@ const handleAdd = () => {
     paymentTermsDays: 0,
     paymentMethod: '',
     cooperationYears: '',
+    applicationReason: '',
     historicalTransactionAmount: 0,
     estimatedAnnualShipment: 0,
     hasGuarantee: 'no',
     guarantorName: '',
+    authorizationDocument: null,
     historyFiles: null,
     buyerQualificationFiles: null,
     allowContactBuyer: 'yes'
@@ -387,82 +728,40 @@ const handleView = (row) => {
   detailVisible.value = true
 }
 
-const handleEdit = (row) => {
-  formMode.value = 'edit'
-  currentRow.value = row
-  Object.assign(formData, {
-    buyerName: row.buyerName || '',
-    buyerCountry: row.buyerCountry || '',
-    buyerAddress: row.buyerAddress || '',
-    buyerIndustry: row.buyerIndustry || '',
-    appliedLimit: Number(row.appliedLimit) || 0,
-    currency: row.currency || 'USD',
-    paymentTermsDays: Number(row.paymentTermsDays) || 0,
-    paymentMethod: row.paymentMethod || '',
-    cooperationYears: row.cooperationYears || '',
-    historicalTransactionAmount: Number(row.historicalTransactionAmount) || 0,
-    estimatedAnnualShipment: Number(row.estimatedAnnualShipment) || 0,
-    hasGuarantee: row.hasGuarantee || 'no',
-    guarantorName: row.guarantorName || '',
-    historyFiles: row.historyFiles || null,
-    buyerQualificationFiles: row.buyerQualificationFiles || null,
-    allowContactBuyer: row.allowContactBuyer || 'yes'
-  })
-  formVisible.value = true
-}
-
-const handleSubmit = async ({ validateResult }) => {
+const handleFormSubmit = async ({ validateResult }) => {
   if (validateResult !== true) return
   if (formData.hasGuarantee === 'yes' && !formData.guarantorName) {
     MessagePlugin.error('有担保时请填写担保方公司全称')
     return
   }
-  if (formMode.value === 'create') {
-    store.createCreditLimit({
-      buyerName: formData.buyerName,
-      buyerCountry: formData.buyerCountry,
-      buyerAddress: formData.buyerAddress,
-      buyerIndustry: formData.buyerIndustry,
-      appliedLimit: formData.appliedLimit,
-      currency: formData.currency,
-      paymentTerms: `${formData.paymentMethod} ${formData.paymentTermsDays}天`,
-      paymentMethod: formData.paymentMethod,
-      paymentTermsDays: formData.paymentTermsDays,
-      cooperationYears: formData.cooperationYears,
-      historicalTransactionAmount: formData.historicalTransactionAmount,
-      estimatedAnnualShipment: formData.estimatedAnnualShipment,
-      hasGuarantee: formData.hasGuarantee,
-      guarantorName: formData.guarantorName,
-      allowContactBuyer: formData.allowContactBuyer,
-      status: 'pending',
-      past12MonthSales: formData.historicalTransactionAmount,
-      concentrationRate: 0
-    })
-    MessagePlugin.success('已提交限额申请')
-  } else if (currentRow.value) {
-    Object.assign(currentRow.value, {
-      buyerName: formData.buyerName,
-      buyerCountry: formData.buyerCountry,
-      buyerAddress: formData.buyerAddress,
-      buyerIndustry: formData.buyerIndustry,
-      appliedLimit: formData.appliedLimit,
-      remainingLimit: Math.max(0, formData.appliedLimit - (Number(currentRow.value.usedLimit) || 0)),
-      currency: formData.currency,
-      paymentTerms: `${formData.paymentMethod} ${formData.paymentTermsDays}天`,
-      paymentMethod: formData.paymentMethod,
-      paymentTermsDays: formData.paymentTermsDays,
-      cooperationYears: formData.cooperationYears,
-      historicalTransactionAmount: formData.historicalTransactionAmount,
-      estimatedAnnualShipment: formData.estimatedAnnualShipment,
-      hasGuarantee: formData.hasGuarantee,
-      guarantorName: formData.guarantorName,
-      historyFiles: formData.historyFiles,
-      buyerQualificationFiles: formData.buyerQualificationFiles,
-      allowContactBuyer: formData.allowContactBuyer
-    })
-    MessagePlugin.success('已保存限额信息')
+  const result = store.createAndSubmitClApplication(formData.policyNo, {
+    buyerName: formData.buyerName,
+    buyerCountry: formData.buyerCountry,
+    buyerAddress: formData.buyerAddress,
+    buyerIndustry: formData.buyerIndustry,
+    appliedLimit: formData.appliedLimit,
+    currency: formData.currency,
+    paymentTerms: `${formData.paymentMethod} ${formData.paymentTermsDays}天`,
+    paymentMethod: formData.paymentMethod,
+    paymentTermsDays: formData.paymentTermsDays,
+    cooperationYears: formData.cooperationYears,
+    applicationReason: formData.applicationReason,
+    historicalTransactionAmount: formData.historicalTransactionAmount,
+    estimatedAnnualShipment: formData.estimatedAnnualShipment,
+    hasGuarantee: formData.hasGuarantee,
+    guarantorName: formData.guarantorName,
+    allowContactBuyer: formData.allowContactBuyer
+  })
+  if (result.ok) {
+    if (result.overLimitWarning) {
+      MessagePlugin.warning('申请已提交，但存在超限预警，请注意查看')
+    } else {
+      MessagePlugin.success(result.message)
+    }
+    formVisible.value = false
+  } else {
+    MessagePlugin.error(result.message)
   }
-  formVisible.value = false
 }
 
 const handleApprove = (row) => {
@@ -479,6 +778,10 @@ const handleReject = (row) => {
   const idx = store.creditLimits.findIndex(c => c.id === row.id)
   if (idx >= 0) store.creditLimits.splice(idx, 1)
   MessagePlugin.warning(`「${row.buyerName}」限额申请已驳回`)
+}
+
+const handleEdit = (row) => {
+  MessagePlugin.info('编辑功能已迁移至限额申请Tab，请重新提交申请')
 }
 
 onMounted(() => {
@@ -500,4 +803,35 @@ onMounted(() => {
 }
 .mt-16 { margin-top: 16px; }
 .mb-16 { margin-bottom: 16px; }
+.mt-8 { margin-top: 8px; }
+
+.timeline {
+  padding: 8px 0;
+}
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  &.primary { background: #0052D9; }
+  &.success { background: #00A870; }
+  &.danger { background: #E34D57; }
+}
+.timeline-content {
+  color: #333;
+}
+.timeline-result {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  &.success { background: #E6F7F1; color: #00A870; }
+  &.danger { background: #FCEDEE; color: #E34D57; }
+}
 </style>

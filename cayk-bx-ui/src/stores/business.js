@@ -28,6 +28,17 @@ const isHongKongShipment = (destinationPort) => {
   return s.includes('香港') || s.toLowerCase().includes('hong kong')
 }
 
+const addWorkingDays = (date, days) => {
+  const result = new Date(date)
+  let added = 0
+  while (added < days) {
+    result.setDate(result.getDate() + 1)
+    const dow = result.getDay()
+    if (dow !== 0 && dow !== 6) added++
+  }
+  return formatDate(result)
+}
+
 const computeShipmentDeadline = ({ shipmentDate, destinationPort, declarationType }) => {
   const shipDate = shipmentDate || formatDate(new Date())
   if (isHongKongShipment(destinationPort)) return addDays(shipDate, 3)
@@ -37,7 +48,7 @@ const computeShipmentDeadline = ({ shipmentDate, destinationPort, declarationTyp
     dt.setDate(10)
     return formatDate(dt)
   }
-  return addDays(shipDate, 15)
+  return addWorkingDays(shipDate, 10)
 }
 
 const isOverdueByDeadline = (deadline, status) => {
@@ -61,7 +72,8 @@ const normalizeShipment = (it) => {
   const isOverdue = !!it.isOverdue || isOverdueByDeadline(deadline, it.status)
   const isDueSoon = isDueSoonByDeadline(deadline, it.status)
   const next = { ...it, deadline, isOverdue, isDueSoon }
-  if (isOverdue && next.status !== 'declared' && next.status !== 'completed') {
+  const preDeclareStates = ['pending_declare', 'declaring']
+  if (isOverdue && preDeclareStates.includes(next.status)) {
     next.status = 'timeout_warning'
     next.statusName = '超时预警'
   }
@@ -93,6 +105,7 @@ const saveStateToStorage = (state) => {
       policyChangeApplications: state.policyChangeApplications,
       renewalApplications: state.renewalApplications,
       surrenderApplications: state.surrenderApplications,
+      clApplications: state.clApplications,
       _savedAt: new Date().toISOString()
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
@@ -130,7 +143,9 @@ export const useBusinessStore = defineStore('business', {
     policyChangeApplications: [],
     renewalApplications: [],
     surrenderApplications: [],
-    surrenderUpdateVersion: 0
+    surrenderUpdateVersion: 0,
+    clApplications: [],
+    clUpdateVersion: 0
   }),
   getters: {
     insuranceStats(state) {
@@ -174,6 +189,10 @@ export const useBusinessStore = defineStore('business', {
       this.surrenderUpdateVersion++
       saveStateToStorage(this.$state)
     },
+    touchClApplications() {
+      this.clUpdateVersion++
+      saveStateToStorage(this.$state)
+    },
     ensureSeeded() {
       if (this.insuranceApplications.length > 0) return
       // 尝试从localStorage恢复
@@ -194,11 +213,13 @@ export const useBusinessStore = defineStore('business', {
         this.policyChangeApplications = saved.policyChangeApplications || []
         this.renewalApplications = saved.renewalApplications || []
         this.surrenderApplications = saved.surrenderApplications || []
+        this.clApplications = saved.clApplications || []
         return
       }
       this.policyChangeApplications = []
       this.renewalApplications = []
       this.surrenderApplications = []
+      this.clApplications = []
       // Seed a renewal application at renew_active state for testing payment flow
       const now = new Date()
       this.renewalApplications.push({
@@ -373,9 +394,250 @@ export const useBusinessStore = defineStore('business', {
           terminatedTime: '2026-03-15 09:00:00'
         }
       ]
+      // Seed a credit limit application at cl_platform_review for testing
+      this.clApplications.push({
+        id: 'CLA_SEED_PLATFORM',
+        policyNo: 'POL20260426000000',
+        policyId: 'seed_policy_001',
+        buyerName: 'TechBuyer Co., Ltd',
+        policyTotalLimit: 5000000,
+        existingCreditTotal: 2000000,
+        appliedLimit: 1500000,
+        currency: 'USD',
+        applicationDate: '2026-05-20',
+        applicationReason: '业务增长，需要增加买方信用额度',
+        creditQueryResult: {
+          buyerCreditRating: 'AA',
+          buyerCreditLimit: 2000000,
+          historicalDefaultRate: 1.2,
+          queryTime: '2026-05-20 09:30:00'
+        },
+        overLimitWarning: false,
+        overLimitMessage: '',
+        generatedApplicationForm: [{ name: '限额申请表_POL20260426000000.pdf', size: '0.3 MB' }],
+        generatedCreditReport: [{ name: '买方资信报告_TechBuyer.pdf', size: '1.2 MB' }],
+        generatedChecklist: [{ name: '材料清单_CLA_SEED_PLATFORM.pdf', size: '0.2 MB' }],
+        insurerDecision: '', insurerOpinion: '', rejectType: '', rejectReason: '',
+        approvedLimit: 0, approvedRate: 0,
+        effectiveDate: '', expiryDate: '',
+        specialConditions: '', insurerReviewTime: '',
+        recordedQuota: 0, recordedTime: '',
+        syncRecord: '', syncTime: '', platformUpdateTime: '',
+        rejectNotifiedClerk: false, rejectNotifiedPlatform: false, rejectNotifiedCustomer: false,
+        status: 'cl_platform_review',
+        createTime: '2026-05-20 09:00:00',
+        updateTime: '2026-05-20 09:30:00',
+        submitTime: '2026-05-20 09:05:00',
+        platformReviewTime: '2026-05-20 09:30:00',
+        clerkReviewTime: '', insurerReviewTime: '', completedTime: ''
+      })
+      // Seed a credit limit application at cl_draft for customer testing
+      this.clApplications.push({
+        id: 'CLA_SEED_DRAFT',
+        policyNo: 'POL20260426000000',
+        policyId: 'seed_policy_001',
+        buyerName: '新买方测试有限公司',
+        policyTotalLimit: 5000000,
+        existingCreditTotal: 2000000,
+        appliedLimit: 800000,
+        currency: 'USD',
+        applicationDate: '2026-05-26',
+        applicationReason: '开拓新买方市场',
+        creditQueryResult: {
+          buyerCreditRating: 'A',
+          buyerCreditLimit: 1200000,
+          historicalDefaultRate: 2.5,
+          queryTime: '2026-05-26 08:30:00'
+        },
+        overLimitWarning: false,
+        overLimitMessage: '',
+        generatedApplicationForm: [],
+        generatedCreditReport: [],
+        generatedChecklist: [],
+        insurerDecision: '', insurerOpinion: '', rejectType: '', rejectReason: '',
+        approvedLimit: 0, approvedRate: 0,
+        effectiveDate: '', expiryDate: '',
+        specialConditions: '', insurerReviewTime: '',
+        recordedQuota: 0, recordedTime: '',
+        syncRecord: '', syncTime: '', platformUpdateTime: '',
+        rejectNotifiedClerk: false, rejectNotifiedPlatform: false, rejectNotifiedCustomer: false,
+        status: 'cl_draft',
+        createTime: '2026-05-26 08:00:00',
+        updateTime: '2026-05-26 08:30:00',
+        submitTime: '', platformReviewTime: '',
+        clerkReviewTime: '', insurerReviewTime: '', completedTime: ''
+      })
+      // Seed a completed credit limit application
+      this.clApplications.push({
+        id: 'CLA_SEED_COMPLETED',
+        policyNo: 'POL20260426000000',
+        policyId: 'seed_policy_001',
+        buyerName: 'Global Trade Inc.',
+        policyTotalLimit: 5000000,
+        existingCreditTotal: 2000000,
+        appliedLimit: 1000000,
+        currency: 'USD',
+        applicationDate: '2026-05-10',
+        applicationReason: '年度额度续期',
+        creditQueryResult: {
+          buyerCreditRating: 'AAA',
+          buyerCreditLimit: 2000000,
+          historicalDefaultRate: 0.5,
+          queryTime: '2026-05-10 09:00:00'
+        },
+        overLimitWarning: false,
+        overLimitMessage: '',
+        generatedApplicationForm: [{ name: '限额申请表_POL20260426000000.pdf', size: '0.3 MB' }],
+        generatedCreditReport: [{ name: '买方资信报告_Global Trade.pdf', size: '1.2 MB' }],
+        generatedChecklist: [{ name: '材料清单_CLA_SEED_COMPLETED.pdf', size: '0.2 MB' }],
+        insurerDecision: 'approved',
+        insurerOpinion: '买方信用良好，建议批准',
+        rejectType: '', rejectReason: '',
+        approvedLimit: 1000000, approvedRate: 100,
+        effectiveDate: '2026-05-15', expiryDate: '2027-05-14',
+        specialConditions: '需每季度重新评估买方信用',
+        insurerReviewTime: '2026-05-12 14:00:00',
+        recordedQuota: 1000000, recordedTime: '2026-05-13 09:00:00',
+        syncRecord: '配额已核对，同步至平台', syncTime: '2026-05-13 10:00:00',
+        platformUpdateTime: '2026-05-13 11:00:00',
+        rejectNotifiedClerk: false, rejectNotifiedPlatform: false, rejectNotifiedCustomer: false,
+        status: 'cl_completed',
+        createTime: '2026-05-10 08:30:00',
+        updateTime: '2026-05-13 11:00:00',
+        submitTime: '2026-05-10 09:00:00',
+        platformReviewTime: '2026-05-10 10:00:00',
+        clerkReviewTime: '2026-05-11 09:00:00',
+        insurerReviewTime: '2026-05-12 14:00:00',
+        completedTime: '2026-05-13 11:00:00'
+      })
       this.insuranceApplications = []
       this.creditLimits = []
-      this.shipments = []
+      this.shipments = [
+        {
+          id: 'SD_SEED_1',
+          declarationNo: 'SD202605260001',
+          buyerName: 'TechBuyer Co., Ltd',
+          relatedPolicyNo: 'POL20260426000000',
+          shipmentDate: '2026-05-20',
+          destinationPort: 'Los Angeles',
+          shipmentAmount: 150000,
+          currency: 'USD',
+          declarationType: 'single',
+          declarationTypeName: '逐笔申报',
+          paymentTerms: 'OA',
+          transportType: 'sea',
+          billOfLadingNo: 'BL20260520001',
+          goodsDescription: '电子元器件',
+          invoiceNo: 'INV202605001',
+          invoiceAmount: 150000,
+          invoiceDate: '2026-05-18',
+          paymentDueDate: '2026-07-20',
+          commercialInvoice: [{ name: '商业发票_INV202605001.pdf', size: '0.2 MB' }],
+          billOfLading: [{ name: '提单_BL20260520001.pdf', size: '0.3 MB' }],
+          customsDeclaration: [],
+          receiptProof: [],
+          deadline: '2026-06-05',
+          status: 'sd_clerk_pending',
+          statusName: '待跟单员处理',
+          isOverdue: false,
+          isDueSoon: false,
+          financingStatus: 'not_financed',
+          financeMarked: false,
+          generatedDocs: [
+            { name: '出运申报单_SD202605260001.pdf', size: '0.3 MB', type: 'declaration_form', generatedAt: '2026-05-26 10:00:00' },
+            { name: '商业发票清单_SD202605260001.pdf', size: '0.5 MB', type: 'invoice_list', generatedAt: '2026-05-26 10:00:00' },
+            { name: '限额使用报告_SD202605260001.pdf', size: '0.2 MB', type: 'limit_report', generatedAt: '2026-05-26 10:00:00' },
+            { name: '出运申报汇总表_SD202605260001.xlsx', size: '0.4 MB', type: 'summary_sheet', generatedAt: '2026-05-26 10:00:00' }
+          ],
+          pushTime: '2026-05-26 10:05:00',
+          createTime: '2026-05-26 09:00:00',
+          updateTime: '2026-05-26 10:05:00'
+        },
+        {
+          id: 'SD_SEED_2',
+          declarationNo: 'SD202605260002',
+          buyerName: 'EuroDistributor GmbH',
+          relatedPolicyNo: 'POL20260315000001',
+          shipmentDate: '2026-05-22',
+          destinationPort: 'Hamburg',
+          shipmentAmount: 280000,
+          currency: 'USD',
+          declarationType: 'single',
+          declarationTypeName: '逐笔申报',
+          paymentTerms: 'TT60',
+          transportType: 'sea',
+          billOfLadingNo: 'BL20260522002',
+          goodsDescription: '机械设备',
+          invoiceNo: 'INV202605002',
+          invoiceAmount: 280000,
+          invoiceDate: '2026-05-20',
+          paymentDueDate: '2026-07-22',
+          commercialInvoice: [{ name: '商业发票_INV202605002.pdf', size: '0.3 MB' }],
+          billOfLading: [{ name: '提单_BL20260522002.pdf', size: '0.4 MB' }],
+          customsDeclaration: [],
+          receiptProof: [],
+          deadline: '2026-06-05',
+          status: 'pending_premium',
+          statusName: '待支付保费',
+          limitImpactChecked: true,
+          limitOkAfterSync: true,
+          isOverdue: false,
+          isDueSoon: false,
+          financingStatus: 'financed',
+          financeMarked: true,
+          financeContractNo: 'RWA202605001',
+          generatedDocs: [
+            { name: '出运申报单_SD202605260002.pdf', size: '0.3 MB', type: 'declaration_form', generatedAt: '2026-05-26 10:00:00' },
+            { name: '商业发票清单_SD202605260002.pdf', size: '0.5 MB', type: 'invoice_list', generatedAt: '2026-05-26 10:00:00' },
+            { name: '限额使用报告_SD202605260002.pdf', size: '0.2 MB', type: 'limit_report', generatedAt: '2026-05-26 10:00:00' },
+            { name: '出运申报汇总表_SD202605260002.xlsx', size: '0.4 MB', type: 'summary_sheet', generatedAt: '2026-05-26 10:00:00' },
+            { name: '融资状态确认函_SD202605260002.pdf', size: '0.2 MB', type: 'finance_cert', generatedAt: '2026-05-26 10:00:00' }
+          ],
+          pushTime: '2026-05-26 10:05:00',
+          clerkSubmitTime: '2026-05-26 14:00:00',
+          insurerOpinion: '审批通过',
+          insurerRefNo: 'INS20260526001',
+          insurerDecision: 'approved',
+          insurerReviewTime: '2026-05-26 16:30:00',
+          createTime: '2026-05-26 09:00:00',
+          updateTime: '2026-05-26 16:30:00'
+        },
+        {
+          id: 'SD_SEED_3',
+          declarationNo: 'SD202605250003',
+          buyerName: 'TechBuyer Co., Ltd',
+          relatedPolicyNo: 'POL20260426000000',
+          shipmentDate: '2026-05-18',
+          destinationPort: 'New York',
+          shipmentAmount: 95000,
+          currency: 'USD',
+          declarationType: 'single',
+          declarationTypeName: '逐笔申报',
+          paymentTerms: 'OA',
+          transportType: 'sea',
+          billOfLadingNo: 'BL20260518003',
+          goodsDescription: '消费电子产品',
+          invoiceNo: 'INV202605003',
+          invoiceAmount: 95000,
+          invoiceDate: '2026-05-16',
+          paymentDueDate: '2026-07-18',
+          commercialInvoice: [],
+          billOfLading: [{ name: '提单_BL20260518003.pdf', size: '0.3 MB' }],
+          customsDeclaration: [],
+          receiptProof: [],
+          deadline: '2026-06-01',
+          status: 'declared',
+          statusName: '已申报',
+          isOverdue: false,
+          isDueSoon: true,
+          financingStatus: 'unchecked',
+          financeMarked: false,
+          generatedDocs: [],
+          docsDownloaded: false,
+          createTime: '2026-05-25 09:00:00',
+          updateTime: '2026-05-25 09:00:00'
+        }
+      ]
       this.claims = []
       this.processTasks = []
       this.contracts = []
@@ -977,7 +1239,10 @@ export const useBusinessStore = defineStore('business', {
         status: payload.status || 'declared',
         statusName: payload.statusName || '已申报',
         isOverdue: isOverdueByDeadline(deadline, payload.status || 'declared'),
-        isDueSoon: isDueSoonByDeadline(deadline, payload.status || 'declared')
+        isDueSoon: isDueSoonByDeadline(deadline, payload.status || 'declared'),
+        financingStatus: 'unchecked',
+        financeMarked: false,
+        generatedDocs: []
       }
       const normalized = normalizeShipment(item)
       this.shipments.unshift(normalized)
@@ -997,6 +1262,463 @@ export const useBusinessStore = defineStore('business', {
         }
       }
       return normalized
+    },
+    // ===== Shipment Declaration Business Flow =====
+    checkShipmentFinancing(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      // Find related trade order to check financing status
+      const trade = this.tradeInfos.find(t =>
+        t.buyerName === shipment.buyerName &&
+        t.relatedPolicyNo === shipment.relatedPolicyNo
+      )
+      const isFinanced = trade && (trade.financingStatus === 'financed' || trade.financingStatus === 'financing')
+      const financeContractNo = trade?.financeContractNo || ''
+      if (isFinanced) {
+        shipment.financeMarked = true
+        shipment.financeContractNo = financeContractNo
+        shipment.financingStatus = 'financed'
+      } else {
+        shipment.financeMarked = false
+        shipment.financingStatus = 'not_financed'
+      }
+      shipment.status = 'sd_finance_checked'
+      shipment.statusName = '融资校验完成'
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: { isFinanced, financeContractNo } }
+    },
+    generateShipmentDocuments(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      const now = new Date()
+      const docs = [
+        { name: `出运申报单_${shipment.declarationNo}.pdf`, size: '0.3 MB', type: 'declaration_form', generatedAt: formatDateTime(now) },
+        { name: `商业发票清单_${shipment.declarationNo}.pdf`, size: '0.5 MB', type: 'invoice_list', generatedAt: formatDateTime(now) },
+        { name: `限额使用报告_${shipment.declarationNo}.pdf`, size: '0.2 MB', type: 'limit_report', generatedAt: formatDateTime(now) },
+        { name: `出运申报汇总表_${shipment.declarationNo}.xlsx`, size: '0.4 MB', type: 'summary_sheet', generatedAt: formatDateTime(now) }
+      ]
+      if (shipment.financeMarked) {
+        docs.push({ name: `融资状态确认函_${shipment.declarationNo}.pdf`, size: '0.2 MB', type: 'finance_cert', generatedAt: formatDateTime(now) })
+      }
+      shipment.generatedDocs = docs
+      shipment.status = 'sd_docs_generated'
+      shipment.statusName = '资料已生成'
+      shipment.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: docs }
+    },
+    pushShipmentToClerk(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      shipment.status = 'sd_clerk_pending'
+      shipment.statusName = '待跟单员处理'
+      shipment.pushTime = formatDateTime(new Date())
+      // Add notification for clerk
+      this.notifications.unshift({
+        id: 'NT_' + Date.now(),
+        type: 'shipment_push',
+        title: '新出运申报待处理',
+        content: `申报单 ${shipment.declarationNo} 已推送至您的工作台，请下载资料并提交保险公司`,
+        targetId: shipment.id,
+        role: 'clerk',
+        read: false,
+        createTime: formatDateTime(new Date())
+      })
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true }
+    },
+    clerkOfflineSubmit(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      shipment.status = 'sd_insurer_review'
+      shipment.statusName = '保险公司审批中'
+      shipment.clerkSubmitTime = formatDateTime(new Date())
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true }
+    },
+    // @deprecated — use processInsurerResult instead; kept for external callers
+    receiveInsurerResult(shipmentId, { approved, insurerOpinion, insurerRefNo }) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      shipment.insurerOpinion = insurerOpinion || ''
+      shipment.insurerRefNo = insurerRefNo || ''
+      shipment.insurerReviewTime = formatDateTime(new Date())
+      if (approved) {
+        shipment.status = 'sd_insurer_approved'
+        shipment.statusName = '保险公司已通过'
+        shipment.insurerDecision = 'approved'
+      } else {
+        shipment.status = 'sd_insurer_rejected'
+        shipment.statusName = '保险公司已驳回'
+        shipment.insurerDecision = 'rejected'
+      }
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: { approved, insurerOpinion } }
+    },
+    // @deprecated — use processInsurerResult instead; kept for external callers
+    updateShipmentLimits(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      // Update policy data
+      const policy = this.policies.find(p => p.policyNo === shipment.relatedPolicyNo)
+      if (policy) {
+        policy.usedQuota = (policy.usedQuota || 0) + (Number(shipment.shipmentAmount) || 0)
+        policy.remainingQuota = Math.max((policy.coverageAmount || 0) - policy.usedQuota, 0)
+      }
+      // Update credit limits
+      const cl = this.creditLimits.find(c => c.buyerName === shipment.buyerName)
+      if (cl) {
+        const shipAmount = Number(shipment.shipmentAmount) || 0
+        cl.usedLimit = (cl.usedLimit || 0) + shipAmount
+        cl.remainingLimit = Math.max((cl.appliedLimit || 0) - cl.usedLimit, 0)
+        cl.usageRate = cl.appliedLimit > 0 ? Math.round((cl.usedLimit / cl.appliedLimit) * 100) : 0
+        cl.lastShipmentDate = shipment.shipmentDate
+      }
+      // Check if limit affects this shipment
+      const limitOk = cl ? Number(shipment.shipmentAmount) <= cl.remainingLimit : true
+      shipment.limitImpactChecked = true
+      shipment.limitOkAfterSync = limitOk
+      if (!limitOk) {
+        // PRD: 限额影响校验失败 → 返回客户重新申报
+        shipment.status = 'sd_insurer_approved'
+        shipment.statusName = '保险公司已通过'
+        shipment.limitWarning = true
+        shipment.limitWarningMessage = `限额刷新后不足（可用限额: $${(cl?.remainingLimit || 0).toLocaleString()}，申报金额: $${Number(shipment.shipmentAmount).toLocaleString()}），请调整申报金额或申请增额`
+        shipment.updateTime = formatDateTime(new Date())
+        saveStateToStorage(this.$state)
+        this.notifications.unshift({
+          id: 'NT_' + Date.now(),
+          type: 'limit_warning',
+          title: '限额不足，需重新申报',
+          content: `申报单 ${shipment.declarationNo} 限额数据刷新后不足以覆盖本次出运金额，请重新调整申报金额或申请信用限额增额`,
+          targetId: shipment.id,
+          role: 'customer',
+          read: false,
+          createTime: formatDateTime(new Date())
+        })
+        return { ok: true, data: { limitOk: false, remainingLimit: cl?.remainingLimit || 0, message: shipment.limitWarningMessage } }
+      }
+      shipment.status = 'pending_premium'
+      shipment.statusName = '待支付保费'
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      this.notifications.unshift({
+        id: 'NT_' + Date.now(),
+        type: 'limit_updated',
+        title: '限额更新完成，待客户缴费',
+        content: `申报单 ${shipment.declarationNo} 限额数据已刷新，不影响本次出运。请引导客户线下缴纳保费`,
+        targetId: shipment.id,
+        role: 'customer',
+        read: false,
+        createTime: formatDateTime(new Date())
+      })
+      return { ok: true, data: { limitOk: true, remainingLimit: cl?.remainingLimit || 0 } }
+    },
+    markAsPaid(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      if (shipment.status !== 'pending_premium') return { ok: false, message: '当前状态不允许标记已缴费' }
+      shipment.status = 'premium_paid'
+      shipment.statusName = '已缴费'
+      shipment.paidTime = formatDateTime(new Date())
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true }
+    },
+    uploadPremiumVoucher(shipmentId, { paymentVouchers, paymentDate, paymentAmount, paymentRefNo }) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      if (shipment.status !== 'premium_paid' && shipment.status !== 'pending_premium') {
+        return { ok: false, message: '当前状态不允许上传缴费凭证' }
+      }
+      shipment.paymentVouchers = paymentVouchers || []
+      shipment.paymentDate = paymentDate || ''
+      shipment.paymentAmount = Number(paymentAmount) || 0
+      shipment.paymentRefNo = paymentRefNo || ''
+      shipment.status = 'premium_uploaded'
+      shipment.statusName = '凭证已上传'
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true }
+    },
+    verifyPremiumVoucher(shipmentId, { verified, verifyNote }) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      shipment.verifyNote = verifyNote || ''
+      if (verified) {
+        shipment.status = 'premium_verified'
+        shipment.statusName = '凭证已核验'
+        shipment.verifyTime = formatDateTime(new Date())
+      } else {
+        shipment.status = 'premium_paid'
+        shipment.statusName = '已缴费'
+        shipment.verifyFailReason = verifyNote || '核验不通过'
+      }
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: { verified } }
+    },
+    customerConfirmPayment(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      if (shipment.status !== 'premium_verified') return { ok: false, message: '当前状态不允许确认缴费' }
+      shipment.status = 'customer_confirmed'
+      shipment.statusName = '客户已确认'
+      shipment.customerConfirmed = true
+      shipment.customerConfirmTime = formatDateTime(new Date())
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true }
+    },
+    syncMultiEndStatus(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      shipment.status = 'completed'
+      shipment.statusName = '已完成'
+      shipment.completedTime = formatDateTime(new Date())
+      // Update policy premium status
+      const policy = this.policies.find(p => p.policyNo === shipment.relatedPolicyNo)
+      if (policy) {
+        policy.premiumStatus = 'paid'
+        policy.premiumConfirmedAt = formatDateTime(new Date())
+      }
+      // Notify both ends
+      this.notifications.unshift({
+        id: 'NT_' + Date.now(),
+        type: 'shipment_complete',
+        title: '出运申报已完成',
+        content: `申报单 ${shipment.declarationNo} 已完成全部流程，保费已缴纳`,
+        targetId: shipment.id,
+        role: 'all',
+        read: false,
+        createTime: formatDateTime(new Date())
+      })
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true }
+    },
+    clerkCompleteShipment(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      if (shipment.status !== 'customer_confirmed') return { ok: false, message: '请先等待客户确认缴费' }
+      shipment.status = 'completed'
+      shipment.statusName = '已完成'
+      shipment.completedTime = formatDateTime(new Date())
+      const policy = this.policies.find(p => p.policyNo === shipment.relatedPolicyNo)
+      if (policy) {
+        policy.premiumStatus = 'paid'
+        policy.premiumConfirmedAt = formatDateTime(new Date())
+      }
+      this.notifications.unshift({
+        id: 'NT_' + Date.now(),
+        type: 'shipment_complete',
+        title: '出运申报已完成',
+        content: '申报单 ' + shipment.declarationNo + ' 已完成全部流程，保费已缴纳',
+        targetId: shipment.id,
+        role: 'all',
+        read: false,
+        createTime: formatDateTime(new Date())
+      })
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true }
+    },
+    archiveShipment(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      if (shipment.status !== 'completed') return { ok: false, message: '仅已完成状态可归档' }
+      shipment.status = 'archived'
+      shipment.statusName = '已归档'
+      shipment.archiveTime = formatDateTime(new Date())
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true }
+    },
+    resubmitShipment(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      if (shipment.status !== 'sd_insurer_rejected' && !shipment.limitWarning) {
+        return { ok: false, message: '当前状态不允许重新申报' }
+      }
+      const now = new Date()
+      shipment.status = 'declared'
+      shipment.statusName = '已申报'
+      shipment.insurerDecision = ''
+      shipment.insurerOpinion = ''
+      shipment.insurerRefNo = ''
+      shipment.insurerReviewTime = ''
+      shipment.limitWarning = false
+      shipment.limitWarningMessage = ''
+      shipment.limitImpactChecked = false
+      shipment.limitOkAfterSync = false
+      shipment.docsDownloaded = false
+      shipment.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: shipment }
+    },
+    autoProcessShipment(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      if (shipment.status !== 'declared') return { ok: false, message: '当前状态不允许自动处理' }
+      const now = new Date()
+      // Step 1: Finance check
+      const trade = this.tradeInfos.find(t =>
+        t.buyerName === shipment.buyerName &&
+        t.relatedPolicyNo === shipment.relatedPolicyNo
+      )
+      const isFinanced = trade && (trade.financingStatus === 'financed' || trade.financingStatus === 'financing')
+      const financeContractNo = trade?.financeContractNo || ''
+      let financeMarked = false
+      if (isFinanced) {
+        financeMarked = true
+        shipment.financeMarked = true
+        shipment.financeContractNo = financeContractNo
+        shipment.financingStatus = 'financed'
+      } else {
+        shipment.financeMarked = false
+        shipment.financingStatus = 'not_financed'
+      }
+      shipment.status = 'sd_finance_checked'
+      shipment.statusName = '融资校验完成'
+      shipment.updateTime = formatDateTime(now)
+      // Step 2: Generate documents
+      const docs = [
+        { name: '出运申报单_' + shipment.declarationNo + '.pdf', size: '0.3 MB', type: 'declaration_form', generatedAt: formatDateTime(now) },
+        { name: '商业发票清单_' + shipment.declarationNo + '.pdf', size: '0.5 MB', type: 'invoice_list', generatedAt: formatDateTime(now) },
+        { name: '限额使用报告_' + shipment.declarationNo + '.pdf', size: '0.2 MB', type: 'limit_report', generatedAt: formatDateTime(now) },
+        { name: '出运申报汇总表_' + shipment.declarationNo + '.xlsx', size: '0.4 MB', type: 'summary_sheet', generatedAt: formatDateTime(now) }
+      ]
+      if (financeMarked) {
+        docs.push({ name: '融资状态确认函_' + shipment.declarationNo + '.pdf', size: '0.2 MB', type: 'finance_cert', generatedAt: formatDateTime(now) })
+      }
+      shipment.generatedDocs = docs
+      shipment.status = 'sd_docs_generated'
+      shipment.statusName = '资料已生成'
+      shipment.updateTime = formatDateTime(now)
+      // Step 3: Push to clerk
+      shipment.status = 'sd_clerk_pending'
+      shipment.statusName = '待跟单员处理'
+      shipment.pushTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: 'NT_' + Date.now(),
+        type: 'shipment_push',
+        title: '新出运申报待处理',
+        content: '申报单 ' + shipment.declarationNo + ' 已推送至您的工作台，请下载资料并提交保险公司',
+        targetId: shipment.id,
+        role: 'clerk',
+        read: false,
+        createTime: formatDateTime(now)
+      })
+      shipment.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: { isFinanced, financeContractNo, docs, finalStatus: 'sd_clerk_pending' } }
+    },
+    clerkDownloadDocs(shipmentId) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      if (shipment.status !== 'sd_clerk_pending') return { ok: false, message: '当前状态不允许下载资料' }
+      shipment.docsDownloaded = true
+      shipment.docsDownloadTime = formatDateTime(new Date())
+      shipment.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true }
+    },
+    processInsurerResult(shipmentId, { approved, insurerOpinion, insurerRefNo }) {
+      const idx = this.shipments.findIndex(s => s.id === shipmentId)
+      if (idx < 0) return { ok: false, message: '申报不存在' }
+      const shipment = this.shipments[idx]
+      if (shipment.status !== 'sd_insurer_review') return { ok: false, message: '当前状态不允许回传审批结果' }
+      const now = new Date()
+      // Record insurer result
+      shipment.insurerOpinion = insurerOpinion || ''
+      shipment.insurerRefNo = insurerRefNo || ''
+      shipment.insurerReviewTime = formatDateTime(now)
+      // Rejected — no limit updates
+      if (!approved) {
+        shipment.status = 'sd_insurer_rejected'
+        shipment.statusName = '保险公司已驳回'
+        shipment.insurerDecision = 'rejected'
+        shipment.updateTime = formatDateTime(now)
+        saveStateToStorage(this.$state)
+        return { ok: true, data: { approved: false } }
+      }
+      // Approved — intermediate status
+      shipment.status = 'sd_insurer_approved'
+      shipment.statusName = '保险公司已通过'
+      shipment.insurerDecision = 'approved'
+      shipment.updateTime = formatDateTime(now)
+      // Update policy data
+      const policy = this.policies.find(p => p.policyNo === shipment.relatedPolicyNo)
+      if (policy) {
+        policy.usedQuota = (policy.usedQuota || 0) + (Number(shipment.shipmentAmount) || 0)
+        policy.remainingQuota = Math.max((policy.coverageAmount || 0) - policy.usedQuota, 0)
+      }
+      // Refresh limit data
+      const cl = this.creditLimits.find(c => c.buyerName === shipment.buyerName)
+      if (cl) {
+        const shipAmount = Number(shipment.shipmentAmount) || 0
+        cl.usedLimit = (cl.usedLimit || 0) + shipAmount
+        cl.remainingLimit = Math.max((cl.appliedLimit || 0) - cl.usedLimit, 0)
+        cl.usageRate = cl.appliedLimit > 0 ? Math.round((cl.usedLimit / cl.appliedLimit) * 100) : 0
+        cl.lastShipmentDate = shipment.shipmentDate
+      }
+      // Validate limit impact
+      const limitOk = cl ? Number(shipment.shipmentAmount) <= cl.remainingLimit : true
+      shipment.limitImpactChecked = true
+      shipment.limitOkAfterSync = limitOk
+      if (!limitOk) {
+        shipment.limitWarning = true
+        shipment.limitWarningMessage = '限额刷新后不足（可用限额: $' + (cl?.remainingLimit || 0).toLocaleString() + '，申报金额: $' + Number(shipment.shipmentAmount).toLocaleString() + '），请调整申报金额或申请增额'
+        this.notifications.unshift({
+          id: 'NT_' + Date.now(),
+          type: 'limit_warning',
+          title: '限额不足，需重新申报',
+          content: '申报单 ' + shipment.declarationNo + ' 限额数据刷新后不足以覆盖本次出运金额，请重新调整申报金额或申请信用限额增额',
+          targetId: shipment.id,
+          role: 'customer',
+          read: false,
+          createTime: formatDateTime(now)
+        })
+        shipment.updateTime = formatDateTime(now)
+        saveStateToStorage(this.$state)
+        return { ok: true, data: { approved: true, limitOk: false, remainingLimit: cl?.remainingLimit || 0, message: shipment.limitWarningMessage } }
+      }
+      // Limit OK → pending_premium
+      shipment.status = 'pending_premium'
+      shipment.statusName = '待支付保费'
+      this.notifications.unshift({
+        id: 'NT_' + Date.now(),
+        type: 'limit_updated',
+        title: '限额更新完成，待客户缴费',
+        content: '申报单 ' + shipment.declarationNo + ' 限额数据已刷新，不影响本次出运。请引导客户线下缴纳保费',
+        targetId: shipment.id,
+        role: 'customer',
+        read: false,
+        createTime: formatDateTime(now)
+      })
+      shipment.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: { approved: true, limitOk: true, remainingLimit: cl?.remainingLimit || 0 } }
     },
     // ===== Trade Information Management =====
     createTradeInfo(payload) {
@@ -3139,6 +3861,318 @@ export const useBusinessStore = defineStore('business', {
       })
       this.touchSurrenderApplications()
       return { ok: true, data: cur, message: '退保申请已终止' }
+    },
+    // ===== Credit Limit Application Lifecycle =====
+    createAndSubmitClApplication(policyNo, formData) {
+      const result = this.createClApplication(policyNo, formData)
+      if (!result.ok) return result
+      const submitResult = this.submitClToPlatform(result.data.id)
+      if (!submitResult.ok) return submitResult
+      return { ok: true, data: result.data, message: '限额申请已创建并提交至平台审核' }
+    },
+    createClApplication(policyNo, formData) {
+      const policy = this.policies.find(p => p.policyNo === policyNo)
+      if (!policy) return { ok: false, message: '保单不存在' }
+      if (!formData.buyerName) return { ok: false, message: '请填写买方名称' }
+      if (!formData.appliedLimit) return { ok: false, message: '请填写申请额度' }
+      const now = new Date()
+      const id = createId('CLA')
+      // Simulate credit query API call
+      const ratingLevels = ['AAA', 'AA', 'A', 'BBB', 'BB', 'B', 'CCC']
+      const rating = ratingLevels[Math.floor(Math.random() * ratingLevels.length)]
+      const creditLimit = Math.round(Number(formData.appliedLimit) * (0.5 + Math.random() * 0.8))
+      const existingLimits = this.creditLimits.filter(c => c.buyerName === formData.buyerName)
+      const existingTotal = existingLimits.reduce((s, c) => s + Number(c.appliedLimit || 0), 0)
+      const applied = Number(formData.appliedLimit) || 0
+      const totalPolicyLimit = Number(policy.coverageAmount) || 0
+      let overLimitWarning = false
+      let overLimitMessage = ''
+      if (existingTotal + applied > totalPolicyLimit) {
+        overLimitWarning = true
+        overLimitMessage = `申请额度 $${applied.toLocaleString()} 与现有已用额度 $${existingTotal.toLocaleString()} 之和超出保单总限额 $${totalPolicyLimit.toLocaleString()}，贸易出运申报异常，请确认风险`
+      }
+      const app = {
+        id, policyNo, policyId: policy.id || '',
+        buyerName: formData.buyerName,
+        policyTotalLimit: totalPolicyLimit,
+        existingCreditTotal: existingTotal,
+        appliedLimit: applied,
+        currency: formData.currency || 'USD',
+        applicationDate: formatDate(now),
+        applicationReason: formData.applicationReason || '',
+        creditQueryResult: {
+          buyerCreditRating: rating,
+          buyerCreditLimit: creditLimit,
+          historicalDefaultRate: Math.round(Math.random() * 50) / 10,
+          queryTime: formatDateTime(now)
+        },
+        overLimitWarning, overLimitMessage,
+        generatedApplicationForm: [],
+        generatedCreditReport: [],
+        generatedChecklist: [],
+        insurerDecision: '',
+        insurerOpinion: '',
+        rejectType: '',
+        rejectReason: '',
+        approvedLimit: 0, approvedRate: 0,
+        effectiveDate: '', expiryDate: '',
+        specialConditions: '',
+        insurerReviewTime: '',
+        recordedQuota: 0, recordedTime: '',
+        syncRecord: '', syncTime: '',
+        platformUpdateTime: '',
+        rejectNotifiedClerk: false,
+        rejectNotifiedPlatform: false,
+        rejectNotifiedCustomer: false,
+        status: 'cl_draft',
+        createTime: formatDateTime(now),
+        updateTime: formatDateTime(now),
+        submitTime: '', platformReviewTime: '',
+        clerkReviewTime: '', insurerReviewTime: '',
+        completedTime: ''
+      }
+      this.clApplications.unshift(app)
+      this.touchClApplications()
+      if (overLimitWarning) {
+        this.notifications.unshift({
+          id: createId('NOTIF'), type: 'cl_warning', toRole: 'customer',
+          title: '限额申请超限预警',
+          content: overLimitMessage,
+          time: formatDateTime(now), read: false
+        })
+      }
+      return { ok: true, data: app, message: '限额申请已创建', overLimitWarning }
+    },
+    submitClToPlatform(id) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_draft') return { ok: false, message: '当前状态不允许提交' }
+      const now = new Date()
+      cur.status = 'cl_platform_review'
+      cur.submitTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'), type: 'cl_submit', toRole: 'inkasso',
+        title: '限额申请通知',
+        content: `客户 ${cur.buyerName} 已提交限额申请（编号：${id}），请尽快处理`,
+        time: formatDateTime(now), read: false
+      })
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '限额申请已提交至平台审核' }
+    },
+    generateClDocuments(id) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_platform_review') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.generatedApplicationForm = [{ name: `限额申请表_${cur.policyNo}.pdf`, size: '0.3 MB' }]
+      cur.generatedCreditReport = [{ name: `买方资信报告_${cur.buyerName}.pdf`, size: '1.2 MB' }]
+      cur.generatedChecklist = [{ name: `材料清单_${cur.id}.pdf`, size: '0.2 MB' }]
+      cur.updateTime = formatDateTime(now)
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '申请文件已自动生成' }
+    },
+    pushClToClerk(id) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_platform_review') return { ok: false, message: '当前状态不允许推送' }
+      if (!hasFile(cur.generatedApplicationForm)) return { ok: false, message: '请先生成申请文件' }
+      const now = new Date()
+      cur.status = 'cl_clerk_review'
+      cur.platformReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'), type: 'cl_push', toRole: 'clerk',
+        title: '限额审核通知',
+        content: `平台已推送限额申请（编号：${id}），买方：${cur.buyerName}，请审核`,
+        time: formatDateTime(now), read: false
+      })
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '已推送跟单员审核' }
+    },
+    clerkApproveCl(id) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_clerk_review') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'cl_insurer_review'
+      cur.clerkReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'), type: 'cl_clerk_approve', toRole: 'clerk',
+        title: '限额审核通过',
+        content: `限额申请（编号：${id}）已审核通过，已递交至保险公司核查`,
+        time: formatDateTime(now), read: false
+      })
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '审核通过，已递交至保险公司核查' }
+    },
+    clerkRejectCl(id, reason) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_clerk_review') return { ok: false, message: '当前状态不允许操作' }
+      if (!reason) return { ok: false, message: '请填写驳回原因' }
+      const now = new Date()
+      cur.status = 'cl_platform_review'
+      cur.rejectReason = reason
+      cur.updateTime = formatDateTime(now)
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '已驳回，退回至平台' }
+    },
+    insurerApproveCl(id, data) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_insurer_review') return { ok: false, message: '当前状态不允许操作' }
+      if (!data.approvedLimit && data.approvedLimit !== 0) return { ok: false, message: '请填写批准额度' }
+      const now = new Date()
+      cur.status = 'cl_insurer_approved'
+      cur.insurerDecision = 'approved'
+      cur.insurerOpinion = data.insurerOpinion || ''
+      cur.approvedLimit = Number(data.approvedLimit)
+      cur.approvedRate = Number(data.approvedRate) || 0
+      cur.effectiveDate = data.effectiveDate || formatDate(now)
+      cur.expiryDate = data.expiryDate || addDays(formatDate(now), 365)
+      cur.specialConditions = data.specialConditions || ''
+      cur.insurerReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'), type: 'cl_insurer_approve', toRole: 'clerk',
+        title: '保险公司批准通知',
+        content: `保险公司已批准限额申请（编号：${id}），批准额度：$${Number(data.approvedLimit).toLocaleString()}，请录入配额`,
+        time: formatDateTime(now), read: false
+      })
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '保险公司已批准限额申请' }
+    },
+    insurerRejectCl(id, data) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_insurer_review') return { ok: false, message: '当前状态不允许操作' }
+      if (!data.rejectReason) return { ok: false, message: '请填写驳回原因' }
+      const now = new Date()
+      cur.status = 'cl_insurer_rejected'
+      cur.insurerDecision = 'rejected'
+      cur.insurerOpinion = data.rejectReason
+      cur.rejectType = data.rejectType || 'credit_issue'
+      cur.rejectReason = data.rejectReason
+      cur.insurerReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'), type: 'cl_insurer_reject', toRole: 'clerk',
+        title: '保险公司拒绝通知',
+        content: `保险公司已驳回限额申请（编号：${id}），原因：${data.rejectReason}`,
+        time: formatDateTime(now), read: false
+      })
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '保险公司已驳回限额申请' }
+    },
+    clerkRecordQuota(id, data) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_insurer_approved') return { ok: false, message: '当前状态不允许操作' }
+      if (!data.recordedQuota) return { ok: false, message: '请录入配额' }
+      const now = new Date()
+      cur.status = 'cl_quota_recording'
+      cur.recordedQuota = Number(data.recordedQuota)
+      cur.recordedTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '配额已录入' }
+    },
+    clerkSyncToPlatform(id, data) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_quota_recording') return { ok: false, message: '当前状态不允许同步' }
+      const now = new Date()
+      cur.status = 'cl_platform_synced'
+      cur.syncRecord = data?.syncRecord || '配额已核对，同步至平台'
+      cur.syncTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'), type: 'cl_sync', toRole: 'inkasso',
+        title: '限额同步通知',
+        content: `跟单员已同步限额数据（编号：${id}），请确认更新`,
+        time: formatDateTime(now), read: false
+      })
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '配额已同步至平台' }
+    },
+    clerkConfirmReject(id) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_insurer_rejected') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.rejectNotifiedClerk = true
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'), type: 'cl_reject_sync', toRole: 'inkasso',
+        title: '限额驳回通知',
+        content: `保险公司已驳回限额申请（编号：${id}），原因：${cur.rejectReason}，请处理`,
+        time: formatDateTime(now), read: false
+      })
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '已确认驳回结果' }
+    },
+    platformConfirmUpdate(id) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_platform_synced') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'cl_completed'
+      cur.platformUpdateTime = formatDateTime(now)
+      cur.completedTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      // Add finalized credit limit
+      this.creditLimits.unshift({
+        id: createId('CL'), buyerName: cur.buyerName,
+        policyNo: cur.policyNo,
+        appliedLimit: cur.recordedQuota || cur.approvedLimit || cur.appliedLimit,
+        usedLimit: 0, remainingLimit: cur.recordedQuota || cur.approvedLimit || cur.appliedLimit,
+        usageRate: 0,
+        currency: cur.currency,
+        status: 'active',
+        effectiveDate: cur.effectiveDate || formatDate(now),
+        expiryDate: cur.expiryDate || addDays(formatDate(now), 365),
+        lastShipmentDate: null, idleDays: 0
+      })
+      this.notifications.unshift({
+        id: createId('NOTIF'), type: 'cl_complete', toRole: 'customer',
+        title: '限额申请完成通知',
+        content: `您的限额申请（编号：${id}）已完成，新额度已生效，买方：${cur.buyerName}，额度：$${Number(cur.recordedQuota || cur.approvedLimit || cur.appliedLimit).toLocaleString()}`,
+        time: formatDateTime(now), read: false
+      })
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '限额数据已更新' }
+    },
+    platformPushClReject(id) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_insurer_rejected') return { ok: false, message: '当前状态不允许操作' }
+      if (!cur.rejectNotifiedClerk) return { ok: false, message: '请先确认跟单员已获知驳回结果' }
+      const now = new Date()
+      cur.status = 'cl_customer_confirm'
+      cur.rejectNotifiedPlatform = true
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'), type: 'cl_reject_complete', toRole: 'customer',
+        title: '限额申请驳回通知',
+        content: `您的限额申请（编号：${id}）已被保险公司驳回，原因：${cur.rejectReason}，请确认同步`,
+        time: formatDateTime(now), read: false
+      })
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '驳回结果已推送客户，待客户确认' }
+    },
+    customerConfirmClReject(id) {
+      const cur = this.clApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '申请不存在' }
+      if (cur.status !== 'cl_customer_confirm') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'cl_completed'
+      cur.rejectNotifiedCustomer = true
+      cur.completedTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.touchClApplications()
+      return { ok: true, data: cur, message: '已确认同步，流程结束' }
     }
   }
 })

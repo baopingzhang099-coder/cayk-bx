@@ -638,11 +638,168 @@ export const useBusinessStore = defineStore('business', {
           updateTime: '2026-05-25 09:00:00'
         }
       ]
-      this.claims = []
+      this.clerkList = [
+        { id: 'C001', name: '李明', department: '跟单部', role: 'clerk', permissions: ['claim:process', 'doc:review', 'shipment:process'], status: 'active', email: 'liming@cayk.com', phone: '13800138001' },
+        { id: 'C002', name: '王芳', department: '跟单部', role: 'clerk', permissions: ['claim:process', 'doc:review', 'shipment:process'], status: 'active', email: 'wangfang@cayk.com', phone: '13800138002' },
+        { id: 'C003', name: '张强', department: '风控部', role: 'clerk', permissions: ['claim:audit', 'limit:review'], status: 'active', email: 'zhangqiang@cayk.com', phone: '13800138003' }
+      ]
+      this.claims = [
+        {
+          id: 'CL_SEED_1',
+          claimNo: 'CL202605260001',
+          relatedPolicyNo: 'POL20260315000001',
+          insuranceCompany: '中国信保',
+          buyerName: 'TechImport GmbH',
+          claimType: 'arrears',
+          claimTypeName: '拖欠',
+          lossDescription: '买方因资金周转问题拖欠货款，逾期60天未支付',
+          estimatedLossAmount: 150000,
+          lossDate: '2026-05-01',
+          lossCurrency: 'USD',
+          lossLocation: '德国·汉堡',
+          currentStep: 1,
+          currentStepName: '报案提交',
+          warningLevel: 'warning',
+          clerkId: null,
+          clerkName: null,
+          delegationAgreement: [],
+          serviceFeePaid: false,
+          serviceFeeVoucher: [],
+          deductible: null,
+          claimDecision: null,
+          calculatedLoss: null,
+          claimAmount: null,
+          payoutVoucher: [],
+          rwaSyncStatus: 'pending',
+          evidenceMaterials: [{ name: '贸易合同.pdf', size: '0.5 MB' }],
+          relevantDocuments: [{ name: '报案材料.pdf', size: '0.3 MB' }],
+          status: 'pending',
+          statusName: '待接收报案',
+          docStatus: 'pending',
+          docReviewComment: '',
+          supplementCount: 0,
+          preparedDocs: [],
+          supplementedDocs: [],
+          clerkConfirmed: false,
+          lossNotified: false,
+          lossNotifiedTime: null,
+          insurerNotified: false,
+          insurerNotifiedTime: null,
+          createTime: '2026-05-26 09:30:00',
+          updateTime: '2026-05-26 09:30:00'
+        },
+        {
+          id: 'CL_SEED_2',
+          claimNo: 'CL202605250001',
+          relatedPolicyNo: 'POL20260315000001',
+          insuranceCompany: '中国信保',
+          buyerName: 'EuroDistributor GmbH',
+          claimType: 'bankruptcy',
+          claimTypeName: '破产',
+          lossDescription: '买方申请破产保护，应收货款无法回收',
+          estimatedLossAmount: 280000,
+          lossDate: '2026-05-10',
+          lossCurrency: 'USD',
+          lossLocation: '德国·法兰克福',
+          currentStep: 2,
+          currentStepName: '资料准备',
+          warningLevel: 'safe',
+          clerkId: 'C001',
+          clerkName: '李明',
+          delegationAgreement: [],
+          serviceFeePaid: false,
+          serviceFeeVoucher: [],
+          deductible: null,
+          claimDecision: null,
+          calculatedLoss: null,
+          claimAmount: null,
+          payoutVoucher: [],
+          rwaSyncStatus: 'pending',
+          evidenceMaterials: [{ name: '贸易合同.pdf' }, { name: '商业发票_INV202604001.pdf' }],
+          relevantDocuments: [{ name: '破产公告.pdf' }, { name: '债权申报材料.pdf' }],
+          status: 'assigned',
+          statusName: '待接单',
+          docStatus: 'prepared',
+          docReviewComment: '',
+          supplementCount: 0,
+          preparedDocs: [
+            { name: '出险通知书.pdf', category: 'appNotice' },
+            { name: '索赔申请书.pdf', category: 'claimForm' },
+            { name: '授权委托书.pdf', category: 'authorization' },
+            { name: '贸易合同.pdf', category: 'tradeContract' },
+            { name: '商业发票.pdf', category: 'invoice' }
+          ],
+          supplementedDocs: [],
+          clerkConfirmed: false,
+          lossNotified: false,
+          lossNotifiedTime: null,
+          insurerNotified: false,
+          insurerNotifiedTime: null,
+          createTime: '2026-05-25 14:00:00',
+          updateTime: '2026-05-26 10:00:00'
+        },
+        {
+          id: 'CL_SEED_3',
+          claimNo: 'CL202605200001',
+          relatedPolicyNo: 'POL20260426000000',
+          insuranceCompany: '太平洋保险',
+          buyerName: 'FranceAchat SAS',
+          claimType: 'rejection',
+          claimTypeName: '拒收',
+          lossDescription: '买方以质量异议为由拒收货物，货物滞留目的港',
+          estimatedLossAmount: 95000,
+          lossDate: '2026-05-15',
+          lossCurrency: 'USD',
+          lossLocation: '法国·马赛',
+          currentStep: 3,
+          currentStepName: '调查定损',
+          warningLevel: 'danger',
+          clerkId: 'C002',
+          clerkName: '王芳',
+          delegationAgreement: [
+            { name: '理赔委托合同_CL202605200001.pdf', signed: true, signedAt: '2026-05-22' }
+          ],
+          serviceFeePaid: true,
+          serviceFeeVoucher: [
+            { name: '服务费支付凭证_CL202605200001.pdf', paidAt: '2026-05-23', amount: 475 }
+          ],
+          deductible: 3000,
+          claimDecision: null,
+          calculatedLoss: null,
+          claimAmount: null,
+          payoutVoucher: [],
+          rwaSyncStatus: 'pending',
+          evidenceMaterials: [{ name: '贸易合同.pdf' }, { name: '拒收通知函.pdf' }, { name: '质检报告.pdf' }],
+          relevantDocuments: [{ name: '报案材料.pdf' }, { name: '往来函件记录.pdf' }],
+          status: 'investigating',
+          statusName: '调查中',
+          docStatus: 'passed',
+          docReviewComment: '资料齐全，审核通过',
+          supplementCount: 1,
+          preparedDocs: [
+            { name: '出险通知书.pdf', category: 'appNotice' },
+            { name: '索赔申请书.pdf', category: 'claimForm' },
+            { name: '授权委托书.pdf', category: 'authorization' },
+            { name: '贸易合同.pdf', category: 'tradeContract' },
+            { name: '商业发票.pdf', category: 'invoice' },
+            { name: '提单.pdf', category: 'billOfLading' },
+            { name: '损失证明.pdf', category: 'lossProof' }
+          ],
+          supplementedDocs: [
+            { name: '补充质量检测报告.pdf', uploadedAt: '2026-05-24' }
+          ],
+          clerkConfirmed: true,
+          lossNotified: true,
+          lossNotifiedTime: '2026-05-22 11:00:00',
+          insurerNotified: true,
+          insurerNotifiedTime: '2026-05-22 14:00:00',
+          createTime: '2026-05-20 09:00:00',
+          updateTime: '2026-05-24 16:00:00'
+        }
+      ]
       this.processTasks = []
       this.contracts = []
       this.payments = []
-      this.clerkList = []
       this.tradeInfos = []
       this.notifications = []
       saveStateToStorage(this.$state)

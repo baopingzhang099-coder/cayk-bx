@@ -14,6 +14,10 @@
           <template #icon><t-icon name="add" /></template>
           新增投保
         </t-button>
+        <t-button v-if="userStore.role === 'customer'" variant="outline" @click="handleUploadPolicy()">
+          <template #icon><t-icon name="upload" /></template>
+          上传电子保单
+        </t-button>
       </div>
     </div>
 
@@ -83,8 +87,8 @@
         <template #status="{ row }">
           <status-tag :status="row.status" :status-map="statusMap" />
         </template>
-        <template #coverageAmount="{ row }">
-          {{ row.insuranceCurrency || 'USD' }}{{ Number(row.insuranceAmount || 0).toLocaleString() }}
+        <template #insuranceAmount="{ row }">
+          <span style="font-weight:600;">${{ Number(row.insuranceAmount || 0).toLocaleString() }}</span>
         </template>
         <template #premium="{ row }">
           <span v-if="row.premium" style="font-weight:600;">${{ Number(row.premium || 0).toLocaleString() }}</span>
@@ -110,8 +114,9 @@
             <t-link v-if="userStore.role === 'inkasso' && row.status === 'service_fee_paid'" theme="primary" @click="handlePushToClerk(row)">推送保单给跟单员</t-link>
             <t-link v-if="userStore.role === 'inkasso' && row.status === 'platform_synced'" theme="primary" @click="handleInkassoPremiumRequest(row)">保费确认申请</t-link>
             <t-link v-if="userStore.role === 'customer' && row.status === 'platform_synced'" theme="primary" @click="handleShowPremiumConfirm(row)">确认保费</t-link>
-            <t-link v-if="userStore.role === 'customer' && row.status === 'premium_confirmed'" theme="primary" @click="handleShowPayment(row)">发起支付</t-link>
-            <t-link v-if="userStore.role === 'inkasso' && row.status === 'payment_uploaded'" theme="primary" @click="handleActivatePolicy(row)">确认生效</t-link>
+            <t-link v-if="userStore.role === 'customer' && row.status === 'premium_confirmed'" theme="primary" @click="handleShowPayment(row)">保费交纳凭证上传</t-link>
+            <t-link v-if="userStore.role === 'inkasso' && row.status === 'payment_uploaded'" theme="primary" @click="handleActivatePolicy(row)">保单生效</t-link>
+            <t-link v-if="row.status === 'active' && userStore.role === 'clerk'" theme="primary" @click="handleUploadPolicy(row)">上传电子保单</t-link>
           </t-space>
         </template>
       </t-table>
@@ -320,7 +325,7 @@
     </t-dialog>
 
     <!-- 合同签署弹窗 -->
-    <t-dialog v-model:visible="contractSignVisible" header="在线合同签署" width="900px" :footer="false" destroy-on-close>
+    <t-dialog v-model:visible="contractSignVisible" header="在线合同签署" width="900px" :close-btn="false" destroy-on-close>
       <div v-if="currentContractData" class="contract-sign-modal">
         <div class="contract-header">
           <div class="contract-title">{{ contractTemplate.title || '短期出口信用保险合同' }}</div>
@@ -372,13 +377,14 @@
             <span>合同已由双方签署完成</span>
           </div>
         </div>
-        <div class="modal-footer">
-          <t-button variant="outline" @click="handlePreviewContract">预览合同</t-button>
-          <t-button variant="outline" @click="handleDownloadContract">下载合同</t-button>
-          <t-button variant="outline" @click="contractSignVisible = false">关闭</t-button>
-        </div>
       </div>
       <div v-else class="no-data">暂无数据</div>
+      <template #footer>
+        <div class="contract-footer">
+          <t-button variant="outline" @click="handlePreviewContract">预览合同</t-button>
+          <t-button theme="primary" @click="contractSignVisible = false">关闭</t-button>
+        </div>
+      </template>
     </t-dialog>
 
     <!-- 服务费支付弹窗 -->
@@ -390,17 +396,15 @@
             <div class="payment-row">
               <span class="payment-label">支付主体</span>
               <t-select v-model="paymentForm.paymentSubject" placeholder="请选择支付主体">
-                <t-option value="enterprise">企业</t-option>
-                <t-option value="individual">个人</t-option>
+                <t-option value="企业" label="企业" />
+                <t-option value="个人" label="个人" />
               </t-select>
             </div>
-            <div class="payment-row" v-if="paymentForm.paymentSubject === 'enterprise'">
-              <span class="payment-label">付款企业</span>
-              <t-input :value="currentPaymentData.companyName" disabled />
-            </div>
-            <div class="payment-row" v-else>
-              <span class="payment-label">付款人姓名</span>
-              <t-input :value="currentPaymentData.contactName || currentPaymentData.legalRepresentative || '-'" disabled />
+            <div class="payment-row">
+              <span class="payment-label">{{ paymentForm.paymentSubject === '企业' ? '付款企业' : '付款人' }}</span>
+              <t-select v-model="paymentForm.payerName" :placeholder="paymentForm.paymentSubject === '企业' ? '请选择付款企业' : '请选择付款人'">
+                <t-option v-for="opt in (paymentForm.paymentSubject === '企业' ? enterpriseOptions : individualOptions)" :key="opt" :value="opt" :label="opt" />
+              </t-select>
             </div>
             <div class="payment-row">
               <span class="payment-label">关联投保</span>
@@ -494,164 +498,163 @@
     </t-dialog>
 
     <!-- 确认保费弹窗 -->
-    <t-dialog v-model:visible="premiumConfirmVisible" header="确认保费" width="550px" :footer="false" destroy-on-close>
+    <t-dialog v-model:visible="premiumConfirmVisible" header="确认保费" width="720px" :footer="false" destroy-on-close>
       <div v-if="premiumConfirmData" class="premium-modal">
-        <div class="modal-section-title">💰 保费信息</div>
-        <div class="info-grid mb-16">
-          <div class="info-row">
-            <span class="info-label">投保编号</span>
-            <span class="info-value">{{ premiumConfirmData.id }}</span>
+        <div class="pm-card">
+          <div class="pm-card-header">📋 保单信息</div>
+          <div class="pm-card-body">
+            <div class="pm-grid">
+              <div class="pm-field"><span class="pm-label">投保编号</span><span class="pm-value">{{ premiumConfirmData.id }}</span></div>
+              <div class="pm-field"><span class="pm-label">企业名称</span><span class="pm-value">{{ premiumConfirmData.companyName }}</span></div>
+              <div class="pm-field"><span class="pm-label">保单号</span><span class="pm-value">{{ premiumConfirmData.policyNo || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">投保人（被保险人）</span><span class="pm-value">{{ premiumConfirmData.companyName || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">买方名称</span><span class="pm-value">{{ premiumConfirmData.buyerName || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">保险公司</span><span class="pm-value">{{ premiumConfirmData.uwInsuranceCompany || premiumConfirmData.insuranceCompanyName || '-' }}</span></div>
+            </div>
           </div>
-          <div class="info-row">
-            <span class="info-label">企业名称</span>
-            <span class="info-value">{{ premiumConfirmData.companyName }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">保单号</span>
-            <span class="info-value">{{ premiumConfirmData.policyNo || '-' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">保额</span>
-            <span class="info-value">{{ (premiumConfirmData.insuranceCurrency || 'USD') + ' ' + Number(premiumConfirmData.coverageAmount || premiumConfirmData.insuranceAmount || 0).toLocaleString() }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">保费金额</span>
-            <span class="info-value premium-amount">{{ (premiumConfirmData.insuranceCurrency || 'USD') + ' ' + Number(premiumConfirmData.premium || 0).toLocaleString() }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">保险公司</span>
-            <span class="info-value">{{ premiumConfirmData.uwInsuranceCompany || premiumConfirmData.insuranceCompanyName || '-' }}</span>
+        </div>
+        <div class="pm-card">
+          <div class="pm-card-header">💰 保费明细</div>
+          <div class="pm-card-body">
+            <div class="pm-grid">
+              <div class="pm-field"><span class="pm-label">保额</span><span class="pm-value pm-number">${{ Number(premiumConfirmData.coverageAmount || premiumConfirmData.insuranceAmount || 0).toLocaleString() }}</span></div>
+              <div class="pm-field"><span class="pm-label">费率</span><span class="pm-value">{{ premiumConfirmData.premiumRate ? Number(premiumConfirmData.premiumRate) + '%' : '-' }}</span></div>
+              <div class="pm-field pm-field-full"><span class="pm-label">保费金额</span><span class="pm-value pm-amount">${{ Number(premiumConfirmData.premium || 0).toLocaleString() }}</span></div>
+              <div class="pm-field"><span class="pm-label">平台服务费</span><span class="pm-value pm-number">${{ Number(premiumConfirmData.serviceFee || 0).toLocaleString() }}</span></div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
-          <t-button variant="outline" @click="premiumConfirmVisible = false">取消</t-button>
-          <t-button theme="primary" @click="handlePremiumConfirm">确认保费</t-button>
+          <t-space>
+            <t-button variant="outline" @click="premiumConfirmVisible = false">取消</t-button>
+            <t-button theme="primary" @click="handlePremiumConfirm">确认保费</t-button>
+          </t-space>
         </div>
       </div>
       <div v-else class="no-data">暂无数据</div>
     </t-dialog>
 
     <!-- 长安银科保费确认申请弹窗 -->
-    <t-dialog v-model:visible="inkassoPremiumVisible" header="保费确认申请" width="600px" :footer="false" destroy-on-close>
+    <t-dialog v-model:visible="inkassoPremiumVisible" header="保费确认申请" width="720px" :footer="false" destroy-on-close>
       <div v-if="inkassoPremiumData" class="premium-modal">
-        <div class="modal-section-title">📋 保单信息</div>
-        <div class="info-grid mb-16">
-          <div class="info-row">
-            <span class="info-label">投保编号</span>
-            <span class="info-value">{{ inkassoPremiumData.id }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">保单号</span>
-            <span class="info-value">{{ inkassoPremiumData.policyNo || '-' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">投保人（被保险人）</span>
-            <span class="info-value">{{ inkassoPremiumData.companyName || '-' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">买方名称</span>
-            <span class="info-value">{{ inkassoPremiumData.buyerName || '-' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">买方国家</span>
-            <span class="info-value">{{ inkassoPremiumData.buyerCountry || '-' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">保险类型</span>
-            <span class="info-value">{{ inkassoPremiumData.insuranceType || '-' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">保险公司</span>
-            <span class="info-value">{{ inkassoPremiumData.uwInsuranceCompany || inkassoPremiumData.insuranceCompanyName || '-' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">保单生效日期</span>
-            <span class="info-value">{{ inkassoPremiumData.policyStartDate || '-' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">保单到期日期</span>
-            <span class="info-value">{{ inkassoPremiumData.policyEndDate || '-' }}</span>
+        <div class="pm-card">
+          <div class="pm-card-header">📋 保单信息</div>
+          <div class="pm-card-body">
+            <div class="pm-grid">
+              <div class="pm-field"><span class="pm-label">投保编号</span><span class="pm-value">{{ inkassoPremiumData.id }}</span></div>
+              <div class="pm-field"><span class="pm-label">保单号</span><span class="pm-value">{{ inkassoPremiumData.policyNo || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">投保人（被保险人）</span><span class="pm-value">{{ inkassoPremiumData.companyName || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">买方名称</span><span class="pm-value">{{ inkassoPremiumData.buyerName || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">买方国家</span><span class="pm-value">{{ inkassoPremiumData.buyerCountry || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">保险类型</span><span class="pm-value">{{ inkassoPremiumData.insuranceType || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">保险公司</span><span class="pm-value">{{ inkassoPremiumData.uwInsuranceCompany || inkassoPremiumData.insuranceCompanyName || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">保单生效日期</span><span class="pm-value">{{ inkassoPremiumData.policyStartDate || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">保单到期日期</span><span class="pm-value">{{ inkassoPremiumData.policyEndDate || '-' }}</span></div>
+            </div>
           </div>
         </div>
-        <div class="modal-section-title">💰 保费明细</div>
-        <div class="info-grid mb-16">
-          <div class="info-row">
-            <span class="info-label">保额</span>
-            <span class="info-value">{{ (inkassoPremiumData.insuranceCurrency || 'USD') + ' ' + Number(inkassoPremiumData.coverageAmount || inkassoPremiumData.insuranceAmount || 0).toLocaleString() }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">费率</span>
-            <span class="info-value">{{ inkassoPremiumData.premiumRate ? (inkassoPremiumData.premiumRate + '%') : '-' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">保费金额</span>
-            <span class="info-value premium-amount">{{ (inkassoPremiumData.insuranceCurrency || 'USD') + ' ' + Number(inkassoPremiumData.premium || 0).toLocaleString() }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">平台服务费</span>
-            <span class="info-value">{{ (inkassoPremiumData.insuranceCurrency || 'USD') + ' ' + Number(inkassoPremiumData.serviceFee || 0).toLocaleString() }}</span>
+        <div class="pm-card">
+          <div class="pm-card-header">💰 保费明细</div>
+          <div class="pm-card-body">
+            <div class="pm-grid">
+              <div class="pm-field"><span class="pm-label">保额</span><span class="pm-value pm-number">${{ Number(inkassoPremiumData.coverageAmount || inkassoPremiumData.insuranceAmount || 0).toLocaleString() }}</span></div>
+              <div class="pm-field"><span class="pm-label">费率</span><span class="pm-value">{{ inkassoPremiumData.premiumRate ? Number(inkassoPremiumData.premiumRate) + '%' : '-' }}</span></div>
+              <div class="pm-field pm-field-full"><span class="pm-label">保费金额</span><span class="pm-value pm-amount">${{ Number(inkassoPremiumData.premium || 0).toLocaleString() }}</span></div>
+              <div class="pm-field"><span class="pm-label">平台服务费</span><span class="pm-value pm-number">${{ Number(inkassoPremiumData.serviceFee || 0).toLocaleString() }}</span></div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
-          <t-button variant="outline" @click="inkassoPremiumVisible = false">取消</t-button>
-          <t-button theme="primary" @click="handleInkassoPremiumRequestSubmit">确认并发送</t-button>
+          <t-space>
+            <t-button variant="outline" @click="inkassoPremiumVisible = false">取消</t-button>
+            <t-button theme="primary" @click="handleInkassoPremiumRequestSubmit">确认并发送</t-button>
+          </t-space>
         </div>
       </div>
       <div v-else class="no-data">暂无数据</div>
     </t-dialog>
 
-    <!-- 发起支付弹窗 -->
-    <t-dialog v-model:visible="paymentInitVisible" header="发起支付" width="650px" :footer="false" destroy-on-close>
-      <div v-if="paymentInitData" class="payment-init-modal">
-        <div class="modal-section-title">💰 支付信息</div>
-        <div class="payment-init-form">
-          <div class="payment-init-row">
-            <span class="payment-init-label">支付主体</span>
-            <t-select v-model="paymentInitForm.paymentSubject" placeholder="请选择支付主体">
-              <t-option value="enterprise" label="企业" />
-              <t-option value="individual" label="个人" />
-            </t-select>
-          </div>
-          <div class="payment-init-row" v-if="paymentInitForm.paymentSubject === 'enterprise'">
-            <span class="payment-init-label">付款企业</span>
-            <t-input :value="paymentInitData.companyName || '-'" disabled />
-          </div>
-          <div class="payment-init-row" v-else>
-            <span class="payment-init-label">付款人</span>
-            <t-input :value="paymentInitData.contactName || paymentInitData.legalRepresentative || '-'" disabled />
+    <!-- 保费交纳凭证上传弹窗 -->
+    <t-dialog v-model:visible="paymentInitVisible" header="保费交纳凭证上传" width="720px" :footer="false" destroy-on-close>
+      <div v-if="paymentInitData" class="premium-modal">
+        <div class="pm-card">
+          <div class="pm-card-header">💰 支付信息</div>
+          <div class="pm-card-body">
+            <div class="payment-init-form">
+              <div class="payment-init-row">
+                <span class="payment-init-label">支付主体</span>
+                <t-select v-model="paymentInitForm.paymentSubject" placeholder="请选择支付主体">
+                  <t-option value="企业" label="企业" />
+                  <t-option value="个人" label="个人" />
+                </t-select>
+              </div>
+              <div class="payment-init-row">
+                <span class="payment-init-label">{{ paymentInitForm.paymentSubject === '企业' ? '付款企业' : '付款人' }}</span>
+                <t-select v-model="paymentInitForm.payerName" :placeholder="paymentInitForm.paymentSubject === '企业' ? '请选择付款企业' : '请选择付款人'">
+                  <t-option v-for="opt in payerOptions" :key="opt" :value="opt" :label="opt" />
+                </t-select>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="modal-section-title" style="margin-top: 20px;">📋 保单订单信息</div>
-        <div class="policy-order-table">
-          <table class="order-table">
-            <thead>
-              <tr>
-                <th>保单号</th>
-                <th>保险公司</th>
-                <th>保额</th>
-                <th>保费</th>
-                <th>投保企业</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{{ paymentInitData.policyNo || '-' }}</td>
-                <td>{{ paymentInitData.uwInsuranceCompany || paymentInitData.insuranceCompanyName || '-' }}</td>
-                <td>{{ (paymentInitData.insuranceCurrency || 'USD') + ' ' + Number(paymentInitData.coverageAmount || paymentInitData.insuranceAmount || 0).toLocaleString() }}</td>
-                <td class="premium-cell">{{ (paymentInitData.insuranceCurrency || 'USD') + ' ' + Number(paymentInitData.premium || 0).toLocaleString() }}</td>
-                <td>{{ paymentInitData.companyName || '-' }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="pm-card">
+          <div class="pm-card-header">📋 保单订单信息</div>
+          <div class="pm-card-body">
+            <div class="pm-grid">
+              <div class="pm-field"><span class="pm-label">保单号</span><span class="pm-value">{{ paymentInitData.policyNo || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">保险公司</span><span class="pm-value">{{ paymentInitData.uwInsuranceCompany || paymentInitData.insuranceCompanyName || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">保额</span><span class="pm-value pm-number">${{ Number(paymentInitData.coverageAmount || paymentInitData.insuranceAmount || 0).toLocaleString() }}</span></div>
+              <div class="pm-field"><span class="pm-label">保费</span><span class="pm-value pm-number">${{ Number(paymentInitData.premium || 0).toLocaleString() }}</span></div>
+              <div class="pm-field"><span class="pm-label">投保企业</span><span class="pm-value">{{ paymentInitData.companyName || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">平台服务费</span><span class="pm-value pm-number">${{ Number(paymentInitData.serviceFee || 0).toLocaleString() }}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pm-card">
+          <div class="pm-card-header">📎 保费交纳凭证</div>
+          <div class="pm-card-body">
+            <t-upload
+              ref="voucherUploadRef"
+              v-model="paymentVoucherFiles"
+              action="/mock-upload"
+              accept=".jpg,.jpeg,.png,.pdf"
+              :multiple="true"
+              :auto-upload="true"
+              :request-method="mockUpload"
+              theme="file-flow"
+              placeholder="请上传保费交纳凭证（支持jpg/png/pdf，可多选）"
+              @change="handleVoucherChange"
+            />
+            <div v-if="paymentVoucherFiles.length" class="voucher-preview">
+              <div class="preview-label">已上传凭证（{{ paymentVoucherFiles.length }} 个文件）：</div>
+              <div v-for="(file, idx) in paymentVoucherFiles" :key="(file.name || '') + idx" class="voucher-file-item">
+                <t-icon v-if="file.raw?.type?.startsWith('image/')" name="image" size="20px" style="color:#0052d9;flex-shrink:0;" />
+                <t-icon v-else name="file-pdf" size="20px" style="color:#e34d57;flex-shrink:0;" />
+                <span class="voucher-file-name">{{ file.name }}</span>
+                <t-button variant="outline" size="small" @click="handlePreviewVoucherFile(file)">预览</t-button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="modal-footer">
-          <t-button variant="outline" @click="paymentInitVisible = false">取消</t-button>
-          <t-button theme="primary" @click="handlePaymentInitConfirm">确认支付</t-button>
+          <t-space>
+            <t-button theme="primary" :disabled="!paymentVoucherFiles.length" @click="handlePaymentInitConfirm">{{ paymentVoucherFiles.length ? '支付完成' : '确认支付' }}</t-button>
+            <t-button variant="outline" @click="paymentInitVisible = false">取消</t-button>
+          </t-space>
         </div>
       </div>
       <div v-else class="no-data">暂无数据</div>
+    </t-dialog>
+
+    <!-- 凭证图片预览弹窗 -->
+    <t-dialog v-model:visible="previewVoucherVisible" :header="'凭证预览 - ' + (previewVoucherFile?.name || '')" width="720px" :footer="false" destroy-on-close>
+      <div class="voucher-preview-modal">
+        <img v-if="previewVoucherFile?.raw?.type?.startsWith('image/')" :src="previewVoucherFileUrl" style="width:100%;" />
+        <iframe v-else :src="previewVoucherFileUrl" style="width:100%;height:500px;border:none;"></iframe>
+      </div>
     </t-dialog>
 
     <!-- 支付二维码弹窗 -->
@@ -940,9 +943,7 @@
 
         <!-- Section 3: Checkbox willingness -->
         <div class="confirmation-box">
-          <t-checkbox v-model="isConfirmedSchema">
-            我已仔细核对并确认此『数字化推荐投保建议方案』符合我司本次出运要求，现正式提交投保申请并流转至出单。
-          </t-checkbox>
+          <t-checkbox v-model="isConfirmedSchema"></t-checkbox>
         </div>
 
         <!-- Modal Footer -->
@@ -1002,7 +1003,8 @@ const paymentVisible = ref(false)
 const currentPaymentData = ref(null)
 const paymentLoading = ref(false)
 const paymentForm = reactive({
-  paymentSubject: 'enterprise',
+  paymentSubject: '企业',
+  payerName: '阿里巴巴企业',
   paymentMethod: 'online',
   amount: 0
 })
@@ -1020,11 +1022,44 @@ const inkassoPremiumData = ref(null)
 const paymentInitVisible = ref(false)
 const paymentInitData = ref(null)
 const paymentInitForm = reactive({
-  paymentSubject: 'enterprise'
+  paymentSubject: '企业',
+  payerName: ''
 })
+const enterpriseOptions = ['阿里巴巴企业', '腾讯企业']
+const individualOptions = ['张三', '李四']
+const payerOptions = computed(() =>
+  paymentInitForm.paymentSubject === '企业' ? enterpriseOptions : individualOptions
+)
 
 const paymentQrVisible = ref(false)
 const paymentQrData = ref(null)
+
+const paymentVoucherFiles = ref([])
+const paymentVoucherPreview = ref(null)
+const previewVoucherVisible = ref(false)
+const previewVoucherFile = ref(null)
+const previewVoucherFileUrl = ref('')
+const voucherUploadRef = ref(null)
+
+const handleVoucherChange = (file, context) => {
+  if (context.files) {
+    paymentVoucherFiles.value = context.files
+  }
+}
+
+const mockUpload = () => {
+  return Promise.resolve({ status: 'success' })
+}
+
+const handlePreviewVoucherFile = (file) => {
+  previewVoucherFile.value = file
+  if (file.raw) {
+    previewVoucherFileUrl.value = URL.createObjectURL(file.raw)
+  } else if (file.url) {
+    previewVoucherFileUrl.value = file.url
+  }
+  previewVoucherVisible.value = true
+}
 
 const showTablePreview = (wb, title, filename) => {
   previewWorkbook.value = wb
@@ -1359,7 +1394,7 @@ const handleShowInsuranceInfo = (row) => {
 
 const handleConfirmInsuranceApply = () => {
   if (!isConfirmedSchema.value) {
-    MessagePlugin.warning('请先勾选确认符合数字化推荐的投保方案')
+    MessagePlugin.warning('请先勾选确认')
     return
   }
   
@@ -1528,13 +1563,15 @@ const handleShowPayment = (row) => {
   if (row.status === 'premium_confirmed') {
     // Premium payment flow
     paymentInitData.value = row
-    paymentInitForm.paymentSubject = 'enterprise'
+    paymentInitForm.paymentSubject = '企业'
+    paymentInitForm.payerName = '阿里巴巴企业'
     paymentInitVisible.value = true
   } else {
     // Service fee payment flow (contract_signed)
     currentPaymentData.value = row
     const amount = Math.round(Number(row.insuranceAmount || 0) * 0.0011)
-    paymentForm.paymentSubject = 'enterprise'
+    paymentForm.paymentSubject = '企业'
+    paymentForm.payerName = '阿里巴巴企业'
     paymentForm.paymentMethod = 'online'
     paymentForm.amount = amount
     paymentVisible.value = true
@@ -1544,11 +1581,9 @@ const handleShowPayment = (row) => {
 const handleConfirmPayment = () => {
   const row = currentPaymentData.value
   if (!row) return
-  const displayName = paymentForm.paymentSubject === 'enterprise'
-    ? row.companyName
-    : (row.contactName || row.legalRepresentative || '个人')
+  const displayName = paymentForm.payerName
   if (!displayName) {
-    MessagePlugin.warning('请选择支付主体')
+    MessagePlugin.warning('请选择付款企业/付款人')
     return
   }
   qrSubject.value = displayName
@@ -1569,7 +1604,7 @@ const handlePaymentScanComplete = async () => {
   if (!row) return
   paymentLoading.value = true
   await new Promise(resolve => setTimeout(resolve, 1500))
-  const payerName = paymentForm.paymentSubject === 'enterprise' ? row.companyName : (row.contactName || row.legalRepresentative)
+  const payerName = paymentForm.payerName
   const result = store.payServiceFee(row.id, {
     payerType: paymentForm.paymentSubject,
     payerName,
@@ -1627,29 +1662,41 @@ const handlePremiumConfirm = () => {
 const handlePaymentInitConfirm = () => {
   const row = paymentInitData.value
   if (!row) return
-  const displayName = paymentInitForm.paymentSubject === 'enterprise'
-    ? row.companyName
-    : (row.contactName || row.legalRepresentative || '个人')
+  const displayName = paymentInitForm.payerName
   if (!displayName) {
-    MessagePlugin.warning('请选择支付主体')
+    MessagePlugin.warning('请选择付款企业/付款人')
     return
   }
-  const short = (displayName || '').length > 4 ? (displayName || '').substring(0, 4) + '..' : (displayName || '')
-  paymentQrData.value = {
-    subject: displayName,
-    subjectShort: short,
-    applicationId: row.id,
-    policyNo: row.policyNo || '',
-    amount: Number(row.premium || 0)
+  if (!paymentVoucherFiles.value || paymentVoucherFiles.value.length === 0) {
+    MessagePlugin.warning('请上传保费交纳凭证')
+    return
   }
+  const voucherFile = paymentVoucherFiles.value[0]
+  const res = store.uploadPaymentProof(row.id, {
+    payerName: displayName,
+    paymentSubject: paymentInitForm.paymentSubject,
+    paymentDate: new Date().toISOString().split('T')[0],
+    proofNo: '',
+    remark: '保费交纳凭证上传',
+    voucherFileName: voucherFile.name || '',
+    voucherFileType: voucherFile.raw?.type || ''
+  })
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '上传失败')
+    return
+  }
+  store.touchInsuranceApplications()
   paymentInitVisible.value = false
-  paymentQrVisible.value = true
+  paymentInitData.value = null
+  paymentVoucherFiles.value = []
+  paymentVoucherPreview.value = null
+  MessagePlugin.success('保费交纳凭证已上传，请等待跟单员确认')
 }
 
 const handlePaymentQrComplete = () => {
   const row = paymentInitData.value
   if (!row) return
-  const payerName = paymentInitForm.paymentSubject === 'enterprise' ? row.companyName : (row.contactName || row.legalRepresentative)
+  const payerName = paymentInitForm.payerName || (paymentInitForm.paymentSubject === 'enterprise' ? row.companyName : (row.contactName || row.legalRepresentative))
   const res = store.uploadPaymentProof(row.id, {
     payerName: payerName || '',
     paymentDate: new Date().toISOString().split('T')[0],
@@ -1686,6 +1733,11 @@ const handleActivatePolicy = (row) => {
     auditOpinion: '保单已确认为生效'
   })
   MessagePlugin.success('保单已确认为生效状态')
+}
+
+const handleUploadPolicy = (row) => {
+  // 跳转到保单管理-电子保单列表
+  router.push('/policy/list?tab=upload')
 }
 
 onMounted(() => {
@@ -2623,10 +2675,49 @@ onMounted(() => {
 }
 
 .premium-modal {
-  padding: 8px 0;
+  padding: 4px 0;
 
-  .premium-amount {
-    font-size: 18px;
+  .pm-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .pm-card-header {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    padding: 12px 18px;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .pm-card-body { padding: 14px 18px; }
+  .pm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 24px;
+  }
+  .pm-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 0;
+  }
+  .pm-field-full { grid-column: 1 / -1; }
+  .pm-label {
+    font-size: 12px;
+    color: #8a8f9a;
+    font-weight: 500;
+  }
+  .pm-value {
+    font-size: 14px;
+    color: #1e293b;
+    font-weight: 500;
+  }
+  .pm-number { font-weight: 700; color: #0052d9; font-family: 'SF Mono', monospace; }
+  .pm-amount {
+    font-size: 20px;
     font-weight: 700;
     color: #0052d9;
   }
@@ -2747,5 +2838,10 @@ onMounted(() => {
 .order-table .premium-cell {
   color: #e34d59;
   font-weight: 600;
+}
+.contract-footer {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 }
 </style>

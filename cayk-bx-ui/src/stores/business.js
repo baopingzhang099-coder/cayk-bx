@@ -73,6 +73,42 @@ const createId = (prefix) => {
   return `${prefix}${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
 }
 
+const STORAGE_KEY = 'cayk_business_state'
+
+const saveStateToStorage = (state) => {
+  try {
+    const data = {
+      insuranceApplications: state.insuranceApplications,
+      policies: state.policies,
+      creditLimits: state.creditLimits,
+      shipments: state.shipments,
+      claims: state.claims,
+      processTasks: state.processTasks,
+      contracts: state.contracts,
+      payments: state.payments,
+      externalPolicies: state.externalPolicies,
+      clerkList: state.clerkList,
+      tradeInfos: state.tradeInfos,
+      notifications: state.notifications,
+      _savedAt: new Date().toISOString()
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch (e) {
+    console.warn('保存状态失败:', e)
+  }
+}
+
+const loadStateFromStorage = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch (e) {
+    console.warn('恢复状态失败:', e)
+    return null
+  }
+}
+
 export const useBusinessStore = defineStore('business', {
   state: () => ({
     insuranceApplications: [],
@@ -121,12 +157,31 @@ export const useBusinessStore = defineStore('business', {
   actions: {
     touchClaims() {
       this.claimUpdateVersion++
+      saveStateToStorage(this.$state)
     },
     touchInsuranceApplications() {
       this.insuranceUpdateVersion++
+      saveStateToStorage(this.$state)
     },
     ensureSeeded() {
       if (this.insuranceApplications.length > 0) return
+      // 尝试从localStorage恢复
+      const saved = loadStateFromStorage()
+      if (saved) {
+        this.insuranceApplications = saved.insuranceApplications || []
+        this.policies = saved.policies || []
+        this.creditLimits = saved.creditLimits || []
+        this.shipments = saved.shipments || []
+        this.claims = saved.claims || []
+        this.processTasks = saved.processTasks || []
+        this.contracts = saved.contracts || []
+        this.payments = saved.payments || []
+        this.externalPolicies = saved.externalPolicies || []
+        this.clerkList = saved.clerkList || []
+        this.tradeInfos = saved.tradeInfos || []
+        this.notifications = saved.notifications || []
+        return
+      }
       this.insuranceApplications = []
       this.policies = []
       this.creditLimits = []
@@ -138,9 +193,10 @@ export const useBusinessStore = defineStore('business', {
       this.clerkList = []
       this.tradeInfos = []
       this.notifications = []
+      saveStateToStorage(this.$state)
     },
     // ===== External policy upload & OCR flow =====
-    uploadCustomerPolicy({ file, companyName, uploadUser }) {
+    uploadCustomerPolicy({ file, companyName, uploadUser, policyNo, uploaderRole }) {
       const now = new Date()
       const id = `EP${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
       const record = {
@@ -149,9 +205,11 @@ export const useBusinessStore = defineStore('business', {
         originalFileName: file?.name || 'unknown.pdf',
         originalFile: file ? [file] : [],
         ocrStatus: 'pending',
-        status: 'pending_ocr',
+        status: 'draft',
         rejectReason: '',
-        policyNo: '',
+        policyNo: policyNo || '',
+        linkedPolicyNo: policyNo || '',
+        uploaderRole: uploaderRole || 'customer',
         insuranceCompany: '',
         insurerName: '',
         policyholder: companyName || '',
@@ -235,6 +293,50 @@ export const useBusinessStore = defineStore('business', {
       }
       return { ok: true, data: this.externalPolicies[epIdx] }
     },
+    submitForPlatformReview(id) {
+      const cur = this.externalPolicies.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'draft') return { ok: false, message: '当前状态不允许提交平台审核' }
+      cur.status = 'platform_review'
+      cur.rejectReason = ''
+      cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+    processExternalPolicyOcr(id, ocrFields) {
+      const epIdx = this.externalPolicies.findIndex(p => p.id === id)
+      if (epIdx < 0) return { ok: false, message: '上传记录不存在' }
+      const ep = this.externalPolicies[epIdx]
+      if (ep.status !== 'platform_review' && ep.status !== 'returned') return { ok: false, message: '当前状态不允许OCR识别' }
+      const now = new Date()
+      this.externalPolicies[epIdx] = {
+        ...ep,
+        ...ocrFields,
+        ocrStatus: 'completed',
+        updateTime: formatDateTime(now)
+      }
+      saveStateToStorage(this.$state)
+      return { ok: true, data: this.externalPolicies[epIdx] }
+    },
+    platformApproveExternalPolicy(id) {
+      const cur = this.externalPolicies.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'platform_review') return { ok: false, message: '当前状态不允许审核通过' }
+      cur.status = 'clerk_review'
+      cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+    resubmitExternalPolicy(id) {
+      const cur = this.externalPolicies.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'returned') return { ok: false, message: '当前状态不允许重新提交' }
+      cur.status = cur.clerkInitiated ? 'clerk_confirm' : 'clerk_review'
+      cur.rejectReason = ''
+      cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
     createOrUpdateInsuranceApplication(payload) {
       const now = new Date()
       if (payload?.id) {
@@ -313,16 +415,17 @@ export const useBusinessStore = defineStore('business', {
             insuranceCompany: cur.ocrInsuranceCompany || '人保财险',
             policyholder: cur.companyName,
             insured: cur.buyerName,
-            coverageAmount: Number(cur.insuranceAmount) || 0,
+            coverageAmount: Number(cur.ocrCoverageAmount || cur.insuranceAmount) || 0,
             premium: Number(cur.ocrPremium) || 0,
             effectiveDate: cur.expectedInsurancePeriod?.[0] || formatDate(now),
             expiryDate: cur.expectedInsurancePeriod?.[1] || addDays(formatDate(now), 365),
             status: 'active',
             usedQuota: 0,
-            remainingQuota: Number(cur.insuranceAmount) || 0,
+            remainingQuota: Number(cur.ocrCoverageAmount || cur.insuranceAmount) || 0,
             currency: cur.insuranceCurrency || 'USD',
-            businessType: 'goods',
-            renewalFlag: 'no'
+            businessType: cur.ocrBusinessType || 'goods',
+            renewalFlag: 'no',
+            externalPolicyId: cur.externalPolicyId || ''
           })
         }
         return { ok: true, data: this.insuranceApplications[idx] }
@@ -510,6 +613,8 @@ export const useBusinessStore = defineStore('business', {
         paymentRemark: proofData.remark || '',
         paymentUploadTime: now,
         paymentNotified: true,
+        voucherFileName: proofData.voucherFileName || '',
+        voucherFileType: proofData.voucherFileType || '',
         updateTime: now
       }
       // 同步更新保单缴费状态为"保单生效中"
@@ -730,12 +835,14 @@ export const useBusinessStore = defineStore('business', {
       const idx = this.tradeInfos.findIndex(t => t.id === id)
       if (idx < 0) return { ok: false, message: '贸易信息不存在' }
       this.tradeInfos[idx] = { ...this.tradeInfos[idx], ...payload, updateTime: formatDateTime(new Date()) }
+      saveStateToStorage(this.$state)
       return { ok: true, data: this.tradeInfos[idx] }
     },
     deleteTradeInfo(id) {
       const idx = this.tradeInfos.findIndex(t => t.id === id)
       if (idx < 0) return { ok: false, message: '贸易信息不存在' }
       this.tradeInfos.splice(idx, 1)
+      saveStateToStorage(this.$state)
       return { ok: true }
     },
     addCompletedProcessTask(task) {
@@ -1307,7 +1414,7 @@ export const useBusinessStore = defineStore('business', {
     approveExternalPolicy(id) {
       const cur = this.externalPolicies.find(p => p.id === id)
       if (!cur) return { ok: false, message: '记录不存在' }
-      if (cur.status !== 'pending_clerk_review') return { ok: false, message: '当前状态不允许通过' }
+      if (cur.status !== 'clerk_review') return { ok: false, message: '当前状态不允许通过' }
       cur.status = 'active'
       cur.updateTime = formatDateTime(new Date())
       // Create corresponding policy entry
@@ -1327,20 +1434,23 @@ export const useBusinessStore = defineStore('business', {
           statusName: '有效',
           usedQuota: 0,
           remainingQuota: cur.coverageAmount,
-          currency: cur.currency
+          currency: cur.currency,
+          externalPolicyId: cur.id
         })
       }
+      saveStateToStorage(this.$state)
       return { ok: true, data: cur }
     },
 
     rejectExternalPolicy(id, rejectReason) {
       const cur = this.externalPolicies.find(p => p.id === id)
       if (!cur) return { ok: false, message: '记录不存在' }
-      if (cur.status !== 'pending_clerk_review') return { ok: false, message: '当前状态不允许驳回' }
+      if (cur.status !== 'clerk_review' && cur.status !== 'clerk_confirm') return { ok: false, message: '当前状态不允许驳回' }
       if (!rejectReason?.trim()) return { ok: false, message: '请填写驳回原因' }
-      cur.status = 'rejected'
+      cur.status = 'returned'
       cur.rejectReason = rejectReason
       cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
       return { ok: true, data: cur }
     },
 
@@ -1349,6 +1459,208 @@ export const useBusinessStore = defineStore('business', {
       if (idx < 0) return { ok: false, message: '记录不存在' }
       this.externalPolicies.splice(idx, 1)
       return { ok: true }
+    },
+
+    // ===== Clerk-initiated electronic policy upload flow =====
+    createClerkPolicyDraft({ companyName, customerCompany, uploadUser }) {
+      const now = new Date()
+      const id = `EP_CLERK_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+      const record = {
+        id,
+        customerCompany: customerCompany || '',
+        clerkInitiated: true,
+        originalFileName: '',
+        originalFile: [],
+        ocrStatus: 'pending',
+        status: 'clerk_pending_auth',
+        rejectReason: '',
+        policyNo: '',
+        linkedPolicyNo: '',
+        uploaderRole: 'clerk',
+        insuranceCompany: '',
+        insurerName: '',
+        policyholder: customerCompany || '',
+        insured: '',
+        beneficiary: '',
+        effectiveDate: '',
+        expiryDate: '',
+        insurancePeriod: '12个月',
+        renewalFlag: '否',
+        coverageAmount: 0,
+        currency: 'USD',
+        premiumRate: 0,
+        premium: 0,
+        maxCompensationLimit: 0,
+        buyerCreditLimit: 0,
+        deductible: 0,
+        coveredRisks: '',
+        clauseVersion: '',
+        countryRiskVersion: '',
+        declarationMethod: '',
+        declarationCycle: '',
+        declarationDeadline: '',
+        tradeBusinessType: '',
+        selfControlledLimit: '',
+        idlePeriod: 60,
+        surrenderFee: '',
+        recoveryPayee: '',
+        premiumPaymentMethod: '',
+        premiumPaymentDeadline: '',
+        fileSize: '',
+        uploadUser: uploadUser || '',
+        createTime: formatDateTime(now),
+        updateTime: formatDateTime(now)
+      }
+      this.externalPolicies.unshift(record)
+      // Send notification to customer
+      this.notifications = this.notifications || []
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'auth_request',
+        externalPolicyId: id,
+        companyName: customerCompany || '',
+        message: `跟单员 ${uploadUser || ''} 请求代客上传电子保单，请确认授权`,
+        createTime: formatDateTime(now),
+        read: false,
+        toRole: 'customer'
+      })
+      saveStateToStorage(this.$state)
+      return { ok: true, data: record }
+    },
+
+    clerkAuthorizePolicy(id) {
+      const cur = this.externalPolicies.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'clerk_pending_auth') return { ok: false, message: '当前状态不允许授权' }
+      cur.status = 'clerk_auth_authorized'
+      cur.updateTime = formatDateTime(new Date())
+      // Clear the notification or mark it as handled
+      if (this.notifications) {
+        const nIdx = this.notifications.findIndex(n => n.externalPolicyId === id && n.type === 'auth_request')
+        if (nIdx >= 0) this.notifications.splice(nIdx, 1)
+      }
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    clerkUploadPolicyFile(id, { file }) {
+      const cur = this.externalPolicies.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'clerk_auth_authorized') return { ok: false, message: '当前状态不允许上传文件' }
+      cur.originalFileName = file?.name || 'unknown.pdf'
+      cur.originalFile = file ? [file] : []
+      cur.fileSize = file?.size ? `${(file.size / 1048576).toFixed(1)} MB` : ''
+      cur.ocrStatus = 'pending'
+      cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    clerkCompleteOcr(id, { success, ocrFields }) {
+      const epIdx = this.externalPolicies.findIndex(p => p.id === id)
+      if (epIdx < 0) return { ok: false, message: '记录不存在' }
+      const cur = this.externalPolicies[epIdx]
+      if (cur.status !== 'clerk_ocr_processing') return { ok: false, message: '当前状态不允许OCR识别' }
+      const now = new Date()
+      if (success && ocrFields) {
+        this.externalPolicies[epIdx] = {
+          ...cur,
+          ...ocrFields,
+          ocrStatus: 'completed',
+          status: 'clerk_active',
+          updateTime: formatDateTime(now)
+        }
+        // Create corresponding policy entry
+        if (!this.policies.find(p => p.policyNo === ocrFields.policyNo)) {
+          this.policies.unshift({
+            id: 'P_EXT_CLERK_' + cur.id,
+            policyNo: ocrFields.policyNo,
+            insuranceCompany: ocrFields.insuranceCompany,
+            policyholder: ocrFields.policyholder || cur.customerCompany,
+            insured: ocrFields.insured || '',
+            coverageAmount: Number(ocrFields.coverageAmount) || 0,
+            premium: Number(ocrFields.premium) || 0,
+            effectiveDate: ocrFields.effectiveDate || '',
+            expiryDate: ocrFields.expiryDate || '',
+            status: 'active',
+            statusName: '有效',
+            usedQuota: 0,
+            remainingQuota: Number(ocrFields.coverageAmount) || 0,
+            currency: ocrFields.currency || 'USD',
+            externalPolicyId: cur.id
+          })
+        }
+        saveStateToStorage(this.$state)
+        return { ok: true, data: this.externalPolicies[epIdx] }
+      } else {
+        this.externalPolicies[epIdx] = {
+          ...cur,
+          ocrStatus: 'failed',
+          status: 'clerk_ocr_failed',
+          updateTime: formatDateTime(now)
+        }
+        saveStateToStorage(this.$state)
+        return { ok: true, data: this.externalPolicies[epIdx] }
+      }
+    },
+
+    clerkApproveFailedOcr(id) {
+      const cur = this.externalPolicies.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'clerk_ocr_failed' && cur.status !== 'clerk_confirm') return { ok: false, message: '当前状态不允许确认生效' }
+      const now = new Date()
+      cur.status = 'clerk_active'
+      cur.ocrStatus = 'completed'
+      cur.updateTime = formatDateTime(now)
+      // Create corresponding policy entry
+      if (!this.policies.find(p => p.externalPolicyId === cur.id || p.id === 'P_EXT_CLERK_' + cur.id)) {
+        this.policies.unshift({
+          id: 'P_EXT_CLERK_' + cur.id,
+          policyNo: cur.policyNo || `PI${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+          insuranceCompany: cur.insuranceCompany || '',
+          policyholder: cur.policyholder || cur.customerCompany,
+          insured: cur.insured || '',
+          coverageAmount: Number(cur.coverageAmount) || 0,
+          premium: Number(cur.premium) || 0,
+          effectiveDate: cur.effectiveDate || formatDateTime(now),
+          expiryDate: cur.expiryDate || '',
+          status: 'active',
+          statusName: '有效',
+          usedQuota: 0,
+          remainingQuota: Number(cur.coverageAmount) || 0,
+          currency: cur.currency || 'USD',
+          externalPolicyId: cur.id
+        })
+      }
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    pushPolicyToPlatformOcr(id) {
+      const cur = this.externalPolicies.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'clerk_auth_authorized') return { ok: false, message: '当前状态不允许推送平台审核' }
+      cur.status = 'clerk_platform_review'
+      cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    completePlatformOcr(id, ocrFields) {
+      const epIdx = this.externalPolicies.findIndex(p => p.id === id)
+      if (epIdx < 0) return { ok: false, message: '记录不存在' }
+      const cur = this.externalPolicies[epIdx]
+      if (cur.status !== 'clerk_platform_review') return { ok: false, message: '当前状态不允许OCR完成' }
+      const now = new Date()
+      this.externalPolicies[epIdx] = {
+        ...cur,
+        ...ocrFields,
+        ocrStatus: 'completed',
+        status: 'clerk_confirm',
+        updateTime: formatDateTime(now)
+      }
+      saveStateToStorage(this.$state)
+      return { ok: true, data: this.externalPolicies[epIdx] }
     },
 
     // ===== Policy Maintenance Lifecycle (Renewal / Change / Surrender) =====

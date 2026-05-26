@@ -500,7 +500,7 @@
     </t-dialog>
 
     <!-- ====== Contract View Dialog ====== -->
-    <t-dialog v-model:visible="viewVisible" :header="`合同详情 - ${viewContract?.policyNo || ''}`" width="720px" :footer="false">
+    <t-dialog v-model:visible="viewVisible" :header="`合同详情 - ${viewContract?.policyNo || ''}`" width="720px" :footer="false" :close-btn="false" destroy-on-close>
       <div v-if="viewContract" class="contract-view">
         <div class="contract-section">
           <div class="section-title">基本信息</div>

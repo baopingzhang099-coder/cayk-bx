@@ -25,10 +25,10 @@ const statusText = computed(() => {
 
 const statusClass = computed(() => {
   const status = props.status
-  if (['draft', 'pending_submit', 'pending_material', 'pending_review'].includes(status)) return 'status-warning'
-  if (['credit_investigating', 'limit_approving', 'underwriting', 'processing', 'declaring'].includes(status)) return 'status-primary'
-  if (['completed', 'active', 'declared', 'passed', 'effective', 'approved'].includes(status)) return 'status-success'
-  if (['rejected', 'suspended', 'cancelled', 'terminated'].includes(status)) return 'status-danger'
+  if (['draft', 'pending_submit', 'pending_material', 'pending_review', 'platform_review', 'clerk_review', 'pending_ocr', 'ocr_processing', 'clerk_pending_auth', 'clerk_auth_authorized', 'clerk_confirm'].includes(status)) return 'status-warning'
+  if (['credit_investigating', 'limit_approving', 'underwriting', 'processing', 'declaring', 'ocr_completed', 'clerk_ocr_processing', 'clerk_platform_review'].includes(status)) return 'status-primary'
+  if (['completed', 'active', 'declared', 'passed', 'effective', 'approved', 'clerk_active'].includes(status)) return 'status-success'
+  if (['rejected', 'suspended', 'cancelled', 'terminated', 'returned', 'clerk_ocr_failed'].includes(status)) return 'status-danger'
   if (['pending_payment', 'pending_declare', 'pending_premium', 'expiring', 'timeout_warning'].includes(status)) return 'status-warning'
   return 'status-default'
 })

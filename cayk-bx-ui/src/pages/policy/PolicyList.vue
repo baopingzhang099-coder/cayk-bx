@@ -20,21 +20,25 @@
     </div>
 
     <t-tabs v-model="mainTab" theme="card" class="mb-16">
-      <t-tab-panel value="upload" label="电子生效保单列表">
+      <t-tab-panel value="upload" label="电子保单列表">
         <div class="table-header">
-          <span class="table-title">电子生效保单列表</span>
+          <span class="table-title">电子保单列表</span>
           <t-space>
             <t-button theme="primary" v-if="isCustomer" @click="externalUploadVisible = true">
               <template #icon><t-icon name="file-pdf" /></template>
               上传电子保单
+            </t-button>
+            <t-button theme="primary" v-if="isClerk" @click="clerkUploadVisible = true">
+              <template #icon><t-icon name="file-pdf" /></template>
+              代客上传电子保单
             </t-button>
           </t-space>
         </div>
 
         <div class="stats-grid mb-24">
           <stat-card title="总上传" :value="uploadTotalCount" icon="file" color="primary" />
-          <stat-card title="待识别" :value="uploadPendingCount" icon="search" color="warning" />
-          <stat-card title="已识别" :value="uploadCompletedCount" icon="check-circle" color="success" />
+          <stat-card title="待处理" :value="uploadPendingCount" icon="search" color="warning" />
+          <stat-card title="已生效" :value="uploadCompletedCount" icon="check-circle" color="success" />
         </div>
 
         <data-table
@@ -51,8 +55,18 @@
           <template #operation="{ row }">
             <t-space>
               <t-link @click="handleViewUpload(row)">查看</t-link>
-              <t-link v-if="isInkasso && row.status === 'pending_ocr'" theme="primary" @click="handleOcrUpload(row)">OCR识别</t-link>
-              <t-link v-if="isCustomer && row.status === 'rejected'" theme="primary" @click="handleReupload(row)">重新上传</t-link>
+              <t-link v-if="isCustomer && row.status === 'draft'" theme="primary" @click="handleExternalSubmitToPlatform(row)">提交平台审核</t-link>
+              <t-link v-if="isCustomer && row.status === 'clerk_pending_auth'" theme="primary" @click="handleCustomerAuthorizeExternal(row)">授权</t-link>
+              <t-link v-if="isClerk && row.status === 'clerk_auth_authorized'" theme="primary" @click="handlePushToPlatformReview(row)">推送平台审核</t-link>
+              <t-link v-if="isInkasso && row.status === 'platform_review'" theme="primary" @click="handleOcrUpload(row)">OCR识别</t-link>
+              <t-link v-if="isInkasso && row.status === 'platform_review'" theme="primary" @click="handlePlatformApprove(row)">审核通过</t-link>
+              <t-link v-if="isInkasso && row.status === 'returned'" theme="primary" @click="handleOcrUpload(row)">OCR识别</t-link>
+              <t-link v-if="isInkasso && row.status === 'returned'" theme="primary" @click="handleResubmit(row)">提交审核</t-link>
+              <t-link v-if="isClerk && row.status === 'clerk_review'" theme="primary" @click="handleClerkApproveExternal(row)">审核通过</t-link>
+              <t-link v-if="isClerk && row.status === 'clerk_review'" theme="danger" @click="handleClerkRejectExternal(row)">驳回</t-link>
+              <t-link v-if="isClerk && (row.status === 'clerk_ocr_failed' || row.status === 'clerk_confirm')" theme="primary" @click="handleClerkApproveFailedOcr(row)">确认生效</t-link>
+              <t-link v-if="isClerk && row.status === 'clerk_confirm'" theme="danger" @click="handleClerkRejectExternal(row)">驳回</t-link>
+              <t-link v-if="isClerk && row.status === 'clerk_ocr_failed'" theme="danger" @click="handleDeleteExternal(row)">删除</t-link>
             </t-space>
           </template>
         </data-table>
@@ -113,6 +127,7 @@
               <t-link v-if="isClerk && row.status === 'approved'" theme="primary" @click="handleSubmitUnderwriting(row)">提交核保</t-link>
               <t-link v-if="isClerk && row.status === 'underwriting'" theme="primary" @click="handleUnderwritingComplete(row)">核保通过</t-link>
               <t-link v-if="isClerk && row.status === 'uw_completed'" theme="primary" @click="handleSyncToPlatform(row)">同步保单</t-link>
+              <t-link v-if="isClerk && row.status === 'payment_uploaded'" theme="primary" @click="handleClerkConfirmPayment(row)">确认缴费</t-link>
               <t-link v-if="isInkasso && row.status === 'ocr_pending'" theme="primary" @click="handleApprove(row)">申请跟单员确认</t-link>
               <t-link v-if="isClerk && (row.status === 'ocr_pending' || row.status === 'ocr_clerk_review')" theme="primary" @click="handleClerkApprove(row)">审核</t-link>
               <t-link v-if="isCustomer && row.status === 'ocr_pending'" theme="primary" @click="handleSubmitToPlatform(row)">提交平台审核</t-link>
@@ -122,7 +137,7 @@
         </data-table>
       </t-tab-panel>
 
-      <t-tab-panel value="policy" label="生效保单列表">
+      <t-tab-panel value="policy" label="保单列表">
         <div class="table-header">
           <span class="table-title">保单信息管理</span>
         </div>
@@ -194,17 +209,8 @@
                     {{ step.label }}
                   </div>
                   <div class="clerk-flow-step-status">
-                    <t-tag v-if="index + 1 < clerkCurrentStep || clerkTaskCompleted" theme="success" variant="light" size="small">已完成</t-tag>
-                    <t-tag v-else-if="index + 1 === clerkCurrentStep" theme="primary" variant="light" size="small">进行中</t-tag>
+                    <t-tag v-if="index + 1 === clerkCurrentStep" theme="primary" variant="light" size="small">进行中</t-tag>
                     <t-tag v-else theme="default" variant="light" size="small">待处理</t-tag>
-                  </div>
-                  <div class="clerk-flow-step-role">
-                    <t-tag theme="warning" variant="light" size="small">{{ clerkFlowStepRoles[index].label }}</t-tag>
-                  </div>
-                  <div v-if="clerkStepInfo[index].handler" class="clerk-flow-step-info">
-                    <span class="clerk-flow-step-handler">{{ clerkStepInfo[index].handler }}</span>
-                    <span v-if="clerkStepInfo[index].endTime" class="clerk-flow-step-time">✓ {{ clerkStepInfo[index].endTime }}</span>
-                    <span v-else-if="clerkStepInfo[index].startTime && (index + 1 === clerkCurrentStep || clerkTaskCompleted)" class="clerk-flow-step-time">开始: {{ clerkStepInfo[index].startTime }}</span>
                   </div>
                 </div>
                 <div v-if="index < clerkFlowStepOptions.length - 1" class="clerk-flow-arrow" :class="{ completed: index + 1 < clerkCurrentStep || clerkTaskCompleted }">
@@ -461,14 +467,7 @@
           </div>
         </div>
 
-        <!-- Section 3: Checkbox willingness -->
-        <div class="confirmation-box">
-          <t-checkbox :checked="true" disabled>
-            『数字化推荐投保建议方案』符合我司本次出运要求，现正式提交投保申请并流转至出单。
-          </t-checkbox>
-        </div>
-
-        <!-- Section 4: Generated Documents (hidden for OCR-sourced policies) -->
+        <!-- Section 3: Generated Documents (hidden for OCR-sourced policies) -->
         <div v-if="!currentRow?.ocrSource" class="modal-section-title">📎 投保申请书和信息采集表预览</div>
         <div v-if="!currentRow?.ocrSource" class="attachment-section mb-16">
           <div class="attachment-row">
@@ -484,7 +483,7 @@
           <div class="attachment-row">
             <div class="attachment-info" style="display: flex; align-items: center; gap: 8px;">
               <t-icon name="file-excel" style="color: #2ca471; font-size: 18px;" />
-              <span class="attachment-label">信息采集表</span>
+              <span class="attachment-label">买方信息采集表</span>
             </div>
             <t-button variant="outline" size="small" @click="showPreview('buyer')">
               <template #icon><t-icon name="browse" /></template>
@@ -523,8 +522,88 @@
     </t-dialog>
 
     <!-- 保单详情弹窗 -->
-    <t-dialog v-model:visible="policyDetailVisible" header="保单详情" width="600px" :footer="false">
-      <detail-panel title="保单信息" :columns="policyDetailColumns" :data="currentPolicy || {}" />
+    <t-dialog v-model:visible="policyDetailVisible" header="保单详情" width="820px" :footer="false" destroy-on-close>
+      <div v-if="currentPolicy" class="pd-wrapper">
+        <!-- 保单信息 -->
+        <div class="pd-card">
+          <div class="pd-card-header">📋 保单信息</div>
+          <div class="pd-card-body">
+            <div class="pd-grid">
+              <div class="pd-field"><span class="pd-label">保单号</span><span class="pd-value">{{ currentPolicy.policyNo || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">保险公司</span><span class="pd-value">{{ currentPolicy.insuranceCompany || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">被保险人</span><span class="pd-value">{{ currentPolicy.policyholder || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">投保买方</span><span class="pd-value">{{ currentPolicy.insured || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">保险金额</span><span class="pd-value pd-number">${{ Number(currentPolicy.coverageAmount || 0).toLocaleString() }}</span></div>
+              <div class="pd-field"><span class="pd-label">保费金额</span><span class="pd-value pd-number">${{ Number(currentPolicy.premium || 0).toLocaleString() }}</span></div>
+              <div class="pd-field"><span class="pd-label">生效日期</span><span class="pd-value">{{ currentPolicy.effectiveDate || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">到期日期</span><span class="pd-value">{{ currentPolicy.expiryDate || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">已用额度</span><span class="pd-value pd-number">${{ Number(currentPolicy.usedQuota || 0).toLocaleString() }}</span></div>
+              <div class="pd-field"><span class="pd-label">剩余额度</span><span class="pd-value pd-number">${{ Number(currentPolicy.remainingQuota || 0).toLocaleString() }}</span></div>
+              <div class="pd-field"><span class="pd-label">币种</span><span class="pd-value">{{ currentPolicy.currency || 'USD' }}</span></div>
+              <div class="pd-field"><span class="pd-label">保单状态</span><span class="pd-value">{{ policyStatusMap[currentPolicy.status] || currentPolicy.status || '-' }}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 投保信息 -->
+        <div v-if="currentPolicy._app" class="pd-card">
+          <div class="pd-card-header">📄 投保信息</div>
+          <div class="pd-card-body">
+            <div class="pd-grid">
+              <div class="pd-field"><span class="pd-label">投保编号</span><span class="pd-value">{{ currentPolicy._app.id || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">企业名称</span><span class="pd-value">{{ currentPolicy._app.companyName || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">统一社会信用代码</span><span class="pd-value">{{ currentPolicy._app.unifiedSocialCreditCode || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">法定代表人</span><span class="pd-value">{{ currentPolicy._app.legalRepresentative || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">联系人</span><span class="pd-value">{{ currentPolicy._app.contactName || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">联系电话</span><span class="pd-value">{{ currentPolicy._app.contactPhone || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">买方名称</span><span class="pd-value">{{ currentPolicy._app.buyerName || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">买方国别</span><span class="pd-value">{{ currentPolicy._app.buyerCountry || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">投保类型</span><span class="pd-value">{{ currentPolicy._app.insuranceType || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">投保金额</span><span class="pd-value pd-number">${{ Number(currentPolicy._app.insuranceAmount || 0).toLocaleString() }}</span></div>
+              <div class="pd-field"><span class="pd-label">投保期限</span><span class="pd-value">{{ Array.isArray(currentPolicy._app.expectedInsurancePeriod) ? currentPolicy._app.expectedInsurancePeriod.join(' ~ ') : (currentPolicy._app.expectedInsurancePeriod || '-') }}</span></div>
+              <div class="pd-field"><span class="pd-label">申请日期</span><span class="pd-value">{{ currentPolicy._app.createTime || '-' }}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 核保信息 -->
+        <div v-if="currentPolicy._app" class="pd-card">
+          <div class="pd-card-header">✅ 核保信息</div>
+          <div class="pd-card-body">
+            <div class="pd-grid">
+              <div class="pd-field"><span class="pd-label">核保结果</span><span class="pd-value">{{ currentPolicy._app.uwDecision === 'approved' ? '核保通过' : (currentPolicy._app.uwDecision || '-') }}</span></div>
+              <div class="pd-field"><span class="pd-label">核保意见</span><span class="pd-value">{{ currentPolicy._app.uwOpinion || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">核保完成时间</span><span class="pd-value">{{ currentPolicy._app.uwCompleteTime || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">同步平台时间</span><span class="pd-value">{{ currentPolicy._app.syncTime || '-' }}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 缴费信息 -->
+        <div v-if="currentPolicy.premiumPaid || currentPolicy._app?.premiumConfirmed" class="pd-card">
+          <div class="pd-card-header">💰 缴费信息</div>
+          <div class="pd-card-body">
+            <div class="pd-grid">
+              <div class="pd-field"><span class="pd-label">缴费状态</span><span class="pd-value">{{ currentPolicy.premiumPaid ? '已缴费' : (currentPolicy._app?.premiumConfirmed ? '保费已确认' : '-') }}</span></div>
+              <div class="pd-field"><span class="pd-label">缴费时间</span><span class="pd-value">{{ currentPolicy.premiumPaidTime || currentPolicy._app?.premiumConfirmTime || '-' }}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 电子保单信息 -->
+        <div v-if="currentPolicyElectronic" class="pd-card">
+          <div class="pd-card-header">📎 电子保单</div>
+          <div class="pd-card-body">
+            <div class="pd-grid">
+              <div class="pd-field"><span class="pd-label">文件名</span><span class="pd-value">{{ currentPolicyElectronic.originalFileName || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">上传人</span><span class="pd-value">{{ currentPolicyElectronic.uploadUser || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">上传角色</span><span class="pd-value">{{ currentPolicyElectronic.uploaderRole === 'clerk' ? '跟单员代传' : '客户上传' }}</span></div>
+              <div class="pd-field"><span class="pd-label">上传时间</span><span class="pd-value">{{ currentPolicyElectronic.createTime || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">OCR状态</span><span class="pd-value">{{ uploadStatusMap[currentPolicyElectronic.status] || currentPolicyElectronic.status || '-' }}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </t-dialog>
 
     <!-- 导出弹窗 -->
@@ -689,8 +768,8 @@
       <div class="preview-wrapper" ref="previewWrapperRef" @wheel="handlePreviewWheel" v-html="previewHtml"></div>
       <template #footer>
         <t-space>
-          <t-button variant="outline" @click="previewVisible = false">关闭</t-button>
           <t-button theme="primary" @click="previewDownload">下载Excel</t-button>
+          <t-button variant="outline" @click="previewVisible = false">关闭</t-button>
         </t-space>
       </template>
     </t-dialog>
@@ -700,6 +779,22 @@
 
     <!-- 外部保单上传弹窗 -->
     <external-policy-upload-dialog v-model:visible="externalUploadVisible" />
+
+    <!-- 保单列表上传电子保单弹窗 -->
+    <external-policy-upload-dialog
+      v-model:visible="policyUploadVisible"
+      :policy-no="uploadTargetPolicyNo"
+      :upload-company-name="uploadTargetCompanyName"
+      :upload-user-name="uploadTargetUserName"
+      :uploader-role="uploadTargetRole"
+      @upload-success="handlePolicyUploadSuccess"
+    />
+
+    <!-- 跟单员代传电子保单弹窗 -->
+    <clerk-policy-upload-dialog
+      v-model:visible="clerkUploadVisible"
+      @upload-success="handleClerkPolicyUploadSuccess"
+    />
 
     <!-- 外部保单详情弹窗 -->
     <t-dialog v-model:visible="externalDetailVisible" :header="'外部保单详情 - ' + (externalDetailRow?.policyNo || externalDetailRow?.id || '')" width="780px" :footer="false">
@@ -817,8 +912,20 @@
         </div>
 
         <div class="modal-footer">
-          <template v-if="isInkasso && externalDetailRow.status === 'pending_ocr'">
+          <template v-if="isInkasso && externalDetailRow.status === 'platform_review'">
             <t-button theme="primary" @click="handleOcrUpload(externalDetailRow)">OCR识别</t-button>
+            <t-button theme="primary" @click="handlePlatformApprove(externalDetailRow)">审核通过</t-button>
+          </template>
+          <template v-if="isInkasso && externalDetailRow.status === 'returned'">
+            <t-button theme="primary" @click="handleOcrUpload(externalDetailRow)">OCR识别</t-button>
+            <t-button theme="primary" @click="handleResubmit(externalDetailRow)">提交审核</t-button>
+          </template>
+          <template v-if="isClerk && externalDetailRow.status === 'clerk_review'">
+            <t-button theme="primary" @click="handleClerkApproveExternal(externalDetailRow)">审核通过</t-button>
+            <t-button theme="danger" @click="handleClerkRejectExternal(externalDetailRow)">驳回</t-button>
+          </template>
+          <template v-if="isCustomer && externalDetailRow.status === 'clerk_pending_auth'">
+            <t-button theme="primary" @click="handleCustomerAuthorizeExternal(externalDetailRow)">确认授权</t-button>
           </template>
           <t-button variant="outline" @click="externalDetailVisible = false">关闭</t-button>
         </div>
@@ -830,7 +937,7 @@
       <div class="reject-content">
         <div class="confirm-tip" style="margin-top: 0;">
           <t-icon name="warning-circle" size="16px" class="tip-icon danger" />
-          <span class="tip-text">确认驳回该外部保单？驳回后客户可重新上传。</span>
+          <span class="tip-text">确认驳回该外部保单？驳回后平台可修正数据后重新提交。</span>
         </div>
         <div class="reject-form" style="margin-top: 16px;">
           <label class="reject-label">驳回原因 <span style="color: #dc2626;">*</span></label>
@@ -905,6 +1012,7 @@ import StatCard from '@/components/common/StatCard.vue'
 import DetailPanel from '@/components/common/DetailPanel.vue'
 import PolicyOcrDialog from '@/components/business/PolicyOcrDialog.vue'
 import ExternalPolicyUploadDialog from '@/components/business/ExternalPolicyUploadDialog.vue'
+import ClerkPolicyUploadDialog from '@/components/business/ClerkPolicyUploadDialog.vue'
 import RenewalDialog from '@/components/business/RenewalDialog.vue'
 import SurrenderDialog from '@/components/business/SurrenderDialog.vue'
 import PolicyChangeDialog from '@/components/business/PolicyChangeDialog.vue'
@@ -984,14 +1092,14 @@ const filteredData = computed(() => {
   const isCust = userStore.role === 'customer'
   return list.filter((it) => {
     if (isCust) {
-      // Customer sees approved and rejected items
-      if (!['approved', 'rejected', 'ocr_pending'].includes(it.status)) return false
+      // Customer sees all their items except draft
+      if (it.status === 'draft') return false
     } else {
-      // Changan Yinke (inkasso) sees pending_review, approved, payment_uploaded, active and OCR items
-      if (userStore.role === 'inkasso' && !['pending_review', 'approved', 'payment_uploaded', 'active', 'ocr_pending', 'ocr_clerk_review', 'ocr_approved'].includes(it.status)) return false
-      // Clerk sees clerk_review, approved, underwriting, uw_completed and OCR statuses only
-      if (userStore.role === 'clerk' && !['clerk_review', 'approved', 'underwriting', 'uw_completed', 'ocr_pending', 'ocr_clerk_review', 'ocr_approved'].includes(it.status)) return false
+      // Inkasso and clerk see all items except draft
+      if (userStore.role === 'inkasso' && it.status === 'draft') return false
+      if (userStore.role === 'clerk' && it.status === 'draft') return false
     }
+    if (it.status === 'ocr_pending') return false
     if (p.enterpriseName && !String(it.companyName || '').includes(p.enterpriseName)) return false
     if (p.buyerName && !String(it.buyerName || '').includes(p.buyerName)) return false
     if (p.status && it.status !== p.status) return false
@@ -1008,13 +1116,24 @@ const tableData = computed(() => {
 const activePolicyCount = computed(() => (store.insuranceApplications || []).filter(p => p.status === 'approved').length)
 const totalInsuranceAmount = computed(() => (store.insuranceApplications || []).reduce((sum, p) => sum + (Number(p.insuranceAmount) || 0), 0))
 
-// ===== Upload tab (电子生效保单列表) =====
+// ===== Upload tab (电子保单列表) =====
 const uploadStatusMap = {
+  draft: '待提交',
+  platform_review: '平台审核中',
+  clerk_review: '跟单员审核中',
+  active: '已生效',
+  returned: '已退回',
   pending_ocr: '待识别',
   ocr_processing: '识别中',
   ocr_completed: '已识别',
-  active: '已生效',
-  rejected: '已驳回'
+  rejected: '已驳回',
+  clerk_pending_auth: '待客户授权',
+  clerk_auth_authorized: '客户已授权',
+  clerk_ocr_processing: 'OCR识别中',
+  clerk_ocr_failed: 'OCR识别失败',
+  clerk_platform_review: '平台OCR识别中',
+  clerk_confirm: '待跟单员确认',
+  clerk_active: '已生效'
 }
 
 const uploadPagination = reactive({ total: 0, current: 1, pageSize: 20 })
@@ -1052,8 +1171,13 @@ const uploadTableData = computed(() => {
 })
 
 const uploadTotalCount = computed(() => store.externalPolicies.length)
-const uploadPendingCount = computed(() => store.externalPolicies.filter(p => p.status === 'pending_ocr').length)
-const uploadCompletedCount = computed(() => store.externalPolicies.filter(p => p.status === 'ocr_completed' || p.status === 'active').length)
+const uploadPendingCount = computed(() => store.externalPolicies.filter(p =>
+  ['draft', 'platform_review', 'clerk_pending_auth', 'clerk_auth_authorized',
+   'clerk_ocr_processing', 'clerk_ocr_failed', 'clerk_platform_review', 'clerk_confirm'].includes(p.status)
+).length)
+const uploadCompletedCount = computed(() => store.externalPolicies.filter(p =>
+  p.status === 'active' || p.status === 'clerk_active'
+).length)
 
 const handleUploadPageChange = (pageInfo) => {
   uploadPagination.current = pageInfo.current
@@ -1135,6 +1259,15 @@ const detailMode = ref('view') // 'view' | 'apply' | 'clerk_approve'
 const currentRow = ref(null)
 const policyDetailVisible = ref(false)
 const currentPolicy = ref(null)
+const currentPolicyElectronic = computed(() => {
+  if (!currentPolicy.value) return null
+  const epId = currentPolicy.value.externalPolicyId
+  if (epId) return store.externalPolicies.find(p => p.id === epId)
+  // Also try to find by linked policyNo
+  const pn = currentPolicy.value.policyNo
+  if (pn) return store.externalPolicies.find(p => p.linkedPolicyNo === pn)
+  return null
+})
 
 const ocrEditForm = ref({
   ocrPolicyNo: '',
@@ -1230,6 +1363,7 @@ const exportData = ref([])
 
 // ===== External policy state =====
 const externalUploadVisible = ref(false)
+const clerkUploadVisible = ref(false)
 const externalDetailVisible = ref(false)
 const externalDetailRow = ref(null)
 const externalClerkRejectVisible = ref(false)
@@ -1237,12 +1371,46 @@ const externalClerkRejectReason = ref('')
 const externalPagination = reactive({ total: 0, current: 1, pageSize: 20 })
 const externalLoading = ref(false)
 
+// ===== Policy list electronic policy upload =====
+const policyUploadVisible = ref(false)
+const uploadTargetPolicyNo = ref('')
+const uploadTargetCompanyName = ref('')
+const uploadTargetUserName = ref('')
+const uploadTargetRole = ref('customer')
+
+const handleUploadElectronicPolicy = (row) => {
+  uploadTargetPolicyNo.value = row.policyNo || ''
+  uploadTargetCompanyName.value = row.policyholder || ''
+  uploadTargetUserName.value = userStore.userName || userStore.companyName || ''
+  uploadTargetRole.value = userStore.role === 'clerk' ? 'clerk' : 'customer'
+  policyUploadVisible.value = true
+}
+
+const handlePolicyUploadSuccess = (data) => {
+  MessagePlugin.success('电子保单上传成功，等待平台OCR识别处理')
+}
+
+const handleClerkPolicyUploadSuccess = (data) => {
+  MessagePlugin.success('代客上传电子保单成功')
+}
+
 const externalPolicyStatusMap = {
+  draft: '待提交',
+  platform_review: '平台审核中',
+  clerk_review: '跟单员审核中',
+  active: '已生效',
+  returned: '已退回',
   pending_ocr: '待识别',
   ocr_processing: '识别中',
   ocr_completed: '已识别',
-  active: '已生效',
-  rejected: '已驳回'
+  rejected: '已驳回',
+  clerk_pending_auth: '待客户授权',
+  clerk_auth_authorized: '客户已授权',
+  clerk_ocr_processing: 'OCR识别中',
+  clerk_ocr_failed: 'OCR识别失败',
+  clerk_platform_review: '平台OCR识别中',
+  clerk_confirm: '待跟单员确认',
+  clerk_active: '已生效'
 }
 
 const externalColumns = [
@@ -1352,7 +1520,16 @@ const handleView = (row) => {
   }
   detailVisible.value = true
 }
-const handleViewPolicy = (row) => { currentPolicy.value = row; policyDetailVisible.value = true }
+const handleViewPolicy = (row) => {
+  currentPolicy.value = row
+  const app = store.insuranceApplications.find(
+    a => a.companyName === row.policyholder && (a.buyerName === row.insured || a.policyNo === row.policyNo)
+  )
+  if (app) {
+    currentPolicy.value = { ...row, _app: app }
+  }
+  policyDetailVisible.value = true
+}
 
 const handleApprove = (row) => {
   currentRow.value = row
@@ -1785,6 +1962,32 @@ const handleSyncToPlatform = (row) => {
   MessagePlugin.success('保单已同步至平台')
 }
 
+const handleClerkConfirmPayment = (row) => {
+  if (!row) return
+  const app = store.insuranceApplications.find(it => it.id === row.id)
+  if (!app) {
+    MessagePlugin.error('投保记录不存在')
+    return
+  }
+  if (app.status !== 'payment_uploaded') {
+    MessagePlugin.warning('当前状态不允许确认缴费')
+    return
+  }
+  const res = store.activatePolicyByPlatform(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '确认缴费失败')
+    return
+  }
+  store.touchInsuranceApplications()
+  // 跟单员确认缴费 → 完成缴费生效(step6)
+  store.approveInsuranceTaskStep(row.id + '_flow', {
+    handler: '跟单员',
+    approvalResult: 'approved',
+    auditOpinion: '跟单员已确认缴费凭证，保单生效'
+  })
+  MessagePlugin.success('缴费已确认，保单已生效')
+}
+
 const handlePolicyChange = (row) => { currentPolicy.value = row; changeVisible.value = true }
 const handleRenewal = (row) => { currentPolicy.value = row; renewalVisible.value = true }
 const handleSurrender = (row) => { currentPolicy.value = row; surrenderVisible.value = true }
@@ -1894,6 +2097,79 @@ const handleDeleteExternal = (row) => {
   MessagePlugin.success('已删除')
 }
 
+const handleExternalSubmitToPlatform = (row) => {
+  const res = store.submitForPlatformReview(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '提交失败')
+    return
+  }
+  MessagePlugin.success('已提交平台审核')
+}
+
+const handleCustomerAuthorizeExternal = (row) => {
+  const res = store.clerkAuthorizePolicy(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '授权失败')
+    return
+  }
+  MessagePlugin.success('已授权，跟单员可以继续上传电子保单')
+}
+
+const handlePushToPlatformReview = (row) => {
+  if (!row.id) return
+  // Step 1: Push to platform OCR review
+  const pushRes = store.pushPolicyToPlatformOcr(row.id)
+  if (!pushRes?.ok) {
+    MessagePlugin.error(pushRes?.message || '推送失败')
+    return
+  }
+  MessagePlugin.info('已推送至平台OCR识别')
+  // Step 2: Simulate platform OCR with 2s delay
+  const now = new Date()
+  const pad2 = (n) => String(n).padStart(2, '0')
+  const prefix = `PI${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}`
+  const policyNo = `${prefix}${pad2(Math.floor(Math.random() * 100))}`
+  const ocrFields = {
+    policyNo,
+    insuranceCompany: '中国出口信用保险公司',
+    policyholder: row.customerCompany || '',
+    insured: row.customerCompany || '',
+    coverageAmount: Number(row.coverageAmount) || 500000,
+    premium: Number(row.premium) || 6500,
+    effectiveDate: `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`,
+    expiryDate: `${now.getFullYear() + 1}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`,
+    currency: 'USD'
+  }
+  setTimeout(() => {
+    const ocrRes = store.completePlatformOcr(row.id, ocrFields)
+    if (!ocrRes?.ok) {
+      MessagePlugin.error(ocrRes?.message || 'OCR处理失败')
+      return
+    }
+    MessagePlugin.success('平台OCR识别完成，请确认电子保单信息')
+  }, 2000)
+}
+
+const handlePlatformApprove = (row) => {
+  const res = store.platformApproveExternalPolicy(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '操作失败')
+    return
+  }
+  MessagePlugin.success('审核通过，已推送给跟单员')
+  externalDetailVisible.value = false
+}
+
+const handleResubmit = (row) => {
+  const res = store.resubmitExternalPolicy(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '提交失败')
+    return
+  }
+  MessagePlugin.success('已重新提交审核')
+  externalDetailVisible.value = false
+}
+
 const handleClerkApproveExternal = (row) => {
   const res = store.approveExternalPolicy(row.id)
   if (!res?.ok) {
@@ -1904,7 +2180,17 @@ const handleClerkApproveExternal = (row) => {
   externalDetailVisible.value = false
 }
 
+const handleClerkApproveFailedOcr = (row) => {
+  const res = store.clerkApproveFailedOcr(row.id)
+  if (!res?.ok) {
+    MessagePlugin.error(res?.message || '操作失败')
+    return
+  }
+  MessagePlugin.success('已确认生效，电子保单记录已生成')
+}
+
 const handleClerkRejectExternal = (row) => {
+  externalDetailRow.value = row
   externalClerkRejectReason.value = ''
   externalClerkRejectVisible.value = true
 }
@@ -2028,6 +2314,47 @@ onMounted(() => { store.ensureSeeded() })
   font-weight: 600;
   text-align: right;
 }
+
+/* 保单详情弹窗新样式 */
+.pd-wrapper { padding: 8px 0; }
+.pd-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.pd-card-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  padding: 12px 18px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e5e7eb;
+}
+.pd-card-body { padding: 14px 18px; }
+.pd-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 24px;
+}
+.pd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 0;
+}
+.pd-label {
+  font-size: 12px;
+  color: #8a8f9a;
+  font-weight: 500;
+}
+.pd-value {
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 500;
+}
+.pd-number { font-weight: 700; color: #0052d9; font-family: 'SF Mono', monospace; }
 
 .modal-section-title {
   font-size: 15px;

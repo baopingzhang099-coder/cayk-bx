@@ -1,5 +1,55 @@
 <template>
-  <t-dialog :visible="visible" @update:visible="emit('update:visible', $event)" header="退保申请" width="600px" :destroy-on-close="true">
+  <t-dialog :visible="visible" @update:visible="emit('update:visible', $event)" header="退保申请" width="720px" :destroy-on-close="true">
+    <!-- 保单信息 -->
+    <div class="policy-info-section" v-if="policy">
+      <div class="modal-section-title">📋 保单信息</div>
+      <div class="info-grid mb-16">
+        <div class="info-row">
+          <span class="info-label">保单号</span>
+          <span class="info-value">{{ policy.policyNo }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">保险公司</span>
+          <span class="info-value">{{ policy.insuranceCompany }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">被保险人</span>
+          <span class="info-value">{{ policy.policyholder }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">投保买方</span>
+          <span class="info-value">{{ policy.insured }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">保险金额</span>
+          <span class="info-value">${{ Number(policy.coverageAmount || 0).toLocaleString() }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">保费金额</span>
+          <span class="info-value">${{ Number(policy.premium || 0).toLocaleString() }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">生效日期</span>
+          <span class="info-value">{{ policy.effectiveDate }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">到期日期</span>
+          <span class="info-value">{{ policy.expiryDate }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">已用额度</span>
+          <span class="info-value">${{ Number(policy.usedQuota || 0).toLocaleString() }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">剩余额度</span>
+          <span class="info-value">${{ Number(policy.remainingQuota || 0).toLocaleString() }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">币种</span>
+          <span class="info-value">{{ policy.currency || 'USD' }}</span>
+        </div>
+      </div>
+    </div>
     <t-form ref="formRef" :data="formData" :rules="formRules" label-width="140px" @submit="handleSubmit">
       <t-divider>退保信息</t-divider>
       <t-form-item label="退保申请日期" name="applicationDate">
@@ -103,4 +153,18 @@ const handleSubmit = async ({ validateResult }) => {
 </script>
 
 <style lang="scss" scoped>
+.modal-section-title {
+  font-size: 15px; font-weight: 600; color: #333; margin-bottom: 12px; padding: 0 4px;
+}
+.info-grid {
+  display: flex; flex-direction: column; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; margin-bottom: 16px;
+}
+.info-row {
+  display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #f0f0f0;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { font-size: 13px; color: #666; flex-shrink: 0; }
+.info-value { font-size: 13px; color: #333; font-weight: 600; text-align: right; }
+.mb-16 { margin-bottom: 16px; }
+.policy-info-section { margin-bottom: 8px; }
 </style>

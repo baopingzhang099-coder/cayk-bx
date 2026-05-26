@@ -9,7 +9,7 @@
   >
     <div class="upload-body">
       <t-alert
-        message="请上传从其他保险平台获取的电子保单PDF文件，上传后平台将进行OCR识别处理"
+        message="请上传电子保单文件（PDF或图片），上传后平台将进行OCR识别处理"
         theme="info"
         class="step-alert"
       />
@@ -18,16 +18,16 @@
         <t-upload
           v-model="uploadFile"
           theme="file"
-          placeholder="仅支持PDF格式，单个文件不超过20MB"
-          accept="application/pdf"
+          placeholder="支持PDF/JPEG/PNG格式，单个文件不超过20MB"
+          accept="application/pdf,image/jpeg,image/png"
           :max="1"
           :max-size="20971520"
           :auto-upload="false"
-          tips="支持扩展名：.pdf"
+          tips="支持扩展名：.pdf、.jpg、.jpeg、.png"
         >
           <t-button variant="outline">
             <template #icon><t-icon name="upload" /></template>
-            选择PDF文件
+            选择文件
           </t-button>
         </t-upload>
       </div>
@@ -36,11 +36,15 @@
         <t-divider />
         <div class="info-row">
           <span class="info-label">上传企业</span>
-          <span class="info-value">{{ userStore.companyName || '-' }}</span>
+          <span class="info-value">{{ uploadCompanyName || userStore.companyName || '-' }}</span>
         </div>
         <div class="info-row">
           <span class="info-label">上传人</span>
-          <span class="info-value">{{ userStore.userName || userStore.companyName || '-' }}</span>
+          <span class="info-value">{{ uploadUserName || userStore.userName || userStore.companyName || '-' }}</span>
+        </div>
+        <div class="info-row" v-if="policyNo">
+          <span class="info-label">关联保单</span>
+          <span class="info-value">{{ policyNo }}</span>
         </div>
         <div class="info-row">
           <span class="info-label">文件名</span>
@@ -68,8 +72,14 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import { useBusinessStore } from '@/stores/business'
 import { useUserStore } from '@/stores/user'
 
-const props = defineProps({ visible: Boolean })
-const emit = defineEmits(['update:visible'])
+const props = defineProps({
+  visible: Boolean,
+  policyNo: { type: String, default: '' },
+  uploadCompanyName: { type: String, default: '' },
+  uploadUserName: { type: String, default: '' },
+  uploaderRole: { type: String, default: 'customer' }
+})
+const emit = defineEmits(['update:visible', 'upload-success'])
 
 const dialogVisible = computed({
   get: () => props.visible,
@@ -92,16 +102,19 @@ const handleUpload = () => {
     const file = uploadFile.value[0]
     const res = store.uploadCustomerPolicy({
       file,
-      companyName: userStore.companyName,
-      uploadUser: userStore.userName || userStore.companyName
+      companyName: props.uploadCompanyName || userStore.companyName,
+      uploadUser: props.uploadUserName || userStore.userName || userStore.companyName,
+      policyNo: props.policyNo,
+      uploaderRole: props.uploaderRole
     })
+    uploading.value = false
     if (res?.ok) {
       MessagePlugin.success('上传成功，等待平台OCR识别处理')
+      emit('upload-success', res.data)
+      dialogVisible.value = false
     } else {
       MessagePlugin.error(res?.message || '上传失败')
     }
-    uploading.value = false
-    dialogVisible.value = false
   }, 800)
 }
 

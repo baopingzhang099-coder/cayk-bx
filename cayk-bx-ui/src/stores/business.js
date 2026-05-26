@@ -1983,13 +1983,35 @@ export const useBusinessStore = defineStore('business', {
       return { ok: true, data: cur }
     },
 
-    generateChangeDocuments(id) {
+    generateChangeDocuments(id, docType) {
       const cur = this.policyChangeApplications.find(p => p.id === id)
       if (!cur) return { ok: false, message: '记录不存在' }
       if (cur.status !== 'chg_platform_review') return { ok: false, message: '当前状态不允许生成文档' }
-      // Simulate generating change application form + checklist
-      cur.generatedChangeForm = [{ name: `变更申请表_${cur.policyNo}.pdf`, size: '0.3 MB' }]
-      cur.generatedChecklist = [{ name: `变更材料清单_${cur.policyNo}.pdf`, size: '0.2 MB' }]
+      if (docType === 'form') {
+        if (cur.generatedChangeForm?.length > 0) return { ok: false, message: '不允许重复生成，请先删除已生成的变更申请表' }
+        cur.generatedChangeForm = [{ name: `变更申请表_${cur.policyNo}.pdf`, size: '0.3 MB' }]
+      } else if (docType === 'checklist') {
+        if (cur.generatedChecklist?.length > 0) return { ok: false, message: '不允许重复生成，请先删除已生成的材料清单' }
+        cur.generatedChecklist = [{ name: `变更材料清单_${cur.policyNo}.pdf`, size: '0.2 MB' }]
+      } else {
+        return { ok: false, message: '未知文档类型' }
+      }
+      cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    deleteChangeDocuments(id, docType) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_platform_review') return { ok: false, message: '当前状态不允许删除文档' }
+      if (docType === 'form') {
+        cur.generatedChangeForm = []
+      } else if (docType === 'checklist') {
+        cur.generatedChecklist = []
+      } else {
+        return { ok: false, message: '未知文档类型' }
+      }
       cur.updateTime = formatDateTime(new Date())
       saveStateToStorage(this.$state)
       return { ok: true, data: cur }
@@ -2138,6 +2160,21 @@ export const useBusinessStore = defineStore('business', {
       if (cur.status !== 'chg_customer_supplement') return { ok: false, message: '请等待客户补充完成后提交' }
       const now = new Date()
       cur.status = 'chg_platform_review'
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    platformPushCustomerSupplement(id, request) {
+      const cur = this.policyChangeApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'chg_platform_review') return { ok: false, message: '当前状态不允许推送客户补充' }
+      if (!cur.rejectReason) return { ok: false, message: '无驳回记录，无需推送客户补充' }
+      const now = new Date()
+      cur.status = 'chg_supplement'
+      cur.supplementRequest = request || '请补充相关材料'
+      cur.rejectReason = ''
+      cur.platformPushTime = formatDateTime(now)
       cur.updateTime = formatDateTime(now)
       saveStateToStorage(this.$state)
       return { ok: true, data: cur }

@@ -72,7 +72,7 @@
         </data-table>
       </t-tab-panel>
 
-      <t-tab-panel value="review" label="投保列表">
+      <t-tab-panel value="review" label="保单投保列表">
         <div class="table-header">
           <span class="table-title">投保列表</span>
           <t-space>
@@ -177,7 +177,7 @@
         </data-table>
       </t-tab-panel>
 
-      <t-tab-panel value="change" label="保单变更">
+      <t-tab-panel value="change" label="保单变更列表">
         <div class="table-header">
           <span class="table-title">保单变更申请列表</span>
         </div>
@@ -193,11 +193,17 @@
           <template #operation="{ row }">
             <t-space>
               <t-link @click="handleChgView(row)">查看</t-link>
-              <t-link v-if="isInkasso && row.status === 'chg_platform_review'" theme="primary" @click="handleChgGenerateDocs(row)">生成变更申请表</t-link>
-              <t-link v-if="isInkasso && row.status === 'chg_platform_review'" theme="primary" @click="handleChgGenerateChecklist(row)">生成材料清单</t-link>
-              <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.generatedChangeForm?.length > 0" theme="primary" @click="handleChgPushToClerk(row)">推送给跟单员</t-link>
-              <t-link v-if="isInkasso && row.status === 'chg_insurer_review'" theme="primary" @click="handleChgInsurerDecision(row)">模拟保险公司审核</t-link>
-              <t-link v-if="isInkasso && row.status === 'chg_insurer_approved'" theme="primary" @click="handleChgSyncPlatform(row)">同步平台记录</t-link>
+              <t-link v-if="isCustomer && row.status === 'chg_insurer_approved'" theme="primary" @click="handleChgGenerateEndorsement(row)">生成批单</t-link>
+              <t-link v-if="isCustomer && (row.status === 'chg_supplement' || row.status === 'chg_platform_supplemented')" theme="primary" @click="handleChgCustomerSupplement(row)">补充材料</t-link>
+              <t-link v-if="isInkasso && row.status === 'chg_platform_review' && !row.generatedChangeForm?.length" theme="primary" @click="handleChgGenerateDocs(row)">生成变更申请表</t-link>
+              <t-link v-if="isInkasso && row.status === 'chg_platform_review' && !row.generatedChecklist?.length" theme="primary" @click="handleChgGenerateChecklist(row)">生成材料清单</t-link>
+              <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.generatedChangeForm?.length" theme="danger" @click="handleChgDeleteDocs(row, 'form')">删除变更申请表</t-link>
+              <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.generatedChecklist?.length" theme="danger" @click="handleChgDeleteDocs(row, 'checklist')">删除材料清单</t-link>
+              <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.generatedChangeForm?.length > 0 && !row.rejectReason" theme="primary" @click="handleChgPushToClerk(row)">推送给跟单员</t-link>
+              <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.rejectReason" theme="primary" @click="handleChgPushCustomerSupplement(row)">推送客户补充资料</t-link>
+              <t-link v-if="isClerk && row.status === 'chg_insurer_review'" theme="success" @click="handleChgInsurerApprove(row)">批准</t-link>
+              <t-link v-if="isClerk && row.status === 'chg_insurer_review'" theme="danger" @click="handleChgInsurerReject(row)">驳回</t-link>
+              <t-link v-if="isClerk && row.status === 'chg_insurer_approved'" theme="primary" @click="handleChgSyncPlatform(row)">同步平台记录</t-link>
               <t-link v-if="isInkasso && row.status === 'chg_supplement'" theme="primary" @click="handleChgPlatformSupplement(row)">补充材料</t-link>
               <t-link v-if="isInkasso && row.status === 'chg_customer_supplement'" theme="primary" @click="handleChgResubmitPlatform(row)">提交平台</t-link>
               <t-link v-if="isClerk && row.status === 'chg_clerk_review'" theme="primary" @click="handleChgClerkSubmit(row)">审核通过</t-link>
@@ -210,7 +216,7 @@
         </data-table>
       </t-tab-panel>
 
-      <t-tab-panel value="renewal" label="保单续保">
+      <t-tab-panel value="renewal" label="保单续保列表">
         <div class="table-header">
           <span class="table-title">续保保单列表</span>
         </div>
@@ -232,7 +238,7 @@
         </data-table>
       </t-tab-panel>
 
-      <t-tab-panel value="surrender" label="保单退保">
+      <t-tab-panel value="surrender" label="保单退保列表">
         <div class="table-header">
           <span class="table-title">退保保单列表</span>
         </div>
@@ -697,6 +703,9 @@
               <div class="chg-record-info">
                 <span>变更原因：{{ cr.changeReason || '-' }}</span>
               </div>
+              <div v-if="cr.rejectReason" class="chg-record-info" style="color:#e34d57;">
+                <span>驳回原因：{{ cr.rejectReason }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1095,8 +1104,14 @@
         <div v-if="chgDetailRow.generatedChangeForm?.length > 0" class="detail-card">
           <div class="detail-card-title">平台生成文件</div>
           <div class="detail-grid">
-            <div class="detail-row"><span class="detail-label">变更申请表</span><span class="detail-value">{{ chgDetailRow.generatedChangeForm[0]?.name || '-' }}</span></div>
-            <div class="detail-row"><span class="detail-label">材料清单</span><span class="detail-value">{{ chgDetailRow.generatedChecklist[0]?.name || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">变更申请表</span><span class="detail-value">{{ chgDetailRow.generatedChangeForm[0]?.name || '-' }} <t-link v-if="isInkasso" theme="primary" @click="handleChgDocPreview(chgDetailRow, 'change_form')">预览</t-link></span></div>
+            <div class="detail-row"><span class="detail-label">材料清单</span><span class="detail-value">{{ chgDetailRow.generatedChecklist[0]?.name || '-' }} <t-link v-if="isInkasso" theme="primary" @click="handleChgDocPreview(chgDetailRow, 'checklist')">预览</t-link></span></div>
+          </div>
+        </div>
+        <div v-if="chgDetailRow.rejectReason" class="detail-card">
+          <div class="detail-card-title">驳回原因</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">驳回原因</span><span class="detail-value" style="color:#e34d57;">{{ chgDetailRow.rejectReason }}</span></div>
           </div>
         </div>
         <div v-if="chgDetailRow.insurerDecision" class="detail-card">
@@ -1119,6 +1134,7 @@
           <div class="detail-card-title">补充材料请求</div>
           <div class="detail-grid">
             <div class="detail-row"><span class="detail-label">补充要求</span><span class="detail-value">{{ chgDetailRow.supplementRequest }}</span></div>
+            <div class="detail-row"><span class="detail-label">推送时间</span><span class="detail-value">{{ chgDetailRow.platformPushTime || '-' }}</span></div>
           </div>
         </div>
         <div v-if="chgDetailRow.endorsementNo" class="detail-card">
@@ -1151,39 +1167,48 @@
       </template>
     </t-dialog>
 
-    <!-- 模拟保险公司审核弹窗 -->
-    <t-dialog v-model:visible="chgInsurerVisible" header="模拟保险公司审核" width="550px">
+    <!-- 批准保险公司审核弹窗 -->
+    <t-dialog v-model:visible="chgInsurerApproveVisible" header="批准保险公司审核" width="500px">
       <div class="insurer-content">
         <div class="confirm-tip" style="margin-top:0;">
           <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
-          <span class="tip-text">以保险公司角色审核该变更申请。</span>
+          <span class="tip-text">确认批准该变更申请？批准后自动同步决定结果给平台。</span>
         </div>
         <div class="reject-form" style="margin-top:16px;">
-          <label class="reject-label">审核决定 <span style="color:#dc2626;">*</span></label>
-          <t-radio-group v-model="chgInsurerDecision" class="mb-16">
-            <t-radio value="approve">批准</t-radio>
-            <t-radio value="reject">驳回</t-radio>
-          </t-radio-group>
-        </div>
-        <div class="reject-form">
-          <label class="reject-label">{{ chgInsurerDecision === 'approve' ? '审核意见' : '驳回原因' }}</label>
-          <t-textarea v-model="chgInsurerOpinion" :placeholder="chgInsurerDecision === 'approve' ? '请输入审核意见' : '请输入驳回原因'" :rows="3" />
-        </div>
-        <div v-if="chgInsurerDecision === 'approve'" class="reject-form" style="margin-top:16px;">
-          <label class="reject-label">决定文件</label>
-          <t-upload v-model="chgInsurerFiles" theme="file" :auto-upload="false" accept="application/pdf" placeholder="上传决定文件" />
+          <label class="reject-label">审核意见</label>
+          <t-textarea v-model="chgInsurerOpinion" placeholder="请输入审核意见（可选）" :rows="3" />
         </div>
       </div>
       <template #footer>
         <t-space>
-          <t-button variant="outline" @click="chgInsurerVisible = false">取消</t-button>
-          <t-button :theme="chgInsurerDecision === 'approve' ? 'success' : 'danger'" @click="confirmChgInsurer">{{ chgInsurerDecision === 'approve' ? '批准' : '驳回' }}</t-button>
+          <t-button variant="outline" @click="chgInsurerApproveVisible = false">取消</t-button>
+          <t-button theme="success" @click="confirmChgInsurerApprove">确认批准</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- 驳回保险公司审核弹窗 -->
+    <t-dialog v-model:visible="chgInsurerRejectVisible" header="驳回保险公司审核" width="500px">
+      <div class="insurer-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="warning-circle" size="16px" class="tip-icon danger" />
+          <span class="tip-text">驳回该变更申请，将退回跟单员处理。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">审批意见 <span style="color:#dc2626;">*</span></label>
+          <t-textarea v-model="chgInsurerRejectOpinion" placeholder="请输入审批意见" :rows="4" maxlength="500" show-limit-number />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="chgInsurerRejectVisible = false">取消</t-button>
+          <t-button theme="danger" @click="confirmChgInsurerReject">确认驳回</t-button>
         </t-space>
       </template>
     </t-dialog>
 
     <!-- 补充材料弹窗 -->
-    <t-dialog v-model:visible="chgSupplementVisible" :header="chgSupplementMode === 'platform' ? '平台补充材料' : '补充材料'" width="550px">
+    <t-dialog v-model:visible="chgSupplementVisible" :header="chgSupplementMode === 'platform' ? '平台补充材料' : '客户补充材料'" width="550px">
       <div class="supplement-content">
         <div v-if="chgSupplementMode === 'platform'" class="reject-content">
           <div class="confirm-tip" style="margin-top:0;">
@@ -1193,6 +1218,16 @@
           <div class="reject-form" style="margin-top:16px;">
             <label class="reject-label">补充说明</label>
             <t-textarea v-model="chgSupplementRequest" placeholder="请输入补充说明" :rows="3" />
+          </div>
+        </div>
+        <div v-if="chgSupplementMode === 'customer'" class="reject-content">
+          <div class="confirm-tip" style="margin-top:0;">
+            <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+            <span class="tip-text">请上传补充材料后提交。</span>
+          </div>
+          <div class="reject-form" style="margin-top:16px;">
+            <label class="reject-label">补充材料</label>
+            <t-upload v-model="chgSupplementFiles" theme="file" :auto-upload="false" accept="application/pdf,image/jpeg,image/png" placeholder="选择补充文件" />
           </div>
         </div>
       </div>
@@ -1244,7 +1279,42 @@
       </template>
     </t-dialog>
 
-    
+    <!-- 推送客户补充资料弹窗 -->
+    <t-dialog v-model:visible="chgPushSupplementVisible" header="推送客户补充资料" width="500px">
+      <div class="reject-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+          <span class="tip-text">跟单员驳回的申请将推送给客户补充材料，系统将记录推送历史。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">补充要求 <span style="color:#dc2626;">*</span></label>
+          <t-textarea v-model="chgPushSupplementRequest" placeholder="请输入需要客户补充的材料要求" :rows="4" maxlength="500" show-limit-number />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="chgPushSupplementVisible = false">取消</t-button>
+          <t-button theme="primary" @click="confirmChgPushCustomerSupplement">确认推送</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- Document Preview Dialog -->
+    <t-dialog v-model:visible="chgDocPreviewVisible" :header="chgDocPreviewTitle" width="750px" :destroy-on-close="true" :draggable="true" top="48px">
+      <div v-if="chgDocPreviewContent" class="doc-preview-wrapper">
+        <div class="doc-preview-header">
+          <span class="doc-preview-meta">文件名称：{{ chgDocPreviewFileName }}</span>
+          <span class="doc-preview-meta">文件大小：{{ chgDocPreviewFileSize }}</span>
+        </div>
+        <div class="doc-preview-body" v-html="chgDocPreviewContent"></div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="chgDocPreviewVisible = false">关闭</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
     <!-- 站内信弹窗 -->
     <t-dialog v-model:visible="notificationVisible" header="站内信" width="550px" :footer="false" destroy-on-close>
       <div class="notification-list" v-if="notificationList.length > 0">
@@ -1662,22 +1732,22 @@ const surrenderVisible = ref(false)
 
 
 
-    const chgDetailRow = ref(null)
-    const chgDetailVisible = ref(false)
-    const chgRejectVisible = ref(false)
-    const chgRejectReason = ref('')
-    const chgRejectTarget = ref(null)
-    const chgInsurerVisible = ref(false)
-    const chgInsurerDecision = ref('approve')
-    const chgInsurerOpinion = ref('')
-    const chgInsurerFiles = ref([])
-    const chgSupplementVisible = ref(false)
-    const chgSupplementMode = ref('')
-    const chgSupplementRequest = ref('')
-    const chgSupplementFiles = ref([])
-    const chgRecordVisible = ref(false)
-    const chgRecord = ref('')
-    const chgSupplementInitVisible = ref(false)
+const chgDetailRow = ref(null)
+const chgDetailVisible = ref(false)
+const chgRejectVisible = ref(false)
+const chgRejectReason = ref('')
+const chgRejectTarget = ref(null)
+const chgInsurerApproveVisible = ref(false)
+const chgInsurerOpinion = ref('')
+const chgInsurerRejectVisible = ref(false)
+const chgInsurerRejectOpinion = ref('')
+const chgSupplementVisible = ref(false)
+const chgSupplementMode = ref('')
+const chgSupplementRequest = ref('')
+const chgSupplementFiles = ref([])
+const chgRecordVisible = ref(false)
+const chgRecord = ref('')
+const chgSupplementInitVisible = ref(false)
 
 
 const previewVisible = ref(false)
@@ -2544,15 +2614,22 @@ const handleChgView = (row) => {
 }
 
 const handleChgGenerateDocs = (row) => {
-  const res = store.generateChangeDocuments(row.id)
+  const res = store.generateChangeDocuments(row.id, 'form')
   if (!res?.ok) { MessagePlugin.error(res?.message || '生成失败'); return }
   MessagePlugin.success('变更申请表已生成')
 }
 
 const handleChgGenerateChecklist = (row) => {
-  const res = store.generateChangeDocuments(row.id)
+  const res = store.generateChangeDocuments(row.id, 'checklist')
   if (!res?.ok) { MessagePlugin.error(res?.message || '生成失败'); return }
   MessagePlugin.success('材料清单已生成')
+}
+
+const handleChgDeleteDocs = (row, docType) => {
+  const label = docType === 'form' ? '变更申请表' : '材料清单'
+  const res = store.deleteChangeDocuments(row.id, docType)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '删除失败'); return }
+  MessagePlugin.success(`${label}已删除`)
 }
 
 const handleChgPushToClerk = (row) => {
@@ -2561,29 +2638,38 @@ const handleChgPushToClerk = (row) => {
   MessagePlugin.success('已推送给跟单员审核')
 }
 
-const handleChgInsurerDecision = (row) => {
+const handleChgInsurerApprove = (row) => {
   chgDetailRow.value = row
-  chgInsurerDecision.value = 'approve'
   chgInsurerOpinion.value = ''
-  chgInsurerFiles.value = []
-  chgInsurerVisible.value = true
+  chgInsurerApproveVisible.value = true
 }
 
-const confirmChgInsurer = () => {
+const confirmChgInsurerApprove = () => {
   if (!chgDetailRow.value) return
-  if (chgInsurerDecision.value === 'approve') {
-    const res = store.insurerApproveChange(chgDetailRow.value.id, {
-      opinion: chgInsurerOpinion.value,
-      attachments: chgInsurerFiles.value.length > 0 ? chgInsurerFiles.value : undefined
-    })
-    if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
-    MessagePlugin.success('保险公司已批准变更申请')
-  } else {
-    const res = store.insurerRejectChange(chgDetailRow.value.id, chgInsurerOpinion.value)
-    if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
-    MessagePlugin.success('保险公司已驳回变更申请')
-  }
-  chgInsurerVisible.value = false
+  const res = store.insurerApproveChange(chgDetailRow.value.id, {
+    opinion: chgInsurerOpinion.value
+  })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  // Auto-sync to platform after approval
+  const syncRes = store.syncChangeToPlatform(chgDetailRow.value.id)
+  if (!syncRes?.ok) { MessagePlugin.error(syncRes?.message || '同步失败'); return }
+  MessagePlugin.success('保险公司已批准，决定结果已同步给平台')
+  chgInsurerApproveVisible.value = false
+}
+
+const handleChgInsurerReject = (row) => {
+  chgDetailRow.value = row
+  chgInsurerRejectOpinion.value = ''
+  chgInsurerRejectVisible.value = true
+}
+
+const confirmChgInsurerReject = () => {
+  if (!chgInsurerRejectOpinion.value.trim()) { MessagePlugin.warning('请输入审批意见'); return }
+  if (!chgDetailRow.value) return
+  const res = store.insurerRejectChange(chgDetailRow.value.id, chgInsurerRejectOpinion.value)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '驳回失败'); return }
+  MessagePlugin.success('保险公司已驳回变更申请')
+  chgInsurerRejectVisible.value = false
 }
 
 const handleChgSyncPlatform = (row) => {
@@ -2596,6 +2682,20 @@ const handleChgPlatformSupplement = (row) => {
   chgDetailRow.value = row
   chgSupplementMode.value = 'platform'
   chgSupplementRequest.value = ''
+  chgSupplementVisible.value = true
+}
+
+const handleChgGenerateEndorsement = (row) => {
+  const res = store.generateEndorsement(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '生成失败'); return }
+  MessagePlugin.success(`批单已生成，编号: ${res.data.endorsementNo}`)
+}
+
+const handleChgCustomerSupplement = (row) => {
+  chgDetailRow.value = row
+  chgSupplementMode.value = 'customer'
+  chgSupplementRequest.value = ''
+  chgSupplementFiles.value = []
   chgSupplementVisible.value = true
 }
 
@@ -2667,8 +2767,105 @@ const confirmChgSupplement = () => {
     const res = store.platformSupplementMaterial(chgDetailRow.value.id, { supplementNote: chgSupplementRequest.value })
     if (!res?.ok) { MessagePlugin.error(res?.message || '提交失败'); return }
     MessagePlugin.success('材料已补充，已向客户推送补充请求')
+  } else if (chgSupplementMode.value === 'customer') {
+    const res = store.submitCustomerSupplement(chgDetailRow.value.id, { files: chgSupplementFiles.value })
+    if (!res?.ok) { MessagePlugin.error(res?.message || '提交失败'); return }
+    MessagePlugin.success('补充材料已提交')
   }
   chgSupplementVisible.value = false
+}
+
+// Push customer supplement
+const chgPushSupplementVisible = ref(false)
+const chgPushSupplementRequest = ref('')
+
+const handleChgPushCustomerSupplement = (row) => {
+  chgDetailRow.value = row
+  chgPushSupplementRequest.value = ''
+  chgPushSupplementVisible.value = true
+}
+
+const confirmChgPushCustomerSupplement = () => {
+  if (!chgPushSupplementRequest.value.trim()) { MessagePlugin.warning('请输入补充要求'); return }
+  if (!chgDetailRow.value) return
+  const res = store.platformPushCustomerSupplement(chgDetailRow.value.id, chgPushSupplementRequest.value)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '推送失败'); return }
+  MessagePlugin.success('已推送客户补充资料')
+  chgPushSupplementVisible.value = false
+}
+
+// Document preview
+const chgDocPreviewVisible = ref(false)
+const chgDocPreviewTitle = ref('')
+const chgDocPreviewFileName = ref('')
+const chgDocPreviewFileSize = ref('')
+const chgDocPreviewContent = ref('')
+
+const handleChgDocPreview = (row, type) => {
+  if (type === 'change_form') {
+    const file = row.generatedChangeForm?.[0]
+    chgDocPreviewTitle.value = '变更申请表预览'
+    chgDocPreviewFileName.value = file?.name || '变更申请表.pdf'
+    chgDocPreviewFileSize.value = file?.size || '-'
+    chgDocPreviewContent.value = `
+      <div style="padding:24px;font-family:'Microsoft YaHei',sans-serif;">
+        <h2 style="text-align:center;margin-bottom:24px;font-size:18px;">保单变更申请书</h2>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;width:120px;background:#f8f9fa;font-weight:600;">申请编号</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.id || '-'}</td></tr>
+          <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">保单号</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.policyNo || '-'}</td></tr>
+          <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">变更类型</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.changeTypeName || '-'}</td></tr>
+          <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">变更原因</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.changeReason || '-'}</td></tr>
+          <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">变更前内容</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.beforeContent || '-'}</td></tr>
+          <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">变更后内容</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.afterContent || '-'}</td></tr>
+          <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">生效日期</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.effectiveDate || '-'}</td></tr>
+          <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">申请时间</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.createTime || '-'}</td></tr>
+        </table>
+        <div style="margin-top:16px;padding:12px;background:#fff8e6;border:1px solid #fef3c7;border-radius:4px;font-size:12px;color:#92400e;">
+          提示：此文件为系统生成的预览版本，仅供查看。实际文件以PDF格式为准。
+        </div>
+      </div>
+    `
+  } else if (type === 'checklist') {
+    const file = row.generatedChecklist?.[0]
+    chgDocPreviewTitle.value = '变更材料清单预览'
+    chgDocPreviewFileName.value = file?.name || '变更材料清单.pdf'
+    chgDocPreviewFileSize.value = file?.size || '-'
+    const items = [
+      { name: '保单变更申请书', required: true, status: '已提交' },
+      { name: '变更事项说明', required: true, status: row.changeReason ? '已提交' : '待提交' },
+      { name: '相关证明材料', required: false, status: row.supportingDocs?.length > 0 ? '已提交' : '待提交' }
+    ]
+    const itemsHtml = items.map((item, idx) => `
+      <tr>
+        <td style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;">${idx + 1}</td>
+        <td style="padding:8px 12px;border:1px solid #d0d5dd;">${item.name}</td>
+        <td style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;">${item.required ? '<span style="color:#dc2626;">*</span>' : '-'}</td>
+        <td style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;"><span style="color:${item.status === '已提交' ? '#00a870' : '#f59e0b'};">${item.status}</span></td>
+      </tr>
+    `).join('')
+    chgDocPreviewContent.value = `
+      <div style="padding:24px;font-family:'Microsoft YaHei',sans-serif;">
+        <h2 style="text-align:center;margin-bottom:24px;font-size:18px;">变更材料清单</h2>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#f8f9fa;">
+              <th style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;width:40px;">序号</th>
+              <th style="padding:8px 12px;border:1px solid #d0d5dd;text-align:left;">材料名称</th>
+              <th style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;width:60px;">必填</th>
+              <th style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;width:80px;">状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+        <div style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;font-size:12px;color:#166534;">
+          共 ${items.length} 项材料，已提交 ${items.filter(i => i.status === '已提交').length} 项
+        </div>
+      </div>
+    `
+  }
+  chgDocPreviewVisible.value = true
 }
 
 // ===== Renewal tab =====
@@ -3353,4 +3550,8 @@ onMounted(() => { store.ensureSeeded() })
 .reject-label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 8px; }
 .insurer-content, .record-content, .supplement-content { padding: 8px 0; }
 .mb-16 { margin-bottom: 16px; }
+.doc-preview-wrapper { max-height: 70vh; overflow-y: auto; }
+.doc-preview-header { display: flex; gap: 24px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #eef2f6; border-radius: 6px; margin-bottom: 16px; }
+.doc-preview-meta { font-size: 12px; color: #64748b; }
+.doc-preview-body { border: 1px solid #eef2f6; border-radius: 6px; overflow: hidden; background: #fff; }
 </style>

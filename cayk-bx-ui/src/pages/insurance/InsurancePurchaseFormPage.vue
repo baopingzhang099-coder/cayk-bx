@@ -2087,14 +2087,22 @@ const handleSave = () => {
     payload.policyEndDate = payload.policyPeriodRange[1]
   }
   const saved = store.createOrUpdateInsuranceApplication(payload)
-  router.push('/insurance/purchase')
+  if (saved?.id) {
+    router.push(`/insurance/purchase/${saved.id}`)
+  } else {
+    router.push('/insurance/purchase')
+  }
   MessagePlugin.success('已保存')
 }
 
 const handleSubmit = () => {
   const saved = store.createOrUpdateInsuranceApplication({ ...formData, id: formData.id || undefined })
   MessagePlugin.success('投保申请已创建')
-  router.push('/insurance/purchase')
+  if (saved?.id) {
+    router.push(`/insurance/purchase/${saved.id}`)
+  } else {
+    router.push('/insurance/purchase')
+  }
 }
 
 onMounted(() => {

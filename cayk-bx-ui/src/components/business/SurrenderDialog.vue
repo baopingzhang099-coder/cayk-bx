@@ -2,7 +2,7 @@
   <t-dialog :visible="visible" @update:visible="emit('update:visible', $event)" header="退保申请" width="720px" :destroy-on-close="true">
     <!-- 保单信息 -->
     <div class="policy-info-section" v-if="policy">
-      <div class="modal-section-title">📋 保单信息</div>
+      <div class="modal-section-title">保单信息</div>
       <div class="info-grid mb-16">
         <div class="info-row">
           <span class="info-label">保单号</span>
@@ -61,23 +61,6 @@
       <t-form-item label="退保原因" name="surrenderReason">
         <t-textarea v-model="formData.surrenderReason" placeholder="请输入退保原因" :autosize="{ minRows: 3, maxRows: 5 }" />
       </t-form-item>
-      <t-form-item label="退保生效日期" name="effectiveDate">
-        <t-date-picker v-model="formData.effectiveDate" placeholder="保险公司核定" clearable />
-      </t-form-item>
-
-      <t-divider>费用结算</t-divider>
-      <t-form-item label="已生效月数" name="activeMonths">
-        <t-input-number v-model="formData.activeMonths" :min="0" disabled />
-        <template #help>系统自动计算</template>
-      </t-form-item>
-      <t-form-item label="短期费率" name="shortTermRate">
-        <t-input-number v-model="formData.shortTermRate" :min="0" :max="100" :suffix="'%'" placeholder="保险公司核定" />
-      </t-form-item>
-      <t-form-item label="应退保费金额" name="refundAmount">
-        <t-input-number v-model="formData.refundAmount" :min="0" placeholder="保险公司核定" />
-        <template #help>按未到期天数比例计算退费</template>
-      </t-form-item>
-
       <t-divider>附件上传</t-divider>
       <t-form-item label="退保申请书（必传）" name="surrenderApplication">
         <t-upload v-model="formData.surrenderApplication" action="https://demo.com/upload" accept=".pdf" />
@@ -95,7 +78,6 @@
       <t-form-item label="其他文件" name="otherDocuments">
         <t-upload v-model="formData.otherDocuments" action="https://demo.com/upload" accept=".pdf,.jpg" multiple />
       </t-form-item>
-
     </t-form>
     <template #footer>
       <t-space>
@@ -109,6 +91,9 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
+import { useBusinessStore } from '@/stores/business'
+
+const store = useBusinessStore()
 
 const props = defineProps({
   visible: Boolean,
@@ -118,20 +103,9 @@ const emit = defineEmits(['update:visible', 'saved'])
 
 const formRef = ref(null)
 
-const calculateActiveMonths = () => {
-  if (!props.policy?.effectiveDate || !props.policy?.expiryDate) return 0
-  const start = new Date(props.policy.effectiveDate)
-  const end = new Date(props.policy.expiryDate)
-  return Math.max(0, (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth())
-}
-
 const formData = reactive({
   applicationDate: new Date().toISOString().split('T')[0],
   surrenderReason: '',
-  effectiveDate: '',
-  activeMonths: calculateActiveMonths(),
-  shortTermRate: 0,
-  refundAmount: 0,
   surrenderApplication: [],
   originalPolicy: [],
   legalPersonId: [],
@@ -140,13 +114,18 @@ const formData = reactive({
 })
 
 const formRules = {
-  surrenderReason: [{ required: true, message: '请输入退保原因', type: 'error' }],
-  surrenderApplication: []
+  surrenderReason: [{ required: true, message: '请输入退保原因', type: 'error' }]
 }
 
 const handleSubmit = async ({ validateResult }) => {
   if (validateResult !== true) return
-  MessagePlugin.success('退保申请已提交（原型模拟）')
+  if (!props.policy) { MessagePlugin.error('保单信息缺失'); return }
+  const res = store.createSurrenderApp(props.policy.policyNo, { ...formData })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '提交失败'); return }
+  // submit to platform immediately after creation
+  const submitRes = store.submitSurrenderToPlatform(res.data.id)
+  if (!submitRes?.ok) { MessagePlugin.error(submitRes?.message || '提交审核失败'); return }
+  MessagePlugin.success('退保申请已提交至平台审核')
   emit('saved', { ...formData })
   emit('update:visible', false)
 }

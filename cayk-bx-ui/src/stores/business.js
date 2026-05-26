@@ -92,6 +92,7 @@ const saveStateToStorage = (state) => {
       notifications: state.notifications,
       policyChangeApplications: state.policyChangeApplications,
       renewalApplications: state.renewalApplications,
+      surrenderApplications: state.surrenderApplications,
       _savedAt: new Date().toISOString()
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
@@ -127,7 +128,9 @@ export const useBusinessStore = defineStore('business', {
     claimUpdateVersion: 0,
     insuranceUpdateVersion: 0,
     policyChangeApplications: [],
-    renewalApplications: []
+    renewalApplications: [],
+    surrenderApplications: [],
+    surrenderUpdateVersion: 0
   }),
   getters: {
     insuranceStats(state) {
@@ -167,6 +170,10 @@ export const useBusinessStore = defineStore('business', {
       this.insuranceUpdateVersion++
       saveStateToStorage(this.$state)
     },
+    touchSurrenderApplications() {
+      this.surrenderUpdateVersion++
+      saveStateToStorage(this.$state)
+    },
     ensureSeeded() {
       if (this.insuranceApplications.length > 0) return
       // 尝试从localStorage恢复
@@ -186,10 +193,12 @@ export const useBusinessStore = defineStore('business', {
         this.notifications = saved.notifications || []
         this.policyChangeApplications = saved.policyChangeApplications || []
         this.renewalApplications = saved.renewalApplications || []
+        this.surrenderApplications = saved.surrenderApplications || []
         return
       }
       this.policyChangeApplications = []
       this.renewalApplications = []
+      this.surrenderApplications = []
       // Seed a renewal application at renew_active state for testing payment flow
       const now = new Date()
       this.renewalApplications.push({
@@ -236,6 +245,134 @@ export const useBusinessStore = defineStore('business', {
           { name: '上年度出运汇总.xlsx', size: '0.5 MB', generatedAt: '2026-04-26 10:00:00' }
         ]
       })
+      // Seed policies for demo/testing
+      this.policies = [
+        {
+          id: 'P_SEED_ACTIVE_1',
+          policyNo: 'POL20260426000000',
+          insuranceCompany: '人保财险',
+          policyholder: '深圳电子科技有限公司',
+          insured: 'TechBuyer Co., Ltd',
+          coverageAmount: 5000000,
+          premium: 5500,
+          effectiveDate: '2025-04-26',
+          expiryDate: '2026-04-25',
+          usedQuota: 1200000,
+          remainingQuota: 3800000,
+          currency: 'USD',
+          status: 'active',
+          statusName: '有效',
+          businessType: 'goods',
+          renewalFlag: 'yes'
+        },
+        {
+          id: 'P_SEED_ACTIVE_2',
+          policyNo: 'POL20260315000001',
+          insuranceCompany: '太平洋保险',
+          policyholder: '上海进出口贸易有限公司',
+          insured: 'EuroDistributor GmbH',
+          coverageAmount: 3000000,
+          premium: 3500,
+          effectiveDate: '2025-03-15',
+          expiryDate: '2026-03-14',
+          usedQuota: 800000,
+          remainingQuota: 2200000,
+          currency: 'USD',
+          status: 'active',
+          statusName: '有效',
+          businessType: 'goods',
+          renewalFlag: 'no'
+        }
+      ]
+      // Seed surrender applications for demo
+      this.surrenderApplications = [
+        {
+          id: 'SR_SEED_PLATFORM',
+          policyNo: 'POL20260426000000',
+          companyName: '深圳电子科技有限公司',
+          insured: 'TechBuyer Co., Ltd',
+          insuranceCompany: '人保财险',
+          coverageAmount: 5000000,
+          premium: 5500,
+          effectiveDate: '2025-04-26',
+          expiryDate: '2026-04-25',
+          currency: 'USD',
+          surrenderReason: '业务调整，不再需要出口信用保险覆盖',
+          applicationDate: '2026-05-25',
+          effectiveDate: '',
+          surrenderApplication: [{ name: '退保申请书_POL20260426000000.pdf', size: '0.3 MB' }],
+          originalPolicy: [],
+          legalPersonId: [],
+          paymentReceipt: [],
+          otherDocuments: [],
+          generatedSurrenderForm: [],
+          generatedSurrenderChecklist: [],
+          activeMonths: 13,
+          shortTermRate: 0,
+          refundAmount: 0,
+          netRefundAmount: 0,
+          insurerPaymentTime: '',
+          insurerPaymentRef: '',
+          clerkSyncRecord: '',
+          clerkSyncTime: '',
+          rejectReason: '',
+          supplementHistory: [],
+          trackingStatus: '',
+          trackingStartTime: '',
+          status: 'sr_platform_review',
+          createTime: '2026-05-25 09:00:00',
+          updateTime: '2026-05-25 09:00:00',
+          submitTime: '2026-05-25 09:00:00',
+          platformReviewTime: '',
+          clerkReviewTime: '',
+          insurerReviewTime: '',
+          completedTime: '',
+          terminatedTime: ''
+        },
+        {
+          id: 'SR_SEED_TERMINATED',
+          policyNo: 'POL20260315000001',
+          companyName: '上海进出口贸易有限公司',
+          insured: 'EuroDistributor GmbH',
+          insuranceCompany: '太平洋保险',
+          coverageAmount: 3000000,
+          premium: 3500,
+          effectiveDate: '2025-03-15',
+          expiryDate: '2026-03-14',
+          currency: 'USD',
+          surrenderReason: '保单到期不再续保',
+          applicationDate: '2026-02-20',
+          effectiveDate: '2026-03-14',
+          surrenderApplication: [{ name: '退保申请书_POL20260315000001.pdf', size: '0.3 MB' }],
+          originalPolicy: [],
+          legalPersonId: [],
+          paymentReceipt: [],
+          otherDocuments: [],
+          generatedSurrenderForm: [{ name: '退保申请表_POL20260315000001.pdf', size: '0.4 MB' }],
+          generatedSurrenderChecklist: [{ name: '退保材料清单_POL20260315000001.pdf', size: '0.2 MB' }],
+          activeMonths: 12,
+          shortTermRate: 45,
+          refundAmount: 1575,
+          netRefundAmount: 1425,
+          insurerPaymentTime: '2026-03-01 14:00:00',
+          insurerPaymentRef: 'INS-PAY-20260301-001',
+          clerkSyncRecord: '退保金额已核对，已同步至平台',
+          clerkSyncTime: '2026-03-02 10:00:00',
+          rejectReason: '',
+          supplementHistory: [],
+          trackingStatus: 'monthly',
+          trackingStartTime: '2026-03-15 09:00:00',
+          status: 'sr_terminated',
+          createTime: '2026-02-20 08:30:00',
+          updateTime: '2026-03-15 09:00:00',
+          submitTime: '2026-02-20 08:30:00',
+          platformReviewTime: '2026-02-21 09:00:00',
+          clerkReviewTime: '2026-02-22 10:00:00',
+          insurerReviewTime: '2026-02-25 11:00:00',
+          completedTime: '2026-03-02 10:00:00',
+          terminatedTime: '2026-03-15 09:00:00'
+        }
+      ]
       this.insuranceApplications = []
       this.creditLimits = []
       this.shipments = []
@@ -2594,6 +2731,414 @@ export const useBusinessStore = defineStore('business', {
       }
       saveStateToStorage(this.$state)
       return { ok: true, data: cur }
+    },
+
+    // ===== Surrender Application Lifecycle =====
+    createSurrenderApp(policyNo, formData) {
+      const policy = this.policies.find(p => p.policyNo === policyNo)
+      if (!policy) return { ok: false, message: '保单不存在' }
+      // Check active claims
+      const activeClaims = this.claims.filter(c => c.relatedPolicyNo === policyNo && c.status !== 'completed')
+      if (activeClaims.length > 0) {
+        return { ok: false, message: `该保单存在 ${activeClaims.length} 笔未结案理赔记录，请先处理完成后再申请退保` }
+      }
+      const now = new Date()
+      const id = createId('SR')
+      const app = {
+        id,
+        policyNo,
+        companyName: formData.companyName || policy.policyholder,
+        insured: formData.insured || policy.insured,
+        insuranceCompany: formData.insuranceCompany || policy.insuranceCompany,
+        coverageAmount: formData.coverageAmount || policy.coverageAmount,
+        premium: formData.premium || policy.premium,
+        effectiveDate: policy.effectiveDate,
+        expiryDate: policy.expiryDate,
+        currency: policy.currency || 'USD',
+        surrenderReason: formData.surrenderReason || '',
+        applicationDate: formData.applicationDate || formatDate(now),
+        surrenderEffectiveDate: formData.effectiveDate || '',
+        surrenderApplication: formData.surrenderApplication || [],
+        originalPolicy: formData.originalPolicy || [],
+        legalPersonId: formData.legalPersonId || [],
+        paymentReceipt: formData.paymentReceipt || [],
+        otherDocuments: formData.otherDocuments || [],
+        generatedSurrenderForm: [],
+        generatedSurrenderChecklist: [],
+        activeMonths: formData.activeMonths || 0,
+        shortTermRate: 0,
+        refundAmount: 0,
+        netRefundAmount: 0,
+        insurerPaymentTime: '',
+        insurerPaymentRef: '',
+        clerkSyncRecord: '',
+        clerkSyncTime: '',
+        rejectReason: '',
+        supplementHistory: [],
+        trackingStatus: '',
+        trackingStartTime: '',
+        status: 'sr_draft',
+        createTime: formatDateTime(now),
+        updateTime: formatDateTime(now),
+        submitTime: '',
+        platformReviewTime: '',
+        clerkReviewTime: '',
+        insurerReviewTime: '',
+        completedTime: '',
+        terminatedTime: ''
+      }
+      this.surrenderApplications.unshift(app)
+      this.touchSurrenderApplications()
+      return { ok: true, data: app, message: '退保申请已创建' }
+    },
+
+    submitSurrenderToPlatform(id) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_draft') return { ok: false, message: '当前状态不允许提交' }
+      const now = new Date()
+      cur.status = 'sr_platform_review'
+      cur.submitTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_notify',
+        toRole: 'inkasso',
+        title: '退保申请通知',
+        content: `客户 ${cur.companyName} 已提交退保申请（编号：${id}），请尽快处理`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '退保申请已提交至平台审核' }
+    },
+
+    generateSurrenderDocs(id, docType) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_platform_review') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      const file = { name: docType === 'form' ? `退保申请表_${cur.policyNo}.pdf` : `退保材料清单_${cur.policyNo}.pdf`, size: '0.3 MB', generatedAt: formatDateTime(now) }
+      if (docType === 'form') cur.generatedSurrenderForm.push(file)
+      else cur.generatedSurrenderChecklist.push(file)
+      cur.updateTime = formatDateTime(now)
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: docType === 'form' ? '退保申请表已生成' : '退保材料清单已生成' }
+    },
+
+    deleteSurrenderDocs(id, docType) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_platform_review') return { ok: false, message: '当前状态不允许操作' }
+      if (docType === 'form') cur.generatedSurrenderForm = []
+      else cur.generatedSurrenderChecklist = []
+      cur.updateTime = formatDateTime(new Date())
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '已删除' }
+    },
+
+    pushSurrenderToClerk(id) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_platform_review') return { ok: false, message: '当前状态不允许操作' }
+      if (!cur.generatedSurrenderForm.length) return { ok: false, message: '请先生成退保申请表' }
+      const now = new Date()
+      cur.status = 'sr_clerk_review'
+      cur.platformReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_notify',
+        toRole: 'clerk',
+        title: '退保审核通知',
+        content: `平台已推送退保申请（编号：${id}），请审核退保资料`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '已推送给跟单员审核' }
+    },
+
+    clerkApproveSurrender(id) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_clerk_review') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'sr_insurer_review'
+      cur.clerkReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_notify',
+        toRole: 'clerk',
+        title: '退保审核通知',
+        content: `跟单员已审核通过退保申请（编号：${id}），请推送保险公司审核`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '跟单员审核通过，已推送至保险公司审核' }
+    },
+
+    clerkRejectSurrender(id, reason) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_clerk_review') return { ok: false, message: '当前状态不允许操作' }
+      if (!reason) return { ok: false, message: '请填写驳回原因' }
+      const now = new Date()
+      cur.status = 'sr_platform_review'
+      cur.rejectReason = reason
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_notify',
+        toRole: 'inkasso',
+        title: '退保驳回通知',
+        content: `跟单员驳回了退保申请（编号：${id}），原因：${reason}`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '已驳回退保申请，退回平台' }
+    },
+
+    insurerApproveSurrender(id, data) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_insurer_review') return { ok: false, message: '当前状态不允许操作' }
+      if (!data.refundAmount && data.refundAmount !== 0) return { ok: false, message: '请填写退保金额' }
+      const now = new Date()
+      cur.status = 'sr_insurer_approved'
+      cur.shortTermRate = data.shortTermRate || 0
+      cur.refundAmount = data.refundAmount
+      cur.netRefundAmount = data.netRefundAmount || data.refundAmount
+      cur.surrenderEffectiveDate = data.surrenderEffectiveDate || cur.surrenderEffectiveDate
+      cur.insurerReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_notify',
+        toRole: 'clerk',
+        title: '退保批准通知',
+        content: `保险公司已批准退保申请（编号：${id}），退保金额：$${Number(data.refundAmount).toLocaleString()}`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '保险公司已批准退保' }
+    },
+
+    insurerRejectSurrender(id, reason) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_insurer_review') return { ok: false, message: '当前状态不允许操作' }
+      if (!reason) return { ok: false, message: '请填写驳回原因' }
+      const now = new Date()
+      cur.status = 'sr_insurer_rejected'
+      cur.rejectReason = reason
+      cur.insurerReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '保险公司已驳回退保申请' }
+    },
+
+    insurerInitiatePayment(id, data) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_insurer_approved') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'sr_payment_initiated'
+      cur.insurerPaymentTime = formatDateTime(now)
+      cur.insurerPaymentRef = data.paymentRef || ''
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_notify',
+        toRole: 'clerk',
+        title: '退保支付通知',
+        content: `保险公司已发起退保支付（编号：${id}），支付参考号：${cur.insurerPaymentRef}，请同步平台`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '退保支付已发起' }
+    },
+
+    clerkSyncSurrenderToPlatform(id, data) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_payment_initiated') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'sr_platform_synced'
+      cur.clerkSyncRecord = data.syncRecord || '退保金额已同步'
+      cur.clerkSyncTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '退保金额信息已同步至平台' }
+    },
+
+    customerConfirmRefund(id) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_platform_synced') return { ok: false, message: '当前状态不允许确认' }
+      const now = new Date()
+      cur.status = 'sr_terminated'
+      cur.completedTime = formatDateTime(now)
+      cur.terminatedTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      // Update policy status to terminated
+      const policy = this.policies.find(p => p.policyNo === cur.policyNo)
+      if (policy) {
+        policy.status = 'terminated'
+        policy.statusName = '保单已终止'
+        policy.surrenderRecord = {
+          surrenderId: cur.id,
+          refundAmount: cur.netRefundAmount,
+          terminatedTime: formatDateTime(now)
+        }
+      }
+      // Update related contract
+      const contract = this.contracts.find(c => c.policyNo === cur.policyNo)
+      if (contract) {
+        contract.status = 'cancelled'
+        contract.updatedAt = formatDateTime(now)
+      }
+      // Notify inkasso and clerk for termination sync
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_complete',
+        toRole: 'inkasso',
+        title: '退保完成通知',
+        content: `客户已确认退费，保单 ${cur.policyNo} 已终止，请同步更新`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_complete',
+        toRole: 'clerk',
+        title: '退保跟踪通知',
+        content: `保单 ${cur.policyNo} 已终止退保，请开始月度/季度跟踪排查`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '退费已确认，保单已终止' }
+    },
+
+    // Rejection Flow A — supplement resubmission
+    clerkInitiateSupplement(id, request) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_insurer_rejected') return { ok: false, message: '当前状态不允许操作' }
+      if (!request) return { ok: false, message: '请填写补充资料要求' }
+      const now = new Date()
+      cur.status = 'sr_supplement'
+      cur.supplementHistory.push({ type: 'request', content: request, time: formatDateTime(now) })
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_notify',
+        toRole: 'inkasso',
+        title: '退保补充资料通知',
+        content: `跟单员要求补充退保资料（编号：${id}），请通知客户补充`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '已发起补充资料请求' }
+    },
+
+    platformNotifyCustomerSupplement(id) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      const validStatuses = ['sr_supplement', 'sr_platform_review']
+      if (!validStatuses.includes(cur.status)) return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'sr_customer_supplement'
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_notify',
+        toRole: 'customer',
+        title: '退保补充资料通知',
+        content: `您的退保申请（编号：${id}）需要补充资料，请尽快提交`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '已通知客户补充资料' }
+    },
+
+    customerSubmitSupplement(id, data) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_customer_supplement') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.supplementHistory.push({
+        type: 'submission',
+        content: data.supplementNote || '',
+        files: data.supportingDocs || [],
+        time: formatDateTime(now)
+      })
+      cur.updateTime = formatDateTime(now)
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '补充资料已提交' }
+    },
+
+    customerPushToPlatform(id) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_customer_supplement') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'sr_platform_review'
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_notify',
+        toRole: 'inkasso',
+        title: '退保补充资料已提交',
+        content: `客户已提交补充资料（编号：${id}），请审核`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '补充资料已推送至平台审核' }
+    },
+
+    clerkResubmitToInsurer(id) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_platform_review') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'sr_insurer_review'
+      cur.updateTime = formatDateTime(now)
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '已重新提交至保险公司审核' }
+    },
+
+    // Rejection Flow B — business termination
+    clerkRejectTerminate(id, reason) {
+      const cur = this.surrenderApplications.find(a => a.id === id)
+      if (!cur) return { ok: false, message: '退保申请不存在' }
+      if (cur.status !== 'sr_insurer_rejected') return { ok: false, message: '当前状态不允许操作' }
+      if (!reason) return { ok: false, message: '请填写终止原因' }
+      const now = new Date()
+      cur.status = 'sr_business_terminated'
+      cur.rejectReason = reason
+      cur.terminatedTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      this.notifications.unshift({
+        id: createId('NOTIF'),
+        type: 'surrender_notify',
+        toRole: 'customer',
+        title: '退保终止通知',
+        content: `您的退保申请（编号：${id}）已被终止，原因：${reason}`,
+        time: formatDateTime(now),
+        read: false
+      })
+      this.touchSurrenderApplications()
+      return { ok: true, data: cur, message: '退保申请已终止' }
     }
   }
 })

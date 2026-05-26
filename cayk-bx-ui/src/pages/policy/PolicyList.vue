@@ -455,21 +455,48 @@
 
       <t-tab-panel value="surrender" label="保单退保列表">
         <div class="table-header">
-          <span class="table-title">退保保单列表</span>
+          <span class="table-title">退保申请列表</span>
         </div>
         <div class="stats-grid mb-24">
-          <stat-card title="退保保单" :value="surrenderPolicyCount" icon="file" color="danger" />
+          <stat-card title="总申请" :value="srTotalCount" icon="file" color="primary" />
+          <stat-card title="待处理" :value="srPendingCount" icon="search" color="warning" />
+          <stat-card title="已完成" :value="srCompletedCount" icon="check-circle" color="success" />
         </div>
         <data-table :data="surrenderTableData" :columns="surrenderColumns" :pagination="surrenderPagination" :loading="loading" row-key="id" @page-change="handleSurrenderPageChange">
           <template #status="{ row }">
-            <status-tag :status="row.status" :status-map="policyStatusMap" />
+            <status-tag :status="row.status" :status-map="srStatusMap" />
           </template>
           <template #coverageAmount="{ row }">
             <span>${{ Number(row.coverageAmount || 0).toLocaleString() }}</span>
           </template>
           <template #operation="{ row }">
             <t-space>
-              <t-link @click="handleViewPolicy(row)">查看</t-link>
+              <t-link @click="handleSurrenderView(row)">查看</t-link>
+
+              <!-- Customer operations -->
+              <t-link v-if="isCustomer && row.status === 'sr_platform_synced'" theme="success" @click="handleSurrenderConfirmRefund(row)">确认退款</t-link>
+              <t-link v-if="isCustomer && row.status === 'sr_customer_supplement'" theme="primary" @click="handleSurrenderCustomerSupplement(row)">补充材料</t-link>
+              <t-link v-if="isCustomer && row.status === 'sr_customer_supplement'" theme="primary" @click="handleSurrenderCustomerPush(row)">推送平台审核</t-link>
+
+              <!-- Inkasso operations -->
+              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && !row.generatedSurrenderForm?.length" theme="primary" @click="handleSurrenderGenDocs(row, 'form')">生成退保申请表</t-link>
+              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && !row.generatedSurrenderChecklist?.length" theme="primary" @click="handleSurrenderGenDocs(row, 'checklist')">生成材料清单</t-link>
+              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && row.generatedSurrenderForm?.length" theme="danger" @click="handleSurrenderDelDocs(row, 'form')">删除退保申请表</t-link>
+              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && row.generatedSurrenderChecklist?.length" theme="danger" @click="handleSurrenderDelDocs(row, 'checklist')">删除材料清单</t-link>
+              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && row.generatedSurrenderForm?.length > 0 && !row.rejectReason" theme="primary" @click="handleSurrenderPushClerk(row)">推送给跟单员</t-link>
+              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && row.rejectReason && !row.supplementHistory?.some(s => s.type === 'submission')" theme="primary" @click="handleSurrenderPushCustomerSupplement(row)">推送客户补充</t-link>
+              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && row.rejectReason && row.supplementHistory?.some(s => s.type === 'submission')" theme="primary" @click="handleSurrenderPushClerkAfterSupplement(row)">推送跟单员确认</t-link>
+              <t-link v-if="isInkasso && row.status === 'sr_supplement'" theme="primary" @click="handleSurrenderPlatformSupplement(row)">补充材料</t-link>
+
+              <!-- Clerk operations -->
+              <t-link v-if="isClerk && row.status === 'sr_clerk_review'" theme="success" @click="handleSurrenderClerkApprove(row)">审核通过</t-link>
+              <t-link v-if="isClerk && row.status === 'sr_clerk_review'" theme="danger" @click="handleSurrenderClerkReject(row)">驳回</t-link>
+              <t-link v-if="isClerk && row.status === 'sr_insurer_review'" theme="success" @click="handleSurrenderInsurerApprove(row)">保险公司批准</t-link>
+              <t-link v-if="isClerk && row.status === 'sr_insurer_review'" theme="danger" @click="handleSurrenderInsurerReject(row)">驳回</t-link>
+              <t-link v-if="isClerk && row.status === 'sr_insurer_approved'" theme="primary" @click="handleSurrenderInsurerPay(row)">发起退款</t-link>
+              <t-link v-if="isClerk && row.status === 'sr_payment_initiated'" theme="primary" @click="handleSurrenderSyncPlatform(row)">同步平台</t-link>
+              <t-link v-if="isClerk && row.status === 'sr_insurer_rejected'" theme="primary" @click="handleSurrenderInitSupplement(row)">发起补充请求</t-link>
+              <t-link v-if="isClerk && row.status === 'sr_insurer_rejected'" theme="danger" @click="handleSurrenderRejectTerminate(row)">退保终止</t-link>
             </t-space>
           </template>
         </data-table>
@@ -1293,6 +1320,274 @@
       @saved="handleSurrenderSaved"
     />
 
+    <!-- 退保申请详情弹窗 -->
+    <t-dialog v-model:visible="srDetailVisible" :header="'退保详情 - ' + (srDetailRow?.id || '')" width="800px" :footer="false">
+      <div v-if="srDetailRow" class="detail-body">
+        <div class="detail-card">
+          <div class="detail-card-title">基本信息</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">申请编号</span><span class="detail-value">{{ srDetailRow.id }}</span></div>
+            <div class="detail-row"><span class="detail-label">保单号</span><span class="detail-value">{{ srDetailRow.policyNo }}</span></div>
+            <div class="detail-row"><span class="detail-label">被保险人</span><span class="detail-value">{{ srDetailRow.companyName }}</span></div>
+            <div class="detail-row"><span class="detail-label">投保买方</span><span class="detail-value">{{ srDetailRow.insured }}</span></div>
+            <div class="detail-row"><span class="detail-label">保险公司</span><span class="detail-value">{{ srDetailRow.insuranceCompany }}</span></div>
+            <div class="detail-row"><span class="detail-label">保险金额</span><span class="detail-value">${{ Number(srDetailRow.coverageAmount || 0).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">保费金额</span><span class="detail-value">${{ Number(srDetailRow.premium || 0).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">保单生效日期</span><span class="detail-value">{{ srDetailRow.effectiveDate }}</span></div>
+            <div class="detail-row"><span class="detail-label">保单到期日期</span><span class="detail-value">{{ srDetailRow.expiryDate }}</span></div>
+            <div class="detail-row"><span class="detail-label">币种</span><span class="detail-value">{{ srDetailRow.currency }}</span></div>
+            <div class="detail-row"><span class="detail-label">状态</span><span class="detail-value"><status-tag :status="srDetailRow.status" :status-map="srStatusMap" /></span></div>
+          </div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-title">退保申请</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">退保原因</span><span class="detail-value">{{ srDetailRow.surrenderReason }}</span></div>
+            <div class="detail-row"><span class="detail-label">申请日期</span><span class="detail-value">{{ srDetailRow.applicationDate }}</span></div>
+            <div class="detail-row"><span class="detail-label">退保生效日期</span><span class="detail-value">{{ srDetailRow.surrenderEffectiveDate || '-' }}</span></div>
+          </div>
+        </div>
+        <div v-if="srDetailRow.generatedSurrenderForm?.length > 0" class="detail-card">
+          <div class="detail-card-title">平台生成文件</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">退保申请表</span><span class="detail-value">{{ srDetailRow.generatedSurrenderForm[0]?.name }}</span></div>
+            <div class="detail-row"><span class="detail-label">材料清单</span><span class="detail-value">{{ srDetailRow.generatedSurrenderChecklist?.[0]?.name || '-' }}</span></div>
+          </div>
+        </div>
+        <div v-if="srDetailRow.refundAmount > 0" class="detail-card">
+          <div class="detail-card-title">退保结算</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">已生效月数</span><span class="detail-value">{{ srDetailRow.activeMonths }} 个月</span></div>
+            <div class="detail-row"><span class="detail-label">短期费率</span><span class="detail-value">{{ srDetailRow.shortTermRate }}%</span></div>
+            <div class="detail-row"><span class="detail-label">应退保费金额</span><span class="detail-value" style="color:#00a870;">${{ Number(srDetailRow.refundAmount).toLocaleString() }}</span></div>
+            <div class="detail-row"><span class="detail-label">实退金额</span><span class="detail-value" style="color:#00a870;">${{ Number(srDetailRow.netRefundAmount).toLocaleString() }}</span></div>
+          </div>
+        </div>
+        <div v-if="srDetailRow.insurerPaymentRef" class="detail-card">
+          <div class="detail-card-title">保险公司支付信息</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">支付参考号</span><span class="detail-value">{{ srDetailRow.insurerPaymentRef }}</span></div>
+            <div class="detail-row"><span class="detail-label">支付时间</span><span class="detail-value">{{ srDetailRow.insurerPaymentTime }}</span></div>
+          </div>
+        </div>
+        <div v-if="srDetailRow.clerkSyncRecord" class="detail-card">
+          <div class="detail-card-title">跟单员同步记录</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">同步记录</span><span class="detail-value">{{ srDetailRow.clerkSyncRecord }}</span></div>
+            <div class="detail-row"><span class="detail-label">同步时间</span><span class="detail-value">{{ srDetailRow.clerkSyncTime }}</span></div>
+          </div>
+        </div>
+        <div v-if="srDetailRow.rejectReason" class="detail-card">
+          <div class="detail-card-title">驳回原因</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">驳回原因</span><span class="detail-value" style="color:#e34d57;">{{ srDetailRow.rejectReason }}</span></div>
+          </div>
+        </div>
+        <div v-if="srDetailRow.supplementHistory?.length > 0" class="detail-card">
+          <div class="detail-card-title">补充资料记录</div>
+          <div class="detail-grid" v-for="(item, idx) in srDetailRow.supplementHistory" :key="idx">
+            <div class="detail-row"><span class="detail-label">{{ item.type === 'request' ? '补充要求' : '补充内容' }}</span><span class="detail-value">{{ item.content }}</span></div>
+            <div class="detail-row"><span class="detail-label">时间</span><span class="detail-value">{{ item.time }}</span></div>
+          </div>
+        </div>
+        <div v-if="srDetailRow.trackingStatus" class="detail-card">
+          <div class="detail-card-title">跟踪记录</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">跟踪频率</span><span class="detail-value">{{ srDetailRow.trackingStatus === 'monthly' ? '月度' : '季度' }}</span></div>
+            <div class="detail-row"><span class="detail-label">开始时间</span><span class="detail-value">{{ srDetailRow.trackingStartTime }}</span></div>
+          </div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-title">时间轴</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">创建时间</span><span class="detail-value">{{ srDetailRow.createTime }}</span></div>
+            <div class="detail-row"><span class="detail-label">提交时间</span><span class="detail-value">{{ srDetailRow.submitTime || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">平台审核时间</span><span class="detail-value">{{ srDetailRow.platformReviewTime || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">跟单员审核时间</span><span class="detail-value">{{ srDetailRow.clerkReviewTime || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">保险公司审核时间</span><span class="detail-value">{{ srDetailRow.insurerReviewTime || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">完成时间</span><span class="detail-value">{{ srDetailRow.completedTime || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">终止时间</span><span class="detail-value">{{ srDetailRow.terminatedTime || '-' }}</span></div>
+          </div>
+        </div>
+      </div>
+    </t-dialog>
+
+    <!-- 退保保险公司批准弹窗 -->
+    <t-dialog v-model:visible="srInsurerApproveVisible" header="保险公司批准退保" width="550px">
+      <div class="insurer-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="info-circle-filled" size="16px" class="tip-icon success" />
+          <span class="tip-text">确认保险公司批准退保申请，请填写退保金额。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">退保生效日期</label>
+          <t-date-picker v-model="srInsurerApproveForm.effectiveDate" style="width:100%;" />
+        </div>
+        <div class="reject-form" style="margin-top:12px;">
+          <label class="reject-label">短期费率 (%)</label>
+          <t-input-number v-model="srInsurerApproveForm.shortTermRate" :min="0" :max="100" style="width:100%;" />
+        </div>
+        <div class="reject-form" style="margin-top:12px;">
+          <label class="reject-label">应退保费金额 <span style="color:#dc2626;">*</span></label>
+          <t-input-number v-model="srInsurerApproveForm.refundAmount" :min="0" style="width:100%;" />
+        </div>
+        <div class="reject-form" style="margin-top:12px;">
+          <label class="reject-label">实退金额</label>
+          <t-input-number v-model="srInsurerApproveForm.netRefundAmount" :min="0" style="width:100%;" />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="srInsurerApproveVisible = false">取消</t-button>
+          <t-button theme="success" @click="confirmInsurerApprove">确认批准</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- 退保保险公司驳回弹窗 -->
+    <t-dialog v-model:visible="srInsurerRejectVisible" header="保险公司驳回退保" width="500px">
+      <div class="reject-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="warning-circle" size="16px" class="tip-icon danger" />
+          <span class="tip-text">确认驳回退保申请？驳回后可发起补充请求或终止退保。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">驳回原因 <span style="color:#dc2626;">*</span></label>
+          <t-textarea v-model="srInsurerRejectReason" placeholder="请输入驳回原因" :rows="4" maxlength="500" show-limit-number />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="srInsurerRejectVisible = false">取消</t-button>
+          <t-button theme="danger" @click="confirmInsurerReject">确认驳回</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- 退保发起支付弹窗 -->
+    <t-dialog v-model:visible="srPayVisible" header="发起退保支付" width="500px">
+      <div class="insurer-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+          <span class="tip-text">确认保险公司已发起退保支付，请填写支付参考号。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">支付参考号 <span style="color:#dc2626;">*</span></label>
+          <t-input v-model="srPayRef" placeholder="请输入支付参考号" />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="srPayVisible = false">取消</t-button>
+          <t-button theme="primary" @click="confirmInsurerPay">确认发起支付</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- 退保跟单员驳回弹窗 -->
+    <t-dialog v-model:visible="srClerkRejectVisible" header="跟单员驳回退保" width="500px">
+      <div class="reject-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="warning-circle" size="16px" class="tip-icon danger" />
+          <span class="tip-text">确认驳回退保申请？将退回平台处理。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">驳回原因 <span style="color:#dc2626;">*</span></label>
+          <t-textarea v-model="srClerkRejectReason" placeholder="请输入驳回原因" :rows="4" maxlength="500" show-limit-number />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="srClerkRejectVisible = false">取消</t-button>
+          <t-button theme="danger" @click="confirmClerkReject">确认驳回</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- 退保跟单员同步平台弹窗 -->
+    <t-dialog v-model:visible="srSyncVisible" header="同步退保金额至平台" width="500px">
+      <div class="insurer-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+          <span class="tip-text">确认退保金额信息已核对，同步至平台。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">同步记录</label>
+          <t-textarea v-model="srSyncRecord" placeholder="请输入同步说明" :rows="3" maxlength="500" />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="srSyncVisible = false">取消</t-button>
+          <t-button theme="primary" @click="confirmSyncPlatform">确认同步</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- 退保补充材料请求弹窗 -->
+    <t-dialog v-model:visible="srSupplementVisible" header="发起补充资料请求" width="550px">
+      <div class="insurer-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+          <span class="tip-text">发起补充资料请求后，将通知客户补充材料。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">补充资料要求 <span style="color:#dc2626;">*</span></label>
+          <t-textarea v-model="srSupplementRequest" placeholder="请输入需要补充的材料说明" :rows="4" maxlength="500" show-limit-number />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="srSupplementVisible = false">取消</t-button>
+          <t-button theme="primary" :disabled="!srSupplementRequest.trim()" @click="confirmSupplement">发起补充请求</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- 退保终止弹窗 -->
+    <t-dialog v-model:visible="srTerminateVisible" header="退保业务终止" width="500px">
+      <div class="reject-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="warning-circle" size="16px" class="tip-icon danger" />
+          <span class="tip-text">确认终止退保申请？此操作不可撤销，退保流程将结束。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">终止原因 <span style="color:#dc2626;">*</span></label>
+          <t-textarea v-model="srTerminateReason" placeholder="请输入终止原因" :rows="4" maxlength="500" show-limit-number />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="srTerminateVisible = false">取消</t-button>
+          <t-button theme="danger" @click="confirmTerminate">确认终止</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- 退保客户补充材料弹窗 -->
+    <t-dialog v-model:visible="srCustomerSupplementVisible" header="补充资料" width="550px">
+      <div class="insurer-content">
+        <div v-if="srSupplementTargetRef?.supplementHistory?.length" class="confirm-tip" style="margin-top:0;">
+          <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+          <span class="tip-text">补充要求：{{ srSupplementTargetRef.supplementHistory.filter(s => s.type === 'request').pop()?.content }}</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">补充说明 <span style="color:#dc2626;">*</span></label>
+          <t-textarea v-model="srCustomerSupplementContent" placeholder="请描述补充的内容" :rows="3" maxlength="500" />
+        </div>
+        <div class="reject-form" style="margin-top:12px;">
+          <label class="reject-label">补充材料</label>
+          <t-upload v-model="srCustomerSupplementFiles" theme="file" :auto-upload="false" accept=".pdf,.jpg,.png" placeholder="选择补充文件" />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="srCustomerSupplementVisible = false">取消</t-button>
+          <t-button theme="primary" :disabled="!srCustomerSupplementContent.trim()" @click="confirmCustomerSupplement">提交补充资料</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
 <!-- 变更申请详情弹窗 -->
     <t-dialog v-model:visible="chgDetailVisible" :header="'变更详情 - ' + (chgDetailRow?.id || '')" width="800px" :footer="false">
       <div v-if="chgDetailRow" class="detail-body">
@@ -1800,7 +2095,7 @@ const policyStatusMap = {
   suspended: '中止',
   cancelled: '退保',
   renewed: '已续保',
-  terminated: '终止',
+  terminated: '保单已终止',
   applying: '申请中',
   approved: '已确认',
   pending_review: '待确认',
@@ -2646,14 +2941,7 @@ const handleRenewalSaved = (data) => {
   }
 }
 const handleSurrenderSaved = (data) => {
-  if (currentPolicy.value) {
-    store.policies = store.policies.map(p =>
-      p.policyNo === currentPolicy.value.policyNo
-        ? { ...p, status: 'cancelled' }
-        : p
-    )
-    MessagePlugin.success('保单状态已更新为退保')
-  }
+  MessagePlugin.success('退保申请已提交，请等待平台审核')
 }
 // ===== Export =====
 const handleExport = () => { exportData.value = filteredData.value; exportVisible.value = true }
@@ -3353,31 +3641,286 @@ const handleRenewalSyncPayment = (row) => {
 }
 
 // ===== Surrender tab =====
+const srStatusMap = {
+  sr_draft: '退保申请待提交',
+  sr_platform_review: '平台审核中',
+  sr_clerk_review: '跟单员审核中',
+  sr_insurer_review: '保险公司审核中',
+  sr_insurer_approved: '保险公司已通过',
+  sr_payment_initiated: '退保支付已发起',
+  sr_platform_synced: '平台已同步',
+  sr_terminated: '保单已终止',
+  sr_insurer_rejected: '保险公司已驳回',
+  sr_supplement: '待补充材料',
+  sr_customer_supplement: '客户补充材料中',
+  sr_business_terminated: '退保业务终止'
+}
+
 const surrenderColumns = [
+  { colKey: 'id', title: '申请编号', width: 160 },
   { colKey: 'policyNo', title: '保单号', width: 140 },
+  { colKey: 'companyName', title: '被保险人', ellipsis: true },
   { colKey: 'insuranceCompany', title: '保险公司', width: 100 },
-  { colKey: 'policyholder', title: '被保险人', ellipsis: true },
   { colKey: 'coverageAmount', title: '保险金额', align: 'right', width: 120, slot: 'coverageAmount' },
-  { colKey: 'effectiveDate', title: '生效日期', width: 110 },
-  { colKey: 'expiryDate', title: '到期日期', width: 110 },
-  { colKey: 'status', title: '状态', width: 100, slot: 'status' },
-  { colKey: 'operation', title: '操作', width: 140, fixed: 'right', slot: 'operation' }
+  { colKey: 'status', title: '状态', width: 120, slot: 'status' },
+  { colKey: 'operation', title: '操作', width: 260, fixed: 'right', slot: 'operation' }
 ]
 
 const surrenderPagination = reactive({ total: 0, current: 1, pageSize: 20 })
 
 const surrenderTableData = computed(() => {
-  const list = (store.policies || []).filter(p => p.status === 'cancelled' || p.status === 'surrender')
+  const list = store.surrenderApplications || []
   surrenderPagination.total = list.length
   const start = (surrenderPagination.current - 1) * surrenderPagination.pageSize
   return list.slice(start, start + surrenderPagination.pageSize)
 })
 
-const surrenderPolicyCount = computed(() => (store.policies || []).filter(p => p.status === 'cancelled' || p.status === 'surrender').length)
+const srTotalCount = computed(() => (store.surrenderApplications || []).length)
+const srPendingCount = computed(() => (store.surrenderApplications || []).filter(a =>
+  ['sr_platform_review', 'sr_clerk_review', 'sr_insurer_review', 'sr_insurer_rejected',
+   'sr_supplement', 'sr_customer_supplement'].includes(a.status)
+).length)
+const srCompletedCount = computed(() => (store.surrenderApplications || []).filter(a =>
+  ['sr_terminated', 'sr_business_terminated'].includes(a.status)
+).length)
 
 const handleSurrenderPageChange = (pageInfo) => {
   surrenderPagination.current = pageInfo.current
   surrenderPagination.pageSize = pageInfo.pageSize
+}
+
+// Surrender dialog state
+const srDetailRow = ref(null)
+const srDetailVisible = ref(false)
+const srInsurerApproveVisible = ref(false)
+const srInsurerApproveTarget = ref(null)
+const srInsurerApproveForm = reactive({ effectiveDate: '', shortTermRate: 0, refundAmount: 0, netRefundAmount: 0 })
+const srInsurerRejectVisible = ref(false)
+const srInsurerRejectTarget = ref(null)
+const srInsurerRejectReason = ref('')
+const srPayVisible = ref(false)
+const srPayTarget = ref(null)
+const srPayRef = ref('')
+const srClerkRejectVisible = ref(false)
+const srClerkRejectTarget = ref(null)
+const srClerkRejectReason = ref('')
+const srSyncVisible = ref(false)
+const srSyncTarget = ref(null)
+const srSyncRecord = ref('')
+const srSupplementVisible = ref(false)
+const srSupplementTarget = ref(null)
+const srSupplementRequest = ref('')
+const srTerminateVisible = ref(false)
+const srTerminateTarget = ref(null)
+const srTerminateReason = ref('')
+const srCustomerSupplementVisible = ref(false)
+const srSupplementTargetRef = ref(null)
+const srCustomerSupplementContent = ref('')
+const srCustomerSupplementFiles = ref([])
+
+// Surrender view detail
+const handleSurrenderView = (row) => {
+  srDetailRow.value = row
+  srDetailVisible.value = true
+}
+
+// Surrender generate/delete docs
+const handleSurrenderGenDocs = (row, type) => {
+  const name = type === 'form' ? '退保申请表' : '材料清单'
+  const res = store.generateSurrenderDocs(row.id, type)
+  if (!res?.ok) { MessagePlugin.error(res?.message || `生成${name}失败`); return }
+  MessagePlugin.success(`${name}已生成`)
+}
+
+const handleSurrenderDelDocs = (row, type) => {
+  const name = type === 'form' ? '退保申请表' : '材料清单'
+  const res = store.deleteSurrenderDocs(row.id, type)
+  if (!res?.ok) { MessagePlugin.error(res?.message || `删除${name}失败`); return }
+  MessagePlugin.success(`${name}已删除`)
+}
+
+// Surrender push to clerk
+const handleSurrenderPushClerk = (row) => {
+  const res = store.pushSurrenderToClerk(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '推送失败'); return }
+  MessagePlugin.success('已推送给跟单员审核')
+}
+
+// Surrender push clerk after customer supplement (inkasso → clerk)
+const handleSurrenderPushClerkAfterSupplement = (row) => {
+  const res = store.pushSurrenderToClerk(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '推送失败'); return }
+  MessagePlugin.success('已推送给跟单员确认')
+}
+
+// Surrender push customer supplement (from inkasso)
+const handleSurrenderPushCustomerSupplement = (row) => {
+  const res = store.platformNotifyCustomerSupplement(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已通知客户补充资料')
+}
+
+// Surrender clerk approve/reject
+const handleSurrenderClerkApprove = (row) => {
+  const res = store.clerkApproveSurrender(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('审核通过，已推送至保险公司审核')
+}
+
+const handleSurrenderClerkReject = (row) => {
+  srClerkRejectTarget.value = row
+  srClerkRejectReason.value = ''
+  srClerkRejectVisible.value = true
+}
+
+const confirmClerkReject = () => {
+  if (!srClerkRejectReason.value.trim()) { MessagePlugin.warning('请填写驳回原因'); return }
+  const res = store.clerkRejectSurrender(srClerkRejectTarget.value.id, srClerkRejectReason.value)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '驳回失败'); return }
+  srClerkRejectVisible.value = false
+  MessagePlugin.success('已驳回退保申请')
+}
+
+// Surrender insurer approve
+const handleSurrenderInsurerApprove = (row) => {
+  srInsurerApproveTarget.value = row
+  srInsurerApproveForm.effectiveDate = ''
+  srInsurerApproveForm.shortTermRate = 0
+  srInsurerApproveForm.refundAmount = 0
+  srInsurerApproveForm.netRefundAmount = 0
+  srInsurerApproveVisible.value = true
+}
+
+const confirmInsurerApprove = () => {
+  const target = srInsurerApproveTarget.value
+  if (!target) return
+  if (!srInsurerApproveForm.refundAmount && srInsurerApproveForm.refundAmount !== 0) { MessagePlugin.warning('请填写退保金额'); return }
+  const res = store.insurerApproveSurrender(target.id, { ...srInsurerApproveForm })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  srInsurerApproveVisible.value = false
+  MessagePlugin.success('保险公司已批准退保')
+}
+
+// Surrender insurer reject
+const handleSurrenderInsurerReject = (row) => {
+  srInsurerRejectTarget.value = row
+  srInsurerRejectReason.value = ''
+  srInsurerRejectVisible.value = true
+}
+
+const confirmInsurerReject = () => {
+  if (!srInsurerRejectReason.value.trim()) { MessagePlugin.warning('请填写驳回原因'); return }
+  const res = store.insurerRejectSurrender(srInsurerRejectTarget.value.id, srInsurerRejectReason.value)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '驳回失败'); return }
+  srInsurerRejectVisible.value = false
+  MessagePlugin.success('已驳回退保申请')
+}
+
+// Surrender insurer pay
+const handleSurrenderInsurerPay = (row) => {
+  srPayTarget.value = row
+  srPayRef.value = ''
+  srPayVisible.value = true
+}
+
+const confirmInsurerPay = () => {
+  if (!srPayRef.value.trim()) { MessagePlugin.warning('请填写支付参考号'); return }
+  const res = store.insurerInitiatePayment(srPayTarget.value.id, { paymentRef: srPayRef.value })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  srPayVisible.value = false
+  MessagePlugin.success('退保支付已发起')
+}
+
+// Surrender sync to platform
+const handleSurrenderSyncPlatform = (row) => {
+  srSyncTarget.value = row
+  srSyncRecord.value = '退保金额已核对，已同步至平台'
+  srSyncVisible.value = true
+}
+
+const confirmSyncPlatform = () => {
+  const res = store.clerkSyncSurrenderToPlatform(srSyncTarget.value.id, { syncRecord: srSyncRecord.value })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '同步失败'); return }
+  srSyncVisible.value = false
+  MessagePlugin.success('退保金额已同步至平台')
+}
+
+// Surrender customer confirm refund
+const handleSurrenderConfirmRefund = (row) => {
+  const res = store.customerConfirmRefund(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('退费已确认，保单已终止')
+}
+
+// Surrender supplement request (Flow A)
+const handleSurrenderInitSupplement = (row) => {
+  srSupplementTarget.value = row
+  srSupplementRequest.value = ''
+  srSupplementVisible.value = true
+}
+
+const confirmSupplement = () => {
+  if (!srSupplementRequest.value.trim()) { MessagePlugin.warning('请填写补充资料要求'); return }
+  const res = store.clerkInitiateSupplement(srSupplementTarget.value.id, srSupplementRequest.value)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  srSupplementVisible.value = false
+  MessagePlugin.success('已发起补充资料请求')
+}
+
+// Surrender platform supplement
+const handleSurrenderPlatformSupplement = (row) => {
+  const res = store.platformNotifyCustomerSupplement(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已推送客户补充资料')
+}
+
+// Surrender customer supplement
+const handleSurrenderCustomerSupplement = (row) => {
+  srSupplementTargetRef.value = row
+  srCustomerSupplementContent.value = ''
+  srCustomerSupplementFiles.value = []
+  srCustomerSupplementVisible.value = true
+}
+
+const confirmCustomerSupplement = () => {
+  const target = srSupplementTargetRef.value
+  if (!target || !srCustomerSupplementContent.value.trim()) { MessagePlugin.warning('请填写补充说明'); return }
+  const res = store.customerSubmitSupplement(target.id, {
+    supplementNote: srCustomerSupplementContent.value,
+    supportingDocs: srCustomerSupplementFiles.value
+  })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '提交失败'); return }
+  srCustomerSupplementVisible.value = false
+  MessagePlugin.success('补充资料已提交')
+}
+
+// Surrender customer push to platform
+const handleSurrenderCustomerPush = (row) => {
+  const res = store.customerPushToPlatform(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已推送平台审核')
+}
+
+// Surrender clerk resubmit to insurer
+const handleSurrenderResubmitClerk = (row) => {
+  const res = store.clerkResubmitToInsurer(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已重新提交至保险公司审核')
+}
+
+// Surrender reject terminate (Flow B)
+const handleSurrenderRejectTerminate = (row) => {
+  srTerminateTarget.value = row
+  srTerminateReason.value = ''
+  srTerminateVisible.value = true
+}
+
+const confirmTerminate = () => {
+  if (!srTerminateReason.value.trim()) { MessagePlugin.warning('请填写终止原因'); return }
+  const res = store.clerkRejectTerminate(srTerminateTarget.value.id, srTerminateReason.value)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  srTerminateVisible.value = false
+  MessagePlugin.success('退保申请已终止')
 }
 
 

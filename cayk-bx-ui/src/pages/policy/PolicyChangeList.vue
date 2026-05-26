@@ -37,6 +37,7 @@
           <t-link v-if="isCustomer && row.status === 'chg_draft'" theme="primary" @click="handleSubmitToPlatform(row)">提交平台审核</t-link>
           <t-link v-if="isCustomer && row.status === 'chg_insurer_approved'" theme="primary" @click="handleGenerateEndorsement(row)">生成批单</t-link>
           <t-link v-if="isCustomer && (row.status === 'chg_supplement' || row.status === 'chg_platform_supplemented')" theme="primary" @click="handleCustomerSupplement(row)">补充材料</t-link>
+          <t-link v-if="isCustomer && row.status === 'chg_customer_supplement'" theme="primary" @click="handleResubmitPlatform(row)">推送平台审核</t-link>
 
           <!-- Inkasso operations -->
           <t-link v-if="isInkasso && row.status === 'chg_platform_review' && !row.generatedChangeForm.length" theme="primary" @click="handleGenerateDocs(row)">生成变更申请表</t-link>
@@ -45,7 +46,7 @@
           <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.generatedChecklist.length" theme="danger" @click="handleDeleteDocs(row, 'checklist')">删除材料清单</t-link>
           <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.generatedChangeForm.length > 0 && !row.rejectReason" theme="primary" @click="handlePushToClerk(row)">推送给跟单员</t-link>
           <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.rejectReason" theme="primary" @click="handlePushCustomerSupplement(row)">推送客户补充资料</t-link>
-          <t-link v-if="isClerk && row.status === 'chg_insurer_review'" theme="success" @click="handleInsurerApprove(row)">批准</t-link>
+          <t-link v-if="isClerk && row.status === 'chg_insurer_review'" theme="success" @click="handleInsurerApprove(row)">保险公司批准</t-link>
           <t-link v-if="isClerk && row.status === 'chg_insurer_review'" theme="danger" @click="handleInsurerReject(row)">驳回</t-link>
           <t-link v-if="isClerk && row.status === 'chg_insurer_approved'" theme="primary" @click="handleSyncPlatform(row)">同步平台记录</t-link>
           <t-link v-if="isInkasso && row.status === 'chg_supplement'" theme="primary" @click="handlePlatformSupplement(row)">补充材料</t-link>
@@ -62,7 +63,7 @@
     </data-table>
 
     <!-- View Detail Dialog -->
-    <t-dialog v-model:visible="detailVisible" :header="'变更详情 - ' + (detailRow?.id || '')" width="800px" :footer="false">
+    <t-dialog v-model:visible="detailVisible" :header="isCustomer ? '保单申请变更详情' : '变更详情 - ' + (detailRow?.id || '')" width="800px" :footer="false">
       <div v-if="detailRow" class="detail-body">
         <div class="detail-card">
           <div class="detail-card-title">📋 基本信息</div>
@@ -127,11 +128,40 @@
           </div>
         </div>
 
+        <div v-if="detailRow.supplementHistory && detailRow.supplementHistory.length" class="detail-card">
+          <div class="detail-card-title">📦 客户补充资料记录</div>
+          <div class="detail-grid">
+            <div v-for="(entry, idx) in detailRow.supplementHistory" :key="idx" class="supplement-entry">
+              <div class="supplement-entry-header">
+                <t-tag theme="primary" variant="light" size="small">第{{ idx + 1 }}次补充</t-tag>
+                <span class="supplement-time">{{ entry.time }}</span>
+              </div>
+              <div class="supplement-entry-body">
+                <div class="supplement-entry-row">
+                  <span class="detail-label">补充说明：</span>
+                  <span class="detail-value">{{ entry.note }}</span>
+                </div>
+                <div v-if="entry.files && entry.files.length" class="supplement-entry-row">
+                  <span class="detail-label">补充文件：</span>
+                  <span class="detail-value">{{ entry.files.map(f => f.name).join('、') }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="detailRow.endorsementNo" class="detail-card">
           <div class="detail-card-title">📄 批单信息</div>
           <div class="detail-grid">
             <div class="detail-row"><span class="detail-label">批单编号</span><span class="detail-value">{{ detailRow.endorsementNo }}</span></div>
             <div class="detail-row"><span class="detail-label">生成时间</span><span class="detail-value">{{ detailRow.endorsementTime || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">出具机构</span><span class="detail-value">{{ detailRow.endorsementContent?.insurer || '保险公司' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">保单号</span><span class="detail-value">{{ detailRow.endorsementContent?.policyNo || detailRow.policyNo || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">变更类型</span><span class="detail-value">{{ detailRow.endorsementContent?.changeTypeName || detailRow.changeTypeName || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">变更原因</span><span class="detail-value">{{ detailRow.endorsementContent?.changeReason || detailRow.changeReason || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">变更前内容</span><span class="detail-value">{{ detailRow.endorsementContent?.beforeContent || detailRow.beforeContent || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">变更后内容</span><span class="detail-value">{{ detailRow.endorsementContent?.afterContent || detailRow.afterContent || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">生效日期</span><span class="detail-value">{{ detailRow.endorsementContent?.effectiveDate || detailRow.effectiveDate || '-' }}</span></div>
           </div>
         </div>
       </div>
@@ -183,9 +213,13 @@
         <div v-if="supplementMode === 'customer'" class="reject-content">
           <div class="confirm-tip" style="margin-top:0;">
             <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
-            <span class="tip-text">请上传补充材料后提交。</span>
+            <span class="tip-text">请填写补充说明并上传补充材料后提交。</span>
           </div>
           <div class="reject-form" style="margin-top:16px;">
+            <label class="reject-label">补充说明</label>
+            <t-textarea v-model="supplementRequest" placeholder="请描述补充的内容" :rows="3" maxlength="500" />
+          </div>
+          <div class="reject-form" style="margin-top:12px;">
             <label class="reject-label">补充材料</label>
             <t-upload v-model="supplementFiles" theme="file" :auto-upload="false" accept="application/pdf,image/jpeg,image/png" placeholder="选择补充文件" />
           </div>
@@ -200,11 +234,11 @@
     </t-dialog>
 
     <!-- Insurer Approve Dialog -->
-    <t-dialog v-model:visible="insurerApproveVisible" header="批准保险公司审核" width="500px">
+    <t-dialog v-model:visible="insurerApproveVisible" header="保险公司批准" width="500px">
       <div class="insurer-content">
         <div class="confirm-tip" style="margin-top:0;">
           <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
-          <span class="tip-text">确认批准该变更申请？批准后自动同步决定结果给平台。</span>
+          <span class="tip-text">确认批准该变更申请？批准后将自动生成批单并同步给平台。</span>
         </div>
         <div class="reject-form" style="margin-top:16px;">
           <label class="reject-label">审核意见</label>
@@ -346,7 +380,7 @@ const chgStatusMap = {
   chg_insurer_rejected: '保险公司已驳回',
   chg_supplement: '待补充材料',
   chg_platform_supplemented: '平台已补充',
-  chg_customer_supplement: '客户已补充',
+  chg_customer_supplement: '补充资料完成',
   chg_completed: '已完成'
 }
 
@@ -481,7 +515,9 @@ const confirmInsurerApprove = () => {
   // Auto-sync to platform after approval
   const syncRes = store.syncChangeToPlatform(detailRow.value.id)
   if (!syncRes?.ok) { MessagePlugin.error(syncRes?.message || '同步失败'); return }
-  MessagePlugin.success('保险公司已批准，决定结果已同步给平台')
+  // Generate endorsement as attachment
+  store.generateEndorsement(detailRow.value.id)
+  MessagePlugin.success('保险公司已批准，批单已生成并同步给平台')
   insurerApproveVisible.value = false
 }
 
@@ -542,6 +578,7 @@ const handleCustomerSupplement = (row) => {
   supplementMode.value = 'customer'
   supplementRequest.value = ''
   supplementFiles.value = []
+  detailRow.value = row
   supplementVisible.value = true
 }
 
@@ -553,7 +590,7 @@ const handlePlatformSupplement = (row) => {
 
 const confirmSupplement = () => {
   if (supplementMode.value === 'customer') {
-    const res = store.submitCustomerSupplement(detailRow.value?.id, { files: supplementFiles.value })
+    const res = store.submitCustomerSupplement(detailRow.value?.id, { note: supplementRequest.value, files: supplementFiles.value })
     if (!res?.ok) { MessagePlugin.error(res?.message || '提交失败'); return }
     MessagePlugin.success('补充材料已提交')
   } else if (supplementMode.value === 'platform') {
@@ -708,4 +745,12 @@ const generateChecklistPreview = (row) => {
 .doc-preview-header { display: flex; gap: 24px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #eef2f6; border-radius: 6px; margin-bottom: 16px; }
 .doc-preview-meta { font-size: 12px; color: #64748b; }
 .doc-preview-body { border: 1px solid #eef2f6; border-radius: 6px; overflow: hidden; background: #fff; }
+.supplement-entry { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
+.supplement-entry:last-child { border-bottom: none; }
+.supplement-entry-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.supplement-time { font-size: 12px; color: #94a3b8; }
+.supplement-entry-body { padding-left: 4px; }
+.supplement-entry-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 4px; }
+.supplement-entry-row .detail-label { white-space: nowrap; }
+.supplement-entry-row .detail-value { text-align: left; font-weight: 400; }
 </style>

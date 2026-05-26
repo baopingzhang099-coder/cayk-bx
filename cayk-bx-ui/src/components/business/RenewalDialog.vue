@@ -136,6 +136,9 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
+import { useBusinessStore } from '@/stores/business'
+
+const store = useBusinessStore()
 
 const props = defineProps({
   visible: Boolean,
@@ -185,7 +188,20 @@ const handleSubmit = async ({ validateResult }) => {
     MessagePlugin.error('投保比例不能超过90%')
     return
   }
-  MessagePlugin.success('续保申请已提交（原型模拟）')
+  const payload = {
+    ...formData,
+    policyNo: props.policy?.policyNo,
+    insuranceCompany: props.policy?.insuranceCompany,
+    policyholder: props.policy?.policyholder,
+    insured: props.policy?.insured,
+    coverageAmount: props.policy?.coverageAmount,
+    premium: props.policy?.premium,
+    originalEffectiveDate: props.policy?.effectiveDate,
+    originalExpiryDate: props.policy?.expiryDate
+  }
+  const res = store.submitRenewalApplication(payload)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '提交失败'); return }
+  MessagePlugin.success('续保申请已提交')
   emit('saved', { ...formData })
   emit('update:visible', false)
 }

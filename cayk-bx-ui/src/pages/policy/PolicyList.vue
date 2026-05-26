@@ -195,13 +195,14 @@
               <t-link @click="handleChgView(row)">查看</t-link>
               <t-link v-if="isCustomer && row.status === 'chg_insurer_approved'" theme="primary" @click="handleChgGenerateEndorsement(row)">生成批单</t-link>
               <t-link v-if="isCustomer && (row.status === 'chg_supplement' || row.status === 'chg_platform_supplemented')" theme="primary" @click="handleChgCustomerSupplement(row)">补充材料</t-link>
+              <t-link v-if="isCustomer && row.status === 'chg_customer_supplement'" theme="primary" @click="handleChgResubmitPlatform(row)">推送平台审核</t-link>
               <t-link v-if="isInkasso && row.status === 'chg_platform_review' && !row.generatedChangeForm?.length" theme="primary" @click="handleChgGenerateDocs(row)">生成变更申请表</t-link>
               <t-link v-if="isInkasso && row.status === 'chg_platform_review' && !row.generatedChecklist?.length" theme="primary" @click="handleChgGenerateChecklist(row)">生成材料清单</t-link>
               <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.generatedChangeForm?.length" theme="danger" @click="handleChgDeleteDocs(row, 'form')">删除变更申请表</t-link>
               <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.generatedChecklist?.length" theme="danger" @click="handleChgDeleteDocs(row, 'checklist')">删除材料清单</t-link>
               <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.generatedChangeForm?.length > 0 && !row.rejectReason" theme="primary" @click="handleChgPushToClerk(row)">推送给跟单员</t-link>
               <t-link v-if="isInkasso && row.status === 'chg_platform_review' && row.rejectReason" theme="primary" @click="handleChgPushCustomerSupplement(row)">推送客户补充资料</t-link>
-              <t-link v-if="isClerk && row.status === 'chg_insurer_review'" theme="success" @click="handleChgInsurerApprove(row)">批准</t-link>
+              <t-link v-if="isClerk && row.status === 'chg_insurer_review'" theme="success" @click="handleChgInsurerApprove(row)">保险公司批准</t-link>
               <t-link v-if="isClerk && row.status === 'chg_insurer_review'" theme="danger" @click="handleChgInsurerReject(row)">驳回</t-link>
               <t-link v-if="isClerk && row.status === 'chg_insurer_approved'" theme="primary" @click="handleChgSyncPlatform(row)">同步平台记录</t-link>
               <t-link v-if="isInkasso && row.status === 'chg_supplement'" theme="primary" @click="handleChgPlatformSupplement(row)">补充材料</t-link>
@@ -218,24 +219,238 @@
 
       <t-tab-panel value="renewal" label="保单续保列表">
         <div class="table-header">
-          <span class="table-title">续保保单列表</span>
-        </div>
-        <div class="stats-grid mb-24">
-          <stat-card title="续保保单" :value="renewalPolicyCount" icon="file" color="primary" />
+          <span class="table-title">续保申请列表</span>
+          <span class="table-count">共 {{ renewalApps.length }} 条记录</span>
         </div>
         <data-table :data="renewalTableData" :columns="renewalColumns" :pagination="renewalPagination" :loading="loading" row-key="id" @page-change="handleRenewalPageChange">
           <template #status="{ row }">
-            <status-tag :status="row.status" :status-map="policyStatusMap" />
+            <status-tag :status="row.status" :status-map="renewalStatusMap" />
           </template>
-          <template #coverageAmount="{ row }">
-            <span>${{ Number(row.coverageAmount || 0).toLocaleString() }}</span>
+          <template #paymentStatus="{ row }">
+            <span :style="{ color: (row.paymentStatus === 'paid' || row.status === 'renew_paid') ? '#00a870' : '#ffb800', fontWeight: 600 }">{{ paymentStatusIcon(row) }}</span>
           </template>
           <template #operation="{ row }">
             <t-space>
-              <t-link @click="handleViewPolicy(row)">查看</t-link>
+              <t-link @click="handleRenewalView(row)">查看</t-link>
+              <!-- Inkasso operations -->
+              <t-link v-if="isInkasso && row.status === 'renew_inkasso_review' && !row.generatedApplicationForm.length" theme="primary" @click="handleRenewalGenDocs(row)">生成续保资料</t-link>
+              <t-link v-if="isInkasso && row.status === 'renew_inkasso_review' && row.generatedApplicationForm.length" theme="primary" @click="handleRenewalPushClerk(row)">推送给跟单员</t-link>
+              <t-link v-if="isInkasso && row.status === 'renew_supplement'" theme="primary" @click="handleRenewalPlatformPushSupplement(row)">推送客户补充资料</t-link>
+              <t-link v-if="isInkasso && row.status === 'renew_platform_review'" theme="success" @click="handleRenewalPlatformApproveSupplement(row)">审核通过</t-link>
+              <t-link v-if="isInkasso && row.status === 'renew_active'" theme="primary" @click="handleRenewalPaymentApplication(row)">推送客户交纳保费申请</t-link>
+              <t-link v-if="isInkasso && row.status === 'renew_payment_uploaded'" theme="primary" @click="handleRenewalVerifyVoucher(row)">维护缴费凭证</t-link>
+              <!-- Clerk operations -->
+              <t-link v-if="isClerk && row.status === 'renew_clerk_review'" theme="success" @click="handleRenewalClerkApprove(row)">审核通过</t-link>
+              <t-link v-if="isClerk && row.status === 'renew_clerk_review'" theme="danger" @click="handleRenewalClerkReject(row)">驳回</t-link>
+              <t-link v-if="isClerk && row.status === 'renew_insurer_review'" theme="success" @click="handleRenewalInsurerApprove(row)">保险公司批准</t-link>
+              <t-link v-if="isClerk && row.status === 'renew_insurer_review'" theme="danger" @click="handleRenewalInsurerReject(row)">保险公司驳回</t-link>
+              <t-link v-if="isClerk && row.status === 'renew_insurer_approved'" theme="primary" @click="handleRenewalClerkSync(row)">同步新保单</t-link>
+              <t-link v-if="isClerk && row.status === 'renew_insurer_rejected'" theme="primary" @click="handleRenewalInitSupplement(row)">发起补充请求</t-link>
+              <t-link v-if="isClerk && row.status === 'renew_clerk_resubmit'" theme="primary" @click="handleRenewalClerkResubmit(row)">提交续保申请</t-link>
+              <t-link v-if="isClerk && row.status === 'renew_payment_verified'" theme="primary" @click="handleRenewalSyncPayment(row)">同步缴费凭证</t-link>
+              <!-- Customer operations -->
+              <t-link v-if="isCustomer && row.status === 'renew_customer_supplement'" theme="primary" @click="handleRenewalCustomerSupplement(row)">补充材料</t-link>
+              <t-link v-if="isCustomer && row.status === 'renew_customer_supplemented'" theme="primary" @click="handleRenewalCustomerPushPlatform(row)">推送平台审核</t-link>
+              <t-link v-if="isCustomer && row.status === 'renew_pending_payment'" theme="primary" @click="handleRenewalUploadVoucher(row)">上传缴费凭证</t-link>
             </t-space>
           </template>
         </data-table>
+
+        <!-- Renewal Detail Dialog -->
+        <t-dialog v-model:visible="renewalDetailVisible" :header="'续保详情 - ' + (renewalDetailRow?.id || '')" width="800px" :footer="false">
+          <div v-if="renewalDetailRow" class="detail-body">
+            <!-- Basic info -->
+            <div class="detail-card">
+              <div class="detail-card-title">保单信息</div>
+              <div class="detail-grid">
+                <div class="detail-row"><span class="detail-label">申请编号</span><span class="detail-value">{{ renewalDetailRow.id }}</span></div>
+                <div class="detail-row"><span class="detail-label">保单号</span><span class="detail-value">{{ renewalDetailRow.policyNo }}</span></div>
+                <div class="detail-row"><span class="detail-label">保险公司</span><span class="detail-value">{{ renewalDetailRow.insuranceCompany }}</span></div>
+                <div class="detail-row"><span class="detail-label">被保险人</span><span class="detail-value">{{ renewalDetailRow.policyholder }}</span></div>
+                <div class="detail-row"><span class="detail-label">投保买方</span><span class="detail-value">{{ renewalDetailRow.insured }}</span></div>
+                <div class="detail-row"><span class="detail-label">原保险起期</span><span class="detail-value">{{ renewalDetailRow.originalEffectiveDate }}</span></div>
+                <div class="detail-row"><span class="detail-label">原保险止期</span><span class="detail-value">{{ renewalDetailRow.originalExpiryDate }}</span></div>
+                <div class="detail-row"><span class="detail-label">申请日期</span><span class="detail-value">{{ renewalDetailRow.submitTime }}</span></div>
+                <div class="detail-row"><span class="detail-label">状态</span><span class="detail-value"><status-tag :status="renewalDetailRow.status" :status-map="renewalStatusMap" /></span></div>
+              </div>
+            </div>
+            <!-- Generated documents -->
+            <div v-if="renewalDetailRow.generatedApplicationForm.length" class="detail-card">
+              <div class="detail-card-title">平台生成资料</div>
+              <div class="detail-grid">
+                <div v-for="(doc, idx) in renewalDetailRow.generatedApplicationForm" :key="'form-'+idx" class="detail-row" style="grid-column:1/-1;">
+                  <span class="detail-label">续保申请书</span>
+                  <span class="detail-value">{{ doc.name }}（{{ doc.size }}）</span>
+                </div>
+                <div v-for="(doc, idx) in renewalDetailRow.generatedMaterials" :key="'mat-'+idx" class="detail-row" style="grid-column:1/-1;">
+                  <span class="detail-label">附件{{ idx+1 }}</span>
+                  <span class="detail-value">{{ doc.name }}（{{ doc.size }}）</span>
+                </div>
+              </div>
+            </div>
+            <!-- New policy info -->
+            <div v-if="renewalDetailRow.newPolicyNo" class="detail-card">
+              <div class="detail-card-title">新保单信息</div>
+              <div class="detail-grid">
+                <div class="detail-row"><span class="detail-label">新保单号</span><span class="detail-value">{{ renewalDetailRow.newPolicyNo }}</span></div>
+                <div class="detail-row"><span class="detail-label">保险起期</span><span class="detail-value">{{ renewalDetailRow.newPolicyStartDate }}</span></div>
+                <div class="detail-row"><span class="detail-label">保险止期</span><span class="detail-value">{{ renewalDetailRow.newPolicyEndDate }}</span></div>
+                <div class="detail-row"><span class="detail-label">保险金额</span><span class="detail-value">${{ Number(renewalDetailRow.newCoverageAmount || 0).toLocaleString() }}</span></div>
+              </div>
+            </div>
+            <!-- Insurer decision -->
+            <div v-if="renewalDetailRow.insurerDecision" class="detail-card">
+              <div class="detail-card-title">保险公司核保结果</div>
+              <div class="detail-grid">
+                <div class="detail-row"><span class="detail-label">决定</span><span class="detail-value" :style="{ color: renewalDetailRow.insurerDecision === 'approved' ? '#00a870' : '#e34d57' }">{{ renewalDetailRow.insurerDecision === 'approved' ? '已通过' : '已驳回' }}</span></div>
+                <div class="detail-row"><span class="detail-label">意见</span><span class="detail-value">{{ renewalDetailRow.insurerOpinion }}</span></div>
+                <div class="detail-row"><span class="detail-label">核保时间</span><span class="detail-value">{{ renewalDetailRow.insurerReviewTime }}</span></div>
+              </div>
+            </div>
+            <!-- Payment info -->
+            <div v-if="['renew_active','renew_pending_payment','renew_payment_uploaded','renew_payment_verified','renew_paid'].includes(renewalDetailRow.status)" class="detail-card">
+              <div class="detail-card-title">缴费信息</div>
+              <div class="detail-grid">
+                <div v-if="renewalDetailRow.paymentApplication" class="detail-row" style="grid-column:1/-1;border-bottom:1px dashed #e0e0e0;padding-bottom:10px;margin-bottom:6px;">
+                  <span class="detail-label">保费交纳申请号</span>
+                  <span class="detail-value">{{ renewalDetailRow.paymentApplication.applicationNo }}</span>
+                </div>
+                <div class="detail-row"><span class="detail-label">缴费状态</span><span class="detail-value" :style="{ color: renewalDetailRow.paymentStatus === 'paid' || renewalDetailRow.status === 'renew_paid' ? '#00a870' : '#ffb800', fontWeight: 600 }">{{ paymentStatusIcon(renewalDetailRow) }}</span></div>
+                <div class="detail-row"><span class="detail-label">保险费</span><span class="detail-value">${{ Number(renewalDetailRow.newPremium || 0).toLocaleString() }}</span></div>
+                <div class="detail-row"><span class="detail-label">平台服务费</span><span class="detail-value">${{ Number(renewalDetailRow.serviceFee || 0).toLocaleString() }}</span></div>
+                <div class="detail-row"><span class="detail-label">合计</span><span class="detail-value" style="font-weight:700;color:#0052D9;">${{ Number((renewalDetailRow.newPremium || 0) + (renewalDetailRow.serviceFee || 0)).toLocaleString() }}</span></div>
+                <div v-if="renewalDetailRow.paymentVoucher.length" class="detail-row" style="grid-column:1/-1;">
+                  <span class="detail-label">缴费凭证</span>
+                  <span class="detail-value">{{ renewalDetailRow.paymentVoucher.map(f => f.name).join('、') }}</span>
+                </div>
+                <div v-if="renewalDetailRow.paymentConfirmTime" class="detail-row" style="grid-column:1/-1;">
+                  <span class="detail-label">缴费时间</span>
+                  <span class="detail-value">{{ renewalDetailRow.paymentConfirmTime }}</span>
+                </div>
+              </div>
+            </div>
+            <!-- Reject info -->
+            <div v-if="renewalDetailRow.rejectReason" class="detail-card">
+              <div class="detail-card-title">驳回原因</div>
+              <div class="detail-grid">
+                <div class="detail-row"><span class="detail-label">驳回原因</span><span class="detail-value" style="color:#e34d57;">{{ renewalDetailRow.rejectReason }}</span></div>
+              </div>
+            </div>
+            <!-- Supplement request -->
+            <div v-if="renewalDetailRow.supplementRequest" class="detail-card">
+              <div class="detail-card-title">补充资料请求</div>
+              <div class="detail-grid">
+                <div class="detail-row"><span class="detail-label">补充要求</span><span class="detail-value" style="color:#0052D9;">{{ renewalDetailRow.supplementRequest }}</span></div>
+              </div>
+            </div>
+            <!-- Supplement history -->
+            <div v-if="renewalDetailRow.supplementData" class="detail-card">
+              <div class="detail-card-title">客户补充资料</div>
+              <div class="detail-grid">
+                <div class="detail-row" style="grid-column:1/-1;">
+                  <span class="detail-label">补充内容</span>
+                  <span class="detail-value">{{ typeof renewalDetailRow.supplementData === 'object' ? renewalDetailRow.supplementData.content : renewalDetailRow.supplementData }}</span>
+                </div>
+                <div v-if="renewalDetailRow.supplementFiles?.length || (typeof renewalDetailRow.supplementData === 'object' && renewalDetailRow.supplementData?.files?.length)" class="detail-row" style="grid-column:1/-1;">
+                  <span class="detail-label">补充材料</span>
+                  <span class="detail-value">{{ (renewalDetailRow.supplementFiles || renewalDetailRow.supplementData?.files || []).map(f => f.name).join('、') }}</span>
+                </div>
+                <div v-if="renewalDetailRow.supplementTime" class="detail-row" style="grid-column:1/-1;">
+                  <span class="detail-label">补充时间</span>
+                  <span class="detail-value">{{ renewalDetailRow.supplementTime }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </t-dialog>
+
+        <!-- Supplement Dialog (Customer) -->
+        <t-dialog v-model:visible="renewalSupplementVisible" header="补充资料" width="550px">
+          <div class="insurer-content">
+            <div v-if="renewalSupplementRow?.supplementRequest" class="confirm-tip" style="margin-top:0;">
+              <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+              <span class="tip-text">补充要求：{{ renewalSupplementRow.supplementRequest }}</span>
+            </div>
+            <div class="reject-form" style="margin-top:16px;">
+              <label class="reject-label">补充说明 <span style="color:#dc2626;">*</span></label>
+              <t-textarea v-model="renewalSupplementContent" placeholder="请描述补充的内容" :rows="3" maxlength="500" />
+            </div>
+            <div class="reject-form" style="margin-top:12px;">
+              <label class="reject-label">补充材料</label>
+              <t-upload v-model="renewalSupplementFiles" theme="file" :auto-upload="false" accept="application/pdf,image/jpeg,image/png" placeholder="选择补充文件" />
+            </div>
+          </div>
+          <template #footer>
+            <t-space>
+              <t-button variant="outline" @click="renewalSupplementVisible = false">取消</t-button>
+              <t-button theme="primary" :disabled="!renewalSupplementContent.trim()" @click="confirmRenewalSupplement">提交补充资料</t-button>
+            </t-space>
+          </template>
+        </t-dialog>
+
+        <!-- Upload Voucher Dialog -->
+        <t-dialog v-model:visible="renewalVoucherVisible" header="上传缴费凭证" width="550px">
+          <div class="insurer-content">
+            <div class="confirm-tip" style="margin-top:0;">
+              <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+              <span class="tip-text">请上传线下缴费的电子凭证。</span>
+            </div>
+            <div class="reject-form" style="margin-top:16px;">
+              <t-upload v-model="renewalVoucherFiles" theme="file" :auto-upload="false" accept="image/jpeg,image/png,application/pdf" placeholder="选择缴费凭证文件" />
+            </div>
+          </div>
+          <template #footer>
+            <t-space>
+              <t-button variant="outline" @click="renewalVoucherVisible = false">取消</t-button>
+              <t-button theme="primary" :disabled="!renewalVoucherFiles.length" @click="confirmRenewalVoucher">确认上传</t-button>
+            </t-space>
+          </template>
+        </t-dialog>
+
+        <!-- Insurer Approve Dialog -->
+        <t-dialog v-model:visible="renewalInsurerApproveVisible" header="保险公司核保批准" width="500px">
+          <div class="insurer-content">
+            <div class="confirm-tip" style="margin-top:0;">
+              <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+              <span class="tip-text">确认批准该续保申请？批准后将出具新保单。</span>
+            </div>
+            <div class="reject-form" style="margin-top:16px;">
+              <label class="reject-label">核保意见</label>
+              <t-textarea v-model="renewalInsurerOpinion" placeholder="请输入核保意见（可选）" :rows="3" />
+            </div>
+            <div class="reject-form" style="margin-top:12px;">
+              <label class="reject-label">新保单号</label>
+              <t-input v-model="renewalNewPolicyNo" placeholder="系统自动生成或手动输入" />
+            </div>
+          </div>
+          <template #footer>
+            <t-space>
+              <t-button variant="outline" @click="renewalInsurerApproveVisible = false">取消</t-button>
+              <t-button theme="success" @click="confirmRenewalInsurerApprove">确认批准</t-button>
+            </t-space>
+          </template>
+        </t-dialog>
+
+        <!-- Insurer Reject Dialog -->
+        <t-dialog v-model:visible="renewalInsurerRejectVisible" header="保险公司核保驳回" width="500px">
+          <div class="insurer-content">
+            <div class="confirm-tip" style="margin-top:0;">
+              <t-icon name="warning-circle" size="16px" class="tip-icon danger" />
+              <span class="tip-text">驳回续保申请，将通知客户转入购买保险入口。</span>
+            </div>
+            <div class="reject-form" style="margin-top:16px;">
+              <label class="reject-label">驳回原因 <span style="color:#dc2626;">*</span></label>
+              <t-textarea v-model="renewalInsurerRejectOpinion" placeholder="请输入驳回原因" :rows="4" maxlength="500" show-limit-number />
+            </div>
+          </div>
+          <template #footer>
+            <t-space>
+              <t-button variant="outline" @click="renewalInsurerRejectVisible = false">取消</t-button>
+              <t-button theme="danger" @click="confirmRenewalInsurerReject">确认驳回</t-button>
+            </t-space>
+          </template>
+        </t-dialog>
+
       </t-tab-panel>
 
       <t-tab-panel value="surrender" label="保单退保列表">
@@ -1137,11 +1352,40 @@
             <div class="detail-row"><span class="detail-label">推送时间</span><span class="detail-value">{{ chgDetailRow.platformPushTime || '-' }}</span></div>
           </div>
         </div>
+        <div v-if="chgDetailRow.supplementHistory && chgDetailRow.supplementHistory.length" class="detail-card">
+          <div class="detail-card-title">客户补充资料记录</div>
+          <div class="detail-grid">
+            <div v-for="(entry, idx) in chgDetailRow.supplementHistory" :key="idx" class="supplement-entry">
+              <div class="supplement-entry-header">
+                <t-tag theme="primary" variant="light" size="small">第{{ idx + 1 }}次补充</t-tag>
+                <span class="supplement-time">{{ entry.time }}</span>
+              </div>
+              <div class="supplement-entry-body">
+                <div class="supplement-entry-row">
+                  <span class="detail-label">补充说明：</span>
+                  <span class="detail-value">{{ entry.note }}</span>
+                </div>
+                <div v-if="entry.files && entry.files.length" class="supplement-entry-row">
+                  <span class="detail-label">补充文件：</span>
+                  <span class="detail-value">{{ entry.files.map(f => f.name).join('、') }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="chgDetailRow.endorsementNo" class="detail-card">
           <div class="detail-card-title">批单信息</div>
           <div class="detail-grid">
             <div class="detail-row"><span class="detail-label">批单编号</span><span class="detail-value">{{ chgDetailRow.endorsementNo }}</span></div>
             <div class="detail-row"><span class="detail-label">生成时间</span><span class="detail-value">{{ chgDetailRow.endorsementTime || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">出具机构</span><span class="detail-value">{{ chgDetailRow.endorsementContent?.insurer || '保险公司' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">保单号</span><span class="detail-value">{{ chgDetailRow.endorsementContent?.policyNo || chgDetailRow.policyNo || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">变更类型</span><span class="detail-value">{{ chgDetailRow.endorsementContent?.changeTypeName || chgDetailRow.changeTypeName || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">变更原因</span><span class="detail-value">{{ chgDetailRow.endorsementContent?.changeReason || chgDetailRow.changeReason || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">变更前内容</span><span class="detail-value">{{ chgDetailRow.endorsementContent?.beforeContent || chgDetailRow.beforeContent || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">变更后内容</span><span class="detail-value">{{ chgDetailRow.endorsementContent?.afterContent || chgDetailRow.afterContent || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">生效日期</span><span class="detail-value">{{ chgDetailRow.endorsementContent?.effectiveDate || chgDetailRow.effectiveDate || '-' }}</span></div>
           </div>
         </div>
       </div>
@@ -1168,11 +1412,11 @@
     </t-dialog>
 
     <!-- 批准保险公司审核弹窗 -->
-    <t-dialog v-model:visible="chgInsurerApproveVisible" header="批准保险公司审核" width="500px">
+    <t-dialog v-model:visible="chgInsurerApproveVisible" header="保险公司批准" width="500px">
       <div class="insurer-content">
         <div class="confirm-tip" style="margin-top:0;">
           <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
-          <span class="tip-text">确认批准该变更申请？批准后自动同步决定结果给平台。</span>
+          <span class="tip-text">确认批准该变更申请？批准后将自动生成批单并同步给平台。</span>
         </div>
         <div class="reject-form" style="margin-top:16px;">
           <label class="reject-label">审核意见</label>
@@ -1609,7 +1853,7 @@ const chgStatusMap = {
   chg_draft: '待提交', chg_platform_review: '平台审核中', chg_clerk_review: '跟单员审核中',
   chg_insurer_review: '保险公司审核中', chg_insurer_approved: '保险公司已通过',
   chg_insurer_rejected: '保险公司已驳回', chg_supplement: '待补充材料',
-  chg_platform_supplemented: '平台已补充', chg_customer_supplement: '客户已补充', chg_completed: '已完成'
+  chg_platform_supplemented: '平台已补充', chg_customer_supplement: '补充资料完成', chg_completed: '已完成'
 }
 
 const policyChangeRecords = computed(() => {
@@ -2653,7 +2897,9 @@ const confirmChgInsurerApprove = () => {
   // Auto-sync to platform after approval
   const syncRes = store.syncChangeToPlatform(chgDetailRow.value.id)
   if (!syncRes?.ok) { MessagePlugin.error(syncRes?.message || '同步失败'); return }
-  MessagePlugin.success('保险公司已批准，决定结果已同步给平台')
+  // Generate endorsement as attachment
+  store.generateEndorsement(chgDetailRow.value.id)
+  MessagePlugin.success('保险公司已批准，批单已生成并同步给平台')
   chgInsurerApproveVisible.value = false
 }
 
@@ -2869,31 +3115,241 @@ const handleChgDocPreview = (row, type) => {
 }
 
 // ===== Renewal tab =====
+const renewalStatusMap = {
+  renew_inkasso_review: '平台审核',
+  renew_clerk_review: '跟单员审核',
+  renew_insurer_review: '保险公司审核',
+  renew_insurer_approved: '保险公司已批准',
+  renew_insurer_rejected: '保险公司已驳回',
+  renew_supplement: '待补充资料',
+  renew_customer_supplement: '客户补充资料',
+  renew_customer_supplemented: '补充资料完成',
+  renew_platform_review: '平台审核',
+  renew_clerk_resubmit: '待重新提交',
+  renew_active: '已生效',
+  renew_pending_payment: '待缴费',
+  renew_payment_uploaded: '凭证已上传',
+  renew_payment_verified: '凭证已验证',
+  renew_paid: '已缴费'
+}
+
+const paymentStatusIcon = (row) => {
+  const s = row.paymentStatus || ''
+  if (s === 'paid') return '已缴费'
+  if (row.status === 'renew_pending_payment') return '待缴费'
+  if (row.status === 'renew_payment_uploaded') return '已上传凭证'
+  if (row.status === 'renew_payment_verified') return '待同步'
+  if (row.status === 'renew_paid') return '已缴费'
+  return '-'
+}
+
 const renewalColumns = [
-  { colKey: 'policyNo', title: '保单号', width: 140 },
+  { colKey: 'id', title: '申请编号', width: 160 },
+  { colKey: 'policyNo', title: '原保单号', width: 130 },
   { colKey: 'insuranceCompany', title: '保险公司', width: 100 },
   { colKey: 'policyholder', title: '被保险人', ellipsis: true },
-  { colKey: 'coverageAmount', title: '保险金额', align: 'right', width: 120, slot: 'coverageAmount' },
-  { colKey: 'effectiveDate', title: '生效日期', width: 110 },
-  { colKey: 'expiryDate', title: '到期日期', width: 110 },
+  { colKey: 'originalEffectiveDate', title: '原起期', width: 100 },
+  { colKey: 'originalExpiryDate', title: '原止期', width: 100 },
+  { colKey: 'expectedTurnover', title: '预计营业额', align: 'right', width: 110 },
+  { colKey: 'insuranceRatio', title: '投保比例', align: 'right', width: 90 },
   { colKey: 'status', title: '状态', width: 100, slot: 'status' },
-  { colKey: 'operation', title: '操作', width: 140, fixed: 'right', slot: 'operation' }
+  { colKey: 'paymentStatus', title: '缴费', width: 90, slot: 'paymentStatus' },
+  { colKey: 'operation', title: '操作', width: 220, fixed: 'right', slot: 'operation' }
 ]
 
 const renewalPagination = reactive({ total: 0, current: 1, pageSize: 20 })
 
+const renewalApps = computed(() => store.renewalApplications || [])
+
 const renewalTableData = computed(() => {
-  const list = (store.policies || []).filter(p => p.renewalFlag === 'yes' || p.status === 'renewed')
+  const list = renewalApps.value
   renewalPagination.total = list.length
   const start = (renewalPagination.current - 1) * renewalPagination.pageSize
   return list.slice(start, start + renewalPagination.pageSize)
 })
 
-const renewalPolicyCount = computed(() => (store.policies || []).filter(p => p.renewalFlag === 'yes' || p.status === 'renewed').length)
-
 const handleRenewalPageChange = (pageInfo) => {
   renewalPagination.current = pageInfo.current
   renewalPagination.pageSize = pageInfo.pageSize
+}
+
+// Renewal detail dialog
+const renewalDetailVisible = ref(false)
+const renewalDetailRow = ref(null)
+
+const handleRenewalView = (row) => {
+  renewalDetailRow.value = row
+  renewalDetailVisible.value = true
+}
+
+// Insurer approve dialog
+const renewalInsurerApproveVisible = ref(false)
+const renewalInsurerOpinion = ref('')
+const renewalNewPolicyNo = ref('')
+let renewalCurrentApproveRow = null
+
+const handleRenewalInsurerApprove = (row) => {
+  renewalCurrentApproveRow = row
+  renewalInsurerOpinion.value = ''
+  const now = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  renewalNewPolicyNo.value = `POL${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`
+  renewalInsurerApproveVisible.value = true
+}
+
+const confirmRenewalInsurerApprove = () => {
+  const row = renewalCurrentApproveRow
+  if (!row) return
+  const res = store.insurerApproveRenewal(row.id, { opinion: renewalInsurerOpinion.value, newPolicyNo: renewalNewPolicyNo.value })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('续保已批准')
+  renewalInsurerApproveVisible.value = false
+}
+
+// Insurer reject dialog
+const renewalInsurerRejectVisible = ref(false)
+const renewalInsurerRejectOpinion = ref('')
+let renewalCurrentRejectRow = null
+
+const handleRenewalInsurerReject = (row) => {
+  renewalCurrentRejectRow = row
+  renewalInsurerRejectOpinion.value = ''
+  renewalInsurerRejectVisible.value = true
+}
+
+const confirmRenewalInsurerReject = () => {
+  const row = renewalCurrentRejectRow
+  if (!row) return
+  if (!renewalInsurerRejectOpinion.value.trim()) { MessagePlugin.warning('请输入驳回原因'); return }
+  const res = store.insurerRejectRenewal(row.id, renewalInsurerRejectOpinion.value)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('续保已驳回')
+  renewalInsurerRejectVisible.value = false
+}
+
+// Simple action handlers
+const handleRenewalGenDocs = (row) => {
+  const res = store.generateRenewalDocuments(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('续保资料已生成')
+}
+
+const handleRenewalPushClerk = (row) => {
+  const res = store.pushRenewalToClerk(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已推送给跟单员')
+}
+
+const handleRenewalClerkApprove = (row) => {
+  const res = store.clerkApproveRenewal(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('审核通过，已推送至保险公司审核')
+}
+
+const handleRenewalClerkReject = (row) => {
+  const reason = prompt('请输入驳回原因')
+  if (!reason?.trim()) { MessagePlugin.warning('已取消操作'); return }
+  const res = store.clerkRejectRenewal(row.id, reason)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已驳回')
+}
+
+const handleRenewalClerkSync = (row) => {
+  const res = store.clerkSyncNewPolicy(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('新保单已同步，状态为已生效')
+}
+
+// Supplement flow handlers
+const renewalSupplementVisible = ref(false)
+const renewalSupplementRow = ref(null)
+const renewalSupplementContent = ref('')
+const renewalSupplementFiles = ref([])
+
+const handleRenewalInitSupplement = (row) => {
+  const res = store.clerkInitiateRenewalSupplement(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已发起补充请求')
+}
+
+const handleRenewalPlatformPushSupplement = (row) => {
+  const res = store.platformPushRenewalSupplement(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已推送客户补充资料')
+}
+
+const handleRenewalCustomerSupplement = (row) => {
+  renewalSupplementRow.value = row
+  renewalSupplementContent.value = ''
+  renewalSupplementFiles.value = []
+  renewalSupplementVisible.value = true
+}
+
+const confirmRenewalSupplement = () => {
+  const row = renewalSupplementRow.value
+  if (!row || !renewalSupplementContent.value.trim()) { MessagePlugin.warning('请输入补充说明'); return }
+  const data = { content: renewalSupplementContent.value, files: renewalSupplementFiles.value || [] }
+  const res = store.customerSubmitRenewalSupplement(row.id, data)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('补充资料已提交')
+  renewalSupplementVisible.value = false
+}
+
+const handleRenewalCustomerPushPlatform = (row) => {
+  const res = store.customerPushRenewalToPlatform(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已推送平台审核')
+}
+
+const handleRenewalPlatformApproveSupplement = (row) => {
+  const res = store.platformApproveRenewalSupplement(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('审核通过，已推送跟单员')
+}
+
+const handleRenewalClerkResubmit = (row) => {
+  const res = store.clerkResubmitRenewalToInsurer(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已提交续保申请')
+}
+
+// Payment flow handlers
+const handleRenewalPaymentApplication = (row) => {
+  const res = store.inkassoNotifyRenewalPayment(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('保费交纳申请已推送客户')
+}
+
+const renewalVoucherVisible = ref(false)
+const renewalVoucherFiles = ref([])
+let renewalCurrentVoucherRow = null
+
+const handleRenewalUploadVoucher = (row) => {
+  renewalCurrentVoucherRow = row
+  renewalVoucherFiles.value = []
+  renewalVoucherVisible.value = true
+}
+
+const confirmRenewalVoucher = () => {
+  const row = renewalCurrentVoucherRow
+  if (!row) return
+  if (!renewalVoucherFiles.value.length) { MessagePlugin.warning('请选择缴费凭证'); return }
+  const res = store.uploadRenewalVoucher(row.id, renewalVoucherFiles.value)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('缴费凭证已上传')
+  renewalVoucherVisible.value = false
+}
+
+const handleRenewalVerifyVoucher = (row) => {
+  const res = store.inkassoVerifyRenewalVoucher(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('缴费凭证已维护')
+}
+
+const handleRenewalSyncPayment = (row) => {
+  const res = store.clerkSyncRenewalPayment(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('缴费凭证已同步，状态为已缴费')
 }
 
 // ===== Surrender tab =====
@@ -3554,4 +4010,12 @@ onMounted(() => { store.ensureSeeded() })
 .doc-preview-header { display: flex; gap: 24px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #eef2f6; border-radius: 6px; margin-bottom: 16px; }
 .doc-preview-meta { font-size: 12px; color: #64748b; }
 .doc-preview-body { border: 1px solid #eef2f6; border-radius: 6px; overflow: hidden; background: #fff; }
+.supplement-entry { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
+.supplement-entry:last-child { border-bottom: none; }
+.supplement-entry-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.supplement-time { font-size: 12px; color: #94a3b8; }
+.supplement-entry-body { padding-left: 4px; }
+.supplement-entry-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 4px; }
+.supplement-entry-row .detail-label { white-space: nowrap; }
+.supplement-entry-row .detail-value { text-align: left; font-weight: 400; }
 </style>

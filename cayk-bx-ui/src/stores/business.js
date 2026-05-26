@@ -91,6 +91,7 @@ const saveStateToStorage = (state) => {
       tradeInfos: state.tradeInfos,
       notifications: state.notifications,
       policyChangeApplications: state.policyChangeApplications,
+      renewalApplications: state.renewalApplications,
       _savedAt: new Date().toISOString()
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
@@ -125,7 +126,8 @@ export const useBusinessStore = defineStore('business', {
     tradeInfos: [],
     claimUpdateVersion: 0,
     insuranceUpdateVersion: 0,
-    policyChangeApplications: []
+    policyChangeApplications: [],
+    renewalApplications: []
   }),
   getters: {
     insuranceStats(state) {
@@ -183,11 +185,58 @@ export const useBusinessStore = defineStore('business', {
         this.tradeInfos = saved.tradeInfos || []
         this.notifications = saved.notifications || []
         this.policyChangeApplications = saved.policyChangeApplications || []
+        this.renewalApplications = saved.renewalApplications || []
         return
       }
       this.policyChangeApplications = []
+      this.renewalApplications = []
+      // Seed a renewal application at renew_active state for testing payment flow
+      const now = new Date()
+      this.renewalApplications.push({
+        id: 'RN_SEED_ACTIVE',
+        policyNo: 'POL20260426000000',
+        insuranceCompany: '人保财险',
+        policyholder: '深圳电子科技有限公司',
+        insured: 'TechBuyer Co., Ltd',
+        coverageAmount: 5000000,
+        premium: 5500,
+        originalEffectiveDate: '2025-04-26',
+        originalExpiryDate: '2026-04-25',
+        newStartDate: '2026-04-26',
+        newEndDate: '2027-04-25',
+        expectedTurnover: 6000000,
+        insuranceRatio: 80,
+        lastYearDeclaredTotal: 4800000,
+        lastYearClaimTotal: 35000,
+        lossRatio: 0.73,
+        limitUtilization: 64,
+        renewalRate: 0.0011,
+        buyerList: 'TechBuyer Co., Ltd\nGlobal Parts Inc.\nEuroDistributor GmbH',
+        status: 'renew_active',
+        newPolicyNo: 'POL20260426000001',
+        newPolicyStartDate: '2026-04-26',
+        newPolicyEndDate: '2027-04-25',
+        newPremium: 5500,
+        newCoverageAmount: 5000000,
+        serviceFee: 1500,
+        totalAmount: 7000,
+        insurerDecision: 'approved',
+        insurerOpinion: '核保通过',
+        insurerReviewTime: '2026-04-27 10:30:00',
+        clerkSyncTime: '2026-04-27 14:00:00',
+        inkassoSyncTime: '2026-04-27 14:00:00',
+        activeTime: '2026-04-27 14:00:00',
+        createTime: '2026-04-26 09:00:00',
+        submitTime: '2026-04-26 09:00:00',
+        updateTime: '2026-04-27 14:00:00',
+        generatedApplicationForm: [
+          { name: '续保申请书_POL20260426000000.pdf', size: '0.3 MB', generatedAt: '2026-04-26 10:00:00' }
+        ],
+        generatedMaterials: [
+          { name: '上年度出运汇总.xlsx', size: '0.5 MB', generatedAt: '2026-04-26 10:00:00' }
+        ]
+      })
       this.insuranceApplications = []
-      this.policies = []
       this.creditLimits = []
       this.shipments = []
       this.claims = []
@@ -2150,6 +2199,13 @@ export const useBusinessStore = defineStore('business', {
       cur.status = 'chg_customer_supplement'
       if (supplementData?.files) cur.supportingDocs = [...(cur.supportingDocs || []), ...supplementData.files]
       cur.updateTime = formatDateTime(now)
+      // Record supplement log
+      if (!cur.supplementHistory) cur.supplementHistory = []
+      cur.supplementHistory.push({
+        note: supplementData?.note || '客户补充了材料',
+        files: supplementData?.files || [],
+        time: formatDateTime(now)
+      })
       saveStateToStorage(this.$state)
       return { ok: true, data: cur }
     },
@@ -2188,6 +2244,15 @@ export const useBusinessStore = defineStore('business', {
       const now = new Date()
       cur.endorsementNo = `PD${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
       cur.endorsementTime = formatDateTime(now)
+      cur.endorsementContent = {
+        changeTypeName: cur.changeTypeName || '',
+        beforeContent: cur.beforeContent || '',
+        afterContent: cur.afterContent || '',
+        changeReason: cur.changeReason || '',
+        effectiveDate: cur.effectiveDate || '',
+        policyNo: cur.policyNo || '',
+        insurer: cur.insurerName || '保险公司'
+      }
       cur.updateTime = formatDateTime(now)
       saveStateToStorage(this.$state)
       return { ok: true, data: cur }
@@ -2200,6 +2265,333 @@ export const useBusinessStore = defineStore('business', {
       const now = new Date()
       cur.status = 'chg_clerk_review'
       cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    // ===== Renewal Application Flow =====
+    submitRenewalApplication(payload) {
+      const now = new Date()
+      const id = payload?.id || createId('RN')
+      const existingPolicy = this.policies.find(p => p.policyNo === payload.policyNo)
+      const record = {
+        id,
+        policyNo: payload.policyNo || '',
+        insuranceCompany: existingPolicy?.insuranceCompany || payload.insuranceCompany || '',
+        policyholder: existingPolicy?.policyholder || payload.policyholder || '',
+        insured: existingPolicy?.insured || payload.insured || '',
+        coverageAmount: existingPolicy?.coverageAmount || payload.coverageAmount || 0,
+        premium: existingPolicy?.premium || payload.premium || 0,
+        originalEffectiveDate: existingPolicy?.effectiveDate || payload.originalEffectiveDate || '',
+        originalExpiryDate: existingPolicy?.expiryDate || payload.originalExpiryDate || '',
+        newStartDate: payload.newStartDate || '',
+        newEndDate: payload.newEndDate || '',
+        expectedTurnover: payload.expectedTurnover || 0,
+        insuranceRatio: payload.insuranceRatio || 80,
+        lastYearDeclaredTotal: payload.lastYearDeclaredTotal || 0,
+        lastYearClaimTotal: payload.lastYearClaimTotal || 0,
+        lossRatio: payload.lossRatio || 0,
+        limitUtilization: payload.limitUtilization || 0,
+        renewalRate: payload.renewalRate || 0,
+        buyerList: payload.buyerList || '',
+        renewalApplication: payload.renewalApplication || [],
+        lastYearShipmentSummary: payload.lastYearShipmentSummary || [],
+        lastYearReceiptSummary: payload.lastYearReceiptSummary || [],
+        // Generated documents
+        generatedApplicationForm: [],
+        generatedMaterials: [],
+        // New policy info
+        newPolicyNo: '',
+        newPolicyStartDate: '',
+        newPolicyEndDate: '',
+        newPremium: 0,
+        newCoverageAmount: 0,
+        // Payment
+        serviceFee: 1500,
+        premiumAmount: 0,
+        totalAmount: 0,
+        paymentVoucher: [],
+        paymentConfirmTime: '',
+        // Status
+        status: 'renew_inkasso_review',
+        createTime: formatDateTime(now),
+        submitTime: formatDateTime(now),
+        inkassoReviewTime: '',
+        clerkReviewTime: '',
+        insurerReviewTime: '',
+        insurerDecision: '',
+        insurerOpinion: '',
+        clerkSyncTime: '',
+        inkassoSyncTime: '',
+        paymentTime: '',
+        activeTime: '',
+        updateTime: formatDateTime(now)
+      }
+      this.renewalApplications.unshift(record)
+      // Mark original policy as renewing
+      if (existingPolicy) {
+        existingPolicy.renewalFlag = 'yes'
+      }
+      saveStateToStorage(this.$state)
+      return { ok: true, data: record }
+    },
+
+    generateRenewalDocuments(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_inkasso_review') return { ok: false, message: '当前状态不允许生成资料' }
+      const now = new Date()
+      cur.generatedApplicationForm = [
+        { name: `续保申请书_${cur.policyNo}.pdf`, size: '0.3 MB', generatedAt: formatDateTime(now) },
+        { name: `续保资料清单_${cur.policyNo}.pdf`, size: '0.2 MB', generatedAt: formatDateTime(now) }
+      ]
+      cur.generatedMaterials = [
+        { name: `上年度出运汇总_${cur.policyNo}.xlsx`, size: '0.5 MB', generatedAt: formatDateTime(now) },
+        { name: `收汇情况表_${cur.policyNo}.xlsx`, size: '0.4 MB', generatedAt: formatDateTime(now) },
+        { name: `买方清单_${cur.policyNo}.xlsx`, size: '0.3 MB', generatedAt: formatDateTime(now) }
+      ]
+      cur.inkassoReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    pushRenewalToClerk(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_inkasso_review') return { ok: false, message: '当前状态不允许推送' }
+      if (!cur.generatedApplicationForm.length) return { ok: false, message: '请先生成续保资料' }
+      const now = new Date()
+      cur.status = 'renew_clerk_review'
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    clerkApproveRenewal(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_clerk_review') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'renew_insurer_review'
+      cur.clerkReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    clerkRejectRenewal(id, reason) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_clerk_review') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'renew_inkasso_review'
+      cur.rejectReason = reason || '跟单员驳回续保申请'
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    insurerApproveRenewal(id, { opinion, newPolicyNo, newStartDate, newEndDate, premium } = {}) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_insurer_review') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'renew_insurer_approved'
+      cur.insurerDecision = 'approved'
+      cur.insurerOpinion = opinion || '核保通过'
+      cur.insurerReviewTime = formatDateTime(now)
+      cur.newPolicyNo = newPolicyNo || `POL${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`
+      cur.newPolicyStartDate = newStartDate || cur.newStartDate
+      cur.newPolicyEndDate = newEndDate || cur.newEndDate
+      cur.newPremium = premium || cur.premium || 0
+      cur.newCoverageAmount = cur.coverageAmount || 0
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    insurerRejectRenewal(id, reason) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_insurer_review') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'renew_insurer_rejected'
+      cur.insurerDecision = 'rejected'
+      cur.insurerOpinion = reason || '核保未通过'
+      cur.insurerReviewTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    clerkSyncNewPolicy(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_insurer_approved') return { ok: false, message: '当前状态不允许同步' }
+      const now = new Date()
+      cur.status = 'renew_active'
+      cur.clerkSyncTime = formatDateTime(now)
+      cur.inkassoSyncTime = formatDateTime(now)
+      cur.totalAmount = (cur.serviceFee || 0) + (cur.newPremium || 0)
+      cur.activeTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      // Create new policy record with active status
+      const newPolicy = {
+        id: createId('P'),
+        policyNo: cur.newPolicyNo,
+        insuranceCompany: cur.insuranceCompany,
+        policyholder: cur.policyholder,
+        insured: cur.insured,
+        coverageAmount: cur.newCoverageAmount,
+        premium: cur.newPremium,
+        effectiveDate: cur.newPolicyStartDate,
+        expiryDate: cur.newPolicyEndDate,
+        status: 'active',
+        paymentStatus: 'unpaid',
+        usedQuota: 0,
+        remainingQuota: cur.newCoverageAmount || 0,
+        currency: 'USD',
+        businessType: 'goods',
+        renewalFlag: 'yes',
+        sourceRenewalId: cur.id,
+        createTime: formatDateTime(now),
+        updateTime: formatDateTime(now)
+      }
+      this.policies.unshift(newPolicy)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    // ===== Supplement flow (after insurer reject) =====
+    clerkInitiateRenewalSupplement(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_insurer_rejected') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'renew_supplement'
+      cur.supplementRequest = cur.insurerOpinion || '请补充资料'
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    platformPushRenewalSupplement(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_supplement') return { ok: false, message: '当前状态不允许操作' }
+      cur.status = 'renew_customer_supplement'
+      cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    customerSubmitRenewalSupplement(id, data) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_customer_supplement') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'renew_customer_supplemented'
+      cur.supplementData = data
+      cur.supplementFiles = data?.files || []
+      cur.supplementTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    customerPushRenewalToPlatform(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_customer_supplemented') return { ok: false, message: '当前状态不允许操作' }
+      cur.status = 'renew_platform_review'
+      cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    platformApproveRenewalSupplement(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_platform_review') return { ok: false, message: '当前状态不允许操作' }
+      cur.status = 'renew_clerk_resubmit'
+      cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    clerkResubmitRenewalToInsurer(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_clerk_resubmit') return { ok: false, message: '当前状态不允许操作' }
+      cur.status = 'renew_insurer_review'
+      cur.updateTime = formatDateTime(new Date())
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    // ===== Payment flow (after clerk syncs new policy) =====
+    inkassoNotifyRenewalPayment(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_active') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'renew_pending_payment'
+      cur.paymentApplication = {
+        applicationNo: createId('PAY'),
+        createTime: formatDateTime(now),
+        policyNo: cur.newPolicyNo || cur.policyNo,
+        premium: cur.newPremium || cur.premium || 0,
+        serviceFee: cur.serviceFee || 1500
+      }
+      cur.paymentStatus = 'pending'
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    uploadRenewalVoucher(id, files) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_pending_payment') return { ok: false, message: '当前状态不允许上传' }
+      const now = new Date()
+      cur.status = 'renew_payment_uploaded'
+      cur.paymentVoucher = files || []
+      cur.paymentStatus = 'paid'
+      cur.paymentConfirmTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    inkassoVerifyRenewalVoucher(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_payment_uploaded') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'renew_payment_verified'
+      cur.paymentStatus = 'paid'
+      cur.paymentVerifyTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      saveStateToStorage(this.$state)
+      return { ok: true, data: cur }
+    },
+
+    clerkSyncRenewalPayment(id) {
+      const cur = this.renewalApplications.find(p => p.id === id)
+      if (!cur) return { ok: false, message: '记录不存在' }
+      if (cur.status !== 'renew_payment_verified') return { ok: false, message: '当前状态不允许操作' }
+      const now = new Date()
+      cur.status = 'renew_paid'
+      cur.paymentStatus = 'paid'
+      cur.paymentSyncTime = formatDateTime(now)
+      cur.updateTime = formatDateTime(now)
+      const policy = this.policies.find(p => p.sourceRenewalId === cur.id)
+      if (policy) {
+        policy.paymentStatus = 'paid'
+        policy.paymentVoucher = cur.paymentVoucher || []
+        policy.paymentTime = cur.paymentConfirmTime || formatDateTime(now)
+      }
       saveStateToStorage(this.$state)
       return { ok: true, data: cur }
     }

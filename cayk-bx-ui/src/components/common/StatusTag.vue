@@ -25,10 +25,10 @@ const statusText = computed(() => {
 
 const statusClass = computed(() => {
   const status = props.status
-  if (['draft', 'pending_submit', 'pending_material', 'pending_review', 'platform_review', 'clerk_review', 'pending_ocr', 'ocr_processing', 'clerk_pending_auth', 'clerk_auth_authorized', 'clerk_confirm', 'chg_draft', 'chg_platform_review', 'chg_supplement', 'chg_platform_supplemented', 'chg_customer_supplement'].includes(status)) return 'status-warning'
-  if (['credit_investigating', 'limit_approving', 'underwriting', 'processing', 'declaring', 'ocr_completed', 'clerk_ocr_processing', 'clerk_platform_review', 'chg_clerk_review', 'chg_insurer_review'].includes(status)) return 'status-primary'
-  if (['completed', 'active', 'declared', 'passed', 'effective', 'approved', 'clerk_active', 'chg_insurer_approved', 'chg_completed'].includes(status)) return 'status-success'
-  if (['rejected', 'suspended', 'cancelled', 'terminated', 'returned', 'clerk_ocr_failed', 'chg_insurer_rejected'].includes(status)) return 'status-danger'
+  if (['draft', 'pending_submit', 'pending_material', 'pending_review', 'platform_review', 'clerk_review', 'pending_ocr', 'ocr_processing', 'clerk_pending_auth', 'clerk_auth_authorized', 'clerk_confirm', 'chg_draft', 'chg_platform_review', 'chg_supplement', 'chg_platform_supplemented', 'chg_customer_supplement', 'renew_supplement', 'renew_customer_supplement', 'renew_pending_payment', 'renew_clerk_resubmit'].includes(status)) return 'status-warning'
+  if (['credit_investigating', 'limit_approving', 'underwriting', 'processing', 'declaring', 'ocr_completed', 'clerk_ocr_processing', 'clerk_platform_review', 'chg_clerk_review', 'chg_insurer_review', 'renew_customer_supplemented', 'renew_platform_review', 'renew_payment_uploaded', 'renew_payment_verified'].includes(status)) return 'status-primary'
+  if (['completed', 'active', 'declared', 'passed', 'effective', 'approved', 'clerk_active', 'chg_insurer_approved', 'chg_completed', 'renew_active', 'renew_paid'].includes(status)) return 'status-success'
+  if (['rejected', 'suspended', 'cancelled', 'terminated', 'returned', 'clerk_ocr_failed', 'chg_insurer_rejected', 'renew_insurer_rejected'].includes(status)) return 'status-danger'
   if (['pending_payment', 'pending_declare', 'pending_premium', 'expiring', 'timeout_warning'].includes(status)) return 'status-warning'
   return 'status-default'
 })

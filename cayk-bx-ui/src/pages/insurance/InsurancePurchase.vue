@@ -10,13 +10,9 @@
     <div class="page-header">
       <div class="page-title">投保信息管理</div>
       <div class="page-actions">
-        <t-button theme="primary" @click="handleAdd">
+        <t-button v-if="userStore.role === 'customer'" theme="primary" @click="handleAdd">
           <template #icon><t-icon name="add" /></template>
           新增投保
-        </t-button>
-        <t-button v-if="userStore.role === 'customer'" variant="outline" @click="handleUploadPolicy()">
-          <template #icon><t-icon name="upload" /></template>
-          上传电子保单
         </t-button>
       </div>
     </div>
@@ -71,7 +67,7 @@
 
     <t-card>
       <div class="table-header">
-        <span class="table-title">投保建议方案列表</span>
+        <span class="table-title">投保方案列表</span>
         <span class="table-count">共 {{ pagination.total }} 条记录</span>
       </div>
       <t-table
@@ -87,19 +83,26 @@
         <template #status="{ row }">
           <status-tag :status="row.status" :status-map="statusMap" />
         </template>
+        <template #policyStatus="{ row }">
+          <span v-if="row.status === 'active'" style="font-weight:600;color:#00a870;">已生效</span>
+          <span v-else style="color:#999;">-</span>
+        </template>
         <template #insuranceAmount="{ row }">
           <span style="font-weight:600;">${{ Number(row.insuranceAmount || 0).toLocaleString() }}</span>
         </template>
-        <template #premium="{ row }">
-          <span v-if="row.premium" style="font-weight:600;">${{ Number(row.premium || 0).toLocaleString() }}</span>
-          <span v-else style="color:#999;">-</span>
-        </template>
         <template #serviceFee="{ row }">
-          <template v-if="row.serviceFeePaid">
-            <span style="color:#00a870;font-weight:600;">${{ Number(row.serviceFeeAmount || 0).toLocaleString() }}</span>
-            <t-tag theme="success" variant="light" size="small" style="margin-left:4px;">已支付</t-tag>
-          </template>
-          <span v-else style="color:#999;">-</span>
+          <span v-if="row.serviceFeePaid" style="font-weight:600;color:#00a870;">已缴费</span>
+          <span v-else-if="row.serviceFeeAmount" style="font-weight:600;">${{ Number(row.serviceFeeAmount || 0).toLocaleString() }}</span>
+          <span v-else-if="row.serviceFee" style="font-weight:600;">${{ Number(row.serviceFee || 0).toLocaleString() }}</span>
+          <span v-else>-</span>
+        </template>
+        <template #contractSign="{ row }">
+          <t-space direction="column" style="gap:2px;">
+            <t-tag v-if="row.inkassoContractSigned && row.customerContractSigned" theme="success" variant="light" size="small">双方已签署</t-tag>
+            <t-tag v-else-if="row.inkassoContractSigned && !row.customerContractSigned" theme="warning" variant="light" size="small">待客户签署</t-tag>
+            <t-tag v-else-if="row.customerContractSigned && !row.inkassoContractSigned" theme="warning" variant="light" size="small">待平台签署</t-tag>
+            <t-tag v-else theme="default" variant="light" size="small">待签署</t-tag>
+          </t-space>
         </template>
         <template #operation="{ row }">
           <t-space>
@@ -107,16 +110,18 @@
             <t-link v-if="isPendingConfirmation(row.status) && userStore.role === 'customer'" @click="handleEdit(row)">编辑</t-link>
             <t-link v-if="isPendingConfirmation(row.status) && userStore.role === 'customer'" theme="primary" @click="handleShowSubmitModal(row)">提交</t-link>
             <t-link v-if="isPendingConfirmation(row.status) && userStore.role === 'customer'" theme="danger" @click="handleShowDeleteModal(row)">删除</t-link>
-            <t-link v-if="userStore.role === 'inkasso'" theme="primary" @click="handleGenerateDocuments(row)">生成投保资料</t-link>
-            <t-link v-if="userStore.role === 'inkasso' && row.status === 'contract_signing'" theme="primary" @click="handleShowContractSigning(row)">在线合同签署</t-link>
-            <t-link v-if="userStore.role === 'customer' && row.status === 'inkasso_signed'" theme="primary" @click="handleShowCustomerSigning(row)">签署合同</t-link>
-            <t-link v-if="userStore.role === 'customer' && row.status === 'contract_signed'" theme="primary" @click="handleShowPayment(row)">支付服务费</t-link>
-            <t-link v-if="userStore.role === 'inkasso' && row.status === 'service_fee_paid'" theme="primary" @click="handlePushToClerk(row)">推送保单给跟单员</t-link>
-            <t-link v-if="userStore.role === 'inkasso' && row.status === 'platform_synced'" theme="primary" @click="handleInkassoPremiumRequest(row)">保费确认申请</t-link>
-            <t-link v-if="userStore.role === 'customer' && row.status === 'platform_synced'" theme="primary" @click="handleShowPremiumConfirm(row)">确认保费</t-link>
-            <t-link v-if="userStore.role === 'customer' && row.status === 'premium_confirmed'" theme="primary" @click="handleShowPayment(row)">保费交纳凭证上传</t-link>
-            <t-link v-if="userStore.role === 'inkasso' && row.status === 'payment_uploaded'" theme="primary" @click="handleActivatePolicy(row)">保单生效</t-link>
-            <t-link v-if="row.status === 'active' && userStore.role === 'clerk'" theme="primary" @click="handleUploadPolicy(row)">上传电子保单</t-link>
+            <t-link v-if="['clerk_review', 'contract_signing', 'inkasso_signed', 'contract_signed', 'service_fee_paid', 'credit_investigating', 'limit_approving', 'underwriting', 'uw_completed', 'platform_synced', 'premium_confirmed', 'payment_uploaded', 'active'].includes(row.status) && ['inkasso', 'clerk'].includes(userStore.role)" theme="primary" @click="handleShowDocuments(row)">查看投保资料</t-link>
+            <t-link v-if="row.status === 'clerk_review' && userStore.role === 'clerk'" theme="primary" @click="handleClerkApprove(row)">审核通过</t-link>
+            <t-link v-if="row.status === 'contract_signing' && userStore.role === 'clerk'" theme="primary" @click="handleClerkPushESign(row)">电子签合同签署</t-link>
+            <t-link v-if="row.status === 'inkasso_signed' && userStore.role === 'customer'" theme="primary" @click="handleCustomerSignContract(row)">电子签合同签署</t-link>
+            <t-link v-if="row.status === 'contract_signed' && userStore.role === 'customer'" theme="primary" @click="handleShowPayment(row)">支付服务费</t-link>
+            <t-link v-if="row.status === 'credit_investigating' && userStore.role === 'customer' && !row.stampedDocsUploaded" theme="primary" @click="handleShowDocUpload(row)">资料上传</t-link>
+            <t-link v-if="row.status === 'credit_investigating' && userStore.role === 'clerk' && row.stampedDocsUploaded" theme="primary" @click="handleShowUnderwrite(row)">核保审核</t-link>
+            <t-link v-if="row.status === 'uw_completed' && userStore.role === 'clerk'" theme="primary" @click="handleSyncToPlatform(row)">录入保单到平台</t-link>
+            <t-link v-if="row.status === 'platform_synced' && userStore.role === 'inkasso'" theme="primary" @click="handleInkassoPremiumRequest(row)">保费确认申请</t-link>
+            <t-link v-if="row.status === 'platform_synced' && userStore.role === 'customer'" theme="primary" @click="handleShowPremiumConfirm(row)">保费确认</t-link>
+            <t-link v-if="row.status === 'premium_confirmed' && userStore.role === 'customer'" theme="primary" @click="handleShowPayment(row)">上传电子缴费凭证</t-link>
+            <t-link v-if="row.status === 'payment_uploaded' && userStore.role === 'clerk'" theme="primary" @click="handleActivatePolicy(row)">保单生效确认</t-link>
           </t-space>
         </template>
       </t-table>
@@ -126,7 +131,7 @@
       <div class="submit-modal">
         <div class="submit-confirm-bar">
           <t-icon name="check-circle-filled" size="24px" class="confirm-icon" />
-          <span>确认提交后，该投保记录状态将由"待确认"变更为"已确认"。</span>
+          <span>确认提交后，系统将自动生成投保申请书和买方信息采集表，并附带文件推送给跟单员审核确认。</span>
         </div>
 
         <div class="modal-divider"></div>
@@ -324,8 +329,63 @@
       </div>
     </t-dialog>
 
-    <!-- 合同签署弹窗 -->
-    <t-dialog v-model:visible="contractSignVisible" header="在线合同签署" width="900px" :close-btn="false" destroy-on-close>
+    <!-- 查看投保资料弹窗 -->
+    <t-dialog v-model:visible="documentPreviewVisible" header="投保资料预览" width="700px" :footer="false" destroy-on-close>
+      <div v-if="currentDocumentData" class="preview-doc-modal">
+        <div class="preview-info-section">
+          <div class="preview-info-row">
+            <span class="preview-label">投保编号：</span>
+            <span class="preview-value">{{ currentDocumentData.id }}</span>
+          </div>
+          <div class="preview-info-row">
+            <span class="preview-label">企业名称：</span>
+            <span class="preview-value">{{ currentDocumentData.companyName }}</span>
+          </div>
+          <div class="preview-info-row">
+            <span class="preview-label">买方名称：</span>
+            <span class="preview-value">{{ currentDocumentData.buyerName || '-' }}</span>
+          </div>
+          <div class="preview-info-row">
+            <span class="preview-label">资料状态：</span>
+            <t-tag theme="success" variant="light">已生成</t-tag>
+          </div>
+          <div class="preview-info-row">
+            <span class="preview-label">生成时间：</span>
+            <span class="preview-value">{{ currentDocumentData.generateTime || '-' }}</span>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="documents-title">生成资料清单</div>
+        <t-table
+          :data="[
+            { name: '投保申请书', fileName: '投保申请书.xlsx', key: 'policy' },
+            { name: '买方信息采集表', fileName: '买方信息采集表.xlsx', key: 'buyer' }
+          ]"
+          :columns="[
+            { colKey: 'name', title: '资料名称', width: 180 },
+            { colKey: 'fileName', title: '文件名称', width: 280 },
+            {
+              colKey: 'action', title: '操作', width: 100,
+              cell: (h, { row }) => h('t-link', {
+                theme: 'primary',
+                onClick: () => row.key === 'policy' ? handlePreviewPolicyApplication(currentDocumentData) : handlePreviewBuyerInfo(currentDocumentData)
+              }, '预览')
+            }
+          ]"
+          row-key="key"
+          hover
+          size="small"
+        />
+      </div>
+      <template #footer>
+        <div class="preview-footer">
+          <t-button @click="documentPreviewVisible = false">关闭</t-button>
+        </div>
+      </template>
+    </t-dialog>
+
+    <!-- 签署合同弹窗 -->
+    <t-dialog v-model:visible="contractSignVisible" header="签署合同" width="900px" :close-btn="false" destroy-on-close>
       <div v-if="currentContractData" class="contract-sign-modal">
         <div class="contract-header">
           <div class="contract-title">{{ contractTemplate.title || '短期出口信用保险合同' }}</div>
@@ -365,9 +425,6 @@
               <t-tag v-if="currentContractData.customerContractSigned" theme="success" variant="light">已签署 {{ currentContractData.customerSignTime || '' }}</t-tag>
               <t-tag v-else theme="warning" variant="light">待签署</t-tag>
             </div>
-          </div>
-          <div v-if="!currentContractData.inkassoContractSigned && userStore.role === 'inkasso'" class="sign-action-bar">
-            <t-button theme="primary" size="large" @click="handleInkassoSignContract">平台签署合同</t-button>
           </div>
           <div v-if="currentContractData.inkassoContractSigned && !currentContractData.customerContractSigned && userStore.role === 'customer'" class="sign-action-bar">
             <t-button theme="primary" size="large" @click="handleCustomerSignContract">客户签署合同</t-button>
@@ -574,6 +631,112 @@
       <div v-else class="no-data">暂无数据</div>
     </t-dialog>
 
+    <!-- 核保审核弹窗 -->
+    <t-dialog v-model:visible="underwriteVisible" header="核保审核" width="720px" :footer="false" destroy-on-close>
+      <div v-if="underwriteData" class="premium-modal">
+        <div class="pm-card">
+          <div class="pm-card-header">📋 投保信息</div>
+          <div class="pm-card-body">
+            <div class="pm-grid">
+              <div class="pm-field"><span class="pm-label">投保编号</span><span class="pm-value">{{ underwriteData.id }}</span></div>
+              <div class="pm-field"><span class="pm-label">企业名称</span><span class="pm-value">{{ underwriteData.companyName }}</span></div>
+              <div class="pm-field"><span class="pm-label">买方名称</span><span class="pm-value">{{ underwriteData.buyerName || '-' }}</span></div>
+              <div class="pm-field"><span class="pm-label">投保金额</span><span class="pm-value">${{ Number(underwriteData.insuranceAmount || 0).toLocaleString() }}</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="pm-card">
+          <div class="pm-card-header">📄 保单信息</div>
+          <div class="pm-card-body">
+            <div class="payment-init-form">
+              <div class="payment-init-row">
+                <span class="payment-init-label">保单号</span>
+                <t-input v-model="underwriteForm.policyNo" placeholder="请输入保单号" />
+              </div>
+              <div class="payment-init-row">
+                <span class="payment-init-label">保险公司</span>
+                <t-select v-model="underwriteForm.insuranceCompany" placeholder="请选择保险公司">
+                  <t-option value="中国信保" label="中国信保" />
+                  <t-option value="人保财险" label="人保财险" />
+                </t-select>
+              </div>
+              <div class="payment-init-row">
+                <span class="payment-init-label">保额</span>
+                <t-input-number v-model="underwriteForm.coverageAmount" placeholder="请输入保额" :min="0" />
+              </div>
+              <div class="payment-init-row">
+                <span class="payment-init-label">保费</span>
+                <t-input-number v-model="underwriteForm.premium" placeholder="请输入保费" :min="0" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="flex-direction:column;gap:12px;">
+          <div class="payment-init-row" style="width:100%;">
+            <span class="payment-init-label">审核意见</span>
+            <t-textarea v-model="underwriteForm.opinion" placeholder="请输入审核意见" :autosize="{ minRows: 2, maxRows: 4 }" />
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;width:100%;">
+            <t-button theme="danger" variant="outline" @click="handleUnderwriteReject">驳回</t-button>
+            <t-button theme="primary" @click="handleUnderwriteApprove">审核通过</t-button>
+          </div>
+        </div>
+      </div>
+      <div v-else class="no-data">暂无数据</div>
+    </t-dialog>
+
+    <!-- 客户上传盖章资料弹窗 -->
+    <t-dialog v-model:visible="docUploadVisible" header="上传投保盖章资料" width="600px" :footer="false" destroy-on-close>
+      <div v-if="docUploadData" class="premium-modal">
+        <div class="pm-card">
+          <div class="pm-card-header">📄 投保信息</div>
+          <div class="pm-card-body">
+            <div class="pm-grid">
+              <div class="pm-field"><span class="pm-label">投保编号</span><span class="pm-value">{{ docUploadData.id }}</span></div>
+              <div class="pm-field"><span class="pm-label">企业名称</span><span class="pm-value">{{ docUploadData.companyName }}</span></div>
+              <div class="pm-field"><span class="pm-label">买方名称</span><span class="pm-value">{{ docUploadData.buyerName || '-' }}</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="pm-card">
+          <div class="pm-card-header">📎 上传文件</div>
+          <div class="pm-card-body">
+            <t-upload
+              ref="docUploadRef"
+              theme="file"
+              accept="image/jpeg,image/png,application/pdf"
+              :multiple="true"
+              :auto-upload="false"
+              placeholder="请上传投保盖章版本的资料（支持图片、PDF，可多选）"
+              @change="handleDocUploadChange"
+            />
+            <div v-if="docUploadFiles.length" class="voucher-preview">
+              <div class="preview-label">已选文件（{{ docUploadFiles.length }} 个）：</div>
+              <div v-for="(file, idx) in docUploadFiles" :key="(file.name || '') + idx" class="voucher-file-item">
+                <t-icon :name="file.raw?.type?.startsWith('image/') ? 'image' : 'file-pdf'" />
+                <span class="voucher-file-name">{{ file.name }}</span>
+                <t-link theme="primary" @click="previewDocFile(file)">预览</t-link>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <t-button variant="outline" @click="docUploadVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handleConfirmDocUpload">确认上传</t-button>
+        </div>
+      </div>
+      <div v-else class="no-data">暂无数据</div>
+    </t-dialog>
+
+    <t-dialog v-model:visible="docPreviewVisible" header="文件预览" width="800px" :footer="false" destroy-on-close>
+      <div class="preview-modal">
+        <img v-if="docPreviewUrl" :src="docPreviewUrl" style="max-width:100%;max-height:500px;display:block;margin:0 auto;" />
+      </div>
+      <template #footer>
+        <t-button @click="docPreviewVisible = false">关闭</t-button>
+      </template>
+    </t-dialog>
+
     <!-- 保费交纳凭证上传弹窗 -->
     <t-dialog v-model:visible="paymentInitVisible" header="保费交纳凭证上传" width="720px" :footer="false" destroy-on-close>
       <div v-if="paymentInitData" class="premium-modal">
@@ -641,7 +804,7 @@
 
         <div class="modal-footer">
           <t-space>
-            <t-button theme="primary" :disabled="!paymentVoucherFiles.length" @click="handlePaymentInitConfirm">{{ paymentVoucherFiles.length ? '支付完成' : '确认支付' }}</t-button>
+            <t-button theme="primary" :disabled="!paymentVoucherFiles.length" @click="handlePaymentInitConfirm">{{ paymentVoucherFiles.length ? '缴费完成' : '确认支付' }}</t-button>
             <t-button variant="outline" @click="paymentInitVisible = false">取消</t-button>
           </t-space>
         </div>
@@ -986,6 +1149,7 @@ const currentInsuranceInfo = ref(null)
 const isConfirmedSchema = ref(false)
 
 const documentVisible = ref(false)
+const documentPreviewVisible = ref(false)
 const currentDocumentData = ref(null)
 
 const previewVisible = ref(false)
@@ -1116,24 +1280,29 @@ const countryOptions = [
 
 const statusOptions = [
   { value: 'draft', label: '待确认' },
-  { value: 'pending_review', label: '已确认' },
-  { value: 'contract_signing', label: '合同签署' },
-  { value: 'inkasso_signed', label: '平台已签署' },
+  { value: 'pending_review', label: '待平台审核' },
+  { value: 'clerk_review', label: '跟单员审核' },
+  { value: 'contract_signing', label: '审核通过' },
+  { value: 'inkasso_signed', label: '服务已确认' },
   { value: 'contract_signed', label: '合同已签署' },
   { value: 'service_fee_paid', label: '服务费已支付' },
+  { value: 'credit_investigating', label: '资信调查' },
+  { value: 'limit_approving', label: '限额审批' },
+  { value: 'underwriting', label: '核保出单' },
+  { value: 'uw_completed', label: '核保已完成' },
   { value: 'platform_synced', label: '待缴纳保单费用' },
   { value: 'premium_confirmed', label: '保费已确认' },
   { value: 'payment_uploaded', label: '凭证已上传' },
   { value: 'active', label: '已生效' },
-  { value: 'approved', label: '已确认' }
+  { value: 'rejected', label: '已拒绝' }
 ]
 
 const statusMap = {
   draft: '待确认',
-  pending_review: '已确认',
+  pending_review: '待平台审核',
   clerk_review: '跟单员审核',
-  contract_signing: '合同签署',
-  inkasso_signed: '平台已签署',
+  contract_signing: '审核通过',
+  inkasso_signed: '服务已确认',
   contract_signed: '合同已签署',
   service_fee_paid: '服务费已支付',
   credit_investigating: '资信调查',
@@ -1146,7 +1315,7 @@ const statusMap = {
   premium_confirmed: '保费已确认',
   payment_uploaded: '凭证已上传',
   active: '已生效',
-  rejected: '待确认',
+  rejected: '已拒绝',
   ocr_pending: '待确认',
   ocr_clerk_review: '待审核',
   ocr_approved: '已确认'
@@ -1163,16 +1332,18 @@ const columns = [
   { colKey: 'insuranceAmount', title: '投保金额', align: 'right', width: 130 },
   { colKey: 'premium', title: '保费金额', align: 'right', width: 130, slot: 'premium' },
   { colKey: 'serviceFee', title: '服务费', width: 130, slot: 'serviceFee' },
+  { colKey: 'contractSign', title: '电子签合同', width: 130, slot: 'contractSign' },
+  { colKey: 'policyStatusDisplay', title: '保单生效', width: 100, slot: 'policyStatus' },
   { colKey: 'status', title: '状态', width: 110, slot: 'status' },
-  { colKey: 'createTime', title: '申请日期', width: 120 },
-  { colKey: 'operation', title: '操作', width: 420, fixed: 'right', slot: 'operation' }
+  { colKey: 'createTime', title: '申请日期', width: 170 },
+  { colKey: 'operation', title: '操作', width: 600, slot: 'operation' }
 ]
 
 const pendingStats = computed(() => {
   const list = store.insuranceApplications || []
   return {
-    pending_all: list.filter(it => ['draft', 'pending_review', 'contract_signing', 'inkasso_signed', 'contract_signed', 'service_fee_paid', 'credit_investigating', 'platform_synced', 'premium_confirmed', 'payment_uploaded', 'rejected'].includes(it.status)).length,
-    approved: list.filter(it => it.status === 'approved' || it.status === 'completed').length
+    pending_all: list.filter(it => ['draft', 'pending_review', 'clerk_review', 'contract_signing', 'inkasso_signed', 'contract_signed', 'service_fee_paid', 'credit_investigating', 'limit_approving', 'underwriting', 'uw_completed', 'platform_synced', 'premium_confirmed', 'payment_uploaded', 'rejected'].includes(it.status)).length,
+    approved: list.filter(it => it.status === 'active' || it.status === 'completed').length
   }
 })
 
@@ -1277,7 +1448,8 @@ const generateExcel = () => {
 }
 
 const handleAdd = () => { router.push('/insurance/purchase/new') }
-const handleView = (row) => { router.push(`/insurance/purchase/${row.id}`) }
+const handleView = (row) => { router.push(`/insurance/purchase-process?id=${row.id}`) }
+const handleShowProcess = (row) => { router.push(`/insurance/purchase-process?id=${row.id}`) }
 const handleEdit = (row) => { router.push(`/insurance/purchase/${row.id}/edit`) }
 const pendingStatuses = ['draft', 'rejected', 'ocr_pending']
 const isPendingConfirmation = (status) => pendingStatuses.includes(status)
@@ -1293,7 +1465,7 @@ const handleConfirmSubmit = () => {
     return
   }
   submitVisible.value = false
-  MessagePlugin.success('提交成功，状态已变更为已确认')
+  MessagePlugin.success('提交成功，投保申请书和买方信息采集表已自动生成，已推送给跟单员审核确认')
 }
 const handleGenerateDocuments = (row) => {
   // 已处于合同签署及后续阶段，说明投保资料已生成，不能重复生成
@@ -1304,12 +1476,197 @@ const handleGenerateDocuments = (row) => {
   currentDocumentData.value = row
   documentVisible.value = true
 }
+const handleShowDocuments = (row) => {
+  currentDocumentData.value = row
+  documentPreviewVisible.value = true
+}
 
 const handlePushToClerk = (row) => {
   const result = store.pushToClerk(row.id)
   if (result.ok) {
     store.touchInsuranceApplications()
     MessagePlugin.success('投保资料已推送至跟单员')
+  } else {
+    MessagePlugin.error(result.message || '操作失败')
+  }
+}
+const handleGenerateAndPushToClerk = (row) => {
+  const result = store.generateAndPushToClerk(row.id)
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    MessagePlugin.success('投保资料已生成并推送至跟单员审核')
+  } else {
+    MessagePlugin.error(result.message || '操作失败')
+  }
+}
+
+const handleClerkApprove = (row) => {
+  const result = store.generateDocuments(row.id)
+  if (!result.ok) {
+    MessagePlugin.error(result.message || '操作失败')
+    return
+  }
+  store.touchInsuranceApplications()
+  MessagePlugin.success('审核通过')
+}
+
+const handleClerkPushESign = (row) => {
+  const result = store.signInsuranceContract(row.id, 'inkasso')
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    MessagePlugin.success('电子签合同已自动推送客户签署')
+  } else {
+    MessagePlugin.error(result.message || '操作失败')
+  }
+}
+
+const handlePushESign = (row) => {
+  const result = store.signInsuranceContract(row.id, 'inkasso')
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    MessagePlugin.success('已推送客户电子签合同签署')
+  } else {
+    MessagePlugin.error(result.message || '操作失败')
+  }
+}
+
+const underwriteVisible = ref(false)
+const underwriteData = ref(null)
+const underwriteForm = reactive({
+  opinion: '',
+  policyNo: '',
+  insuranceCompany: '',
+  coverageAmount: 0,
+  premium: 0
+})
+
+const docUploadVisible = ref(false)
+const docUploadData = ref(null)
+const docUploadFiles = ref([])
+const docUploadRef = ref(null)
+const docPreviewUrl = ref('')
+const docPreviewVisible = ref(false)
+
+const handleDocUploadChange = (file, context) => {
+  docUploadFiles.value = context.files || []
+}
+
+const previewDocFile = (file) => {
+  if (file.raw?.type?.startsWith('image/')) {
+    const url = URL.createObjectURL(file.raw)
+    docPreviewUrl.value = url
+    docPreviewVisible.value = true
+  } else {
+    // For PDF, open in new tab
+    const url = URL.createObjectURL(file.raw)
+    window.open(url, '_blank')
+  }
+}
+
+const handleShowDocUpload = (row) => {
+  docUploadData.value = row
+  docUploadFiles.value = []
+  docUploadVisible.value = true
+}
+
+const handleConfirmDocUpload = async () => {
+  const row = docUploadData.value
+  if (!row) return
+  if (!docUploadFiles.value.length) {
+    MessagePlugin.warning('请上传盖章资料')
+    return
+  }
+  // 读取文件为base64
+  const filePromises = docUploadFiles.value.map(file => {
+    return new Promise((resolve) => {
+      if (!file.raw) {
+        resolve({ name: file.name, size: file.size, type: '', data: '' })
+        return
+      }
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const base64 = e.target.result.split(',')[1] || ''
+        resolve({ name: file.name, size: file.size, type: file.raw.type || '', data: base64 })
+      }
+      reader.onerror = () => resolve({ name: file.name, size: file.size, type: '', data: '' })
+      reader.readAsDataURL(file.raw)
+    })
+  })
+  const files = await Promise.all(filePromises)
+  const result = store.uploadStampedDocuments(row.id, files)
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    docUploadVisible.value = false
+    MessagePlugin.success('资料已上传，等待跟单员审核')
+  } else {
+    MessagePlugin.error(result.message || '上传失败')
+  }
+}
+
+const handleShowUnderwrite = (row) => {
+  underwriteData.value = row
+  underwriteForm.opinion = ''
+  underwriteForm.policyNo = ''
+  underwriteForm.insuranceCompany = row.preferredInsuranceOrgType || '人保财险'
+  underwriteForm.coverageAmount = Number(row.insuranceAmount || 0)
+  underwriteForm.premium = Math.round(Number(row.insuranceAmount || 0) * 0.0011)
+  underwriteVisible.value = true
+}
+
+const handleUnderwriteApprove = () => {
+  const row = underwriteData.value
+  if (!row) return
+  if (!underwriteForm.policyNo) {
+    MessagePlugin.warning('请输入保单号')
+    return
+  }
+  const result = store.clerkUnderwriteReview(row.id, {
+    decision: 'approved',
+    policyNo: underwriteForm.policyNo,
+    insuranceCompany: underwriteForm.insuranceCompany,
+    coverageAmount: underwriteForm.coverageAmount,
+    premium: underwriteForm.premium,
+    opinion: underwriteForm.opinion
+  })
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    underwriteVisible.value = false
+    MessagePlugin.success('核保审核通过，请录入保单到平台')
+  } else {
+    MessagePlugin.error(result.message || '操作失败')
+  }
+}
+
+const handleUnderwriteReject = () => {
+  const row = underwriteData.value
+  if (!row) return
+  const result = store.rejectInsuranceApplication(row.id, underwriteForm.opinion || '核保审核驳回')
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    underwriteVisible.value = false
+    MessagePlugin.success('已驳回')
+  } else {
+    MessagePlugin.error(result.message || '操作失败')
+  }
+}
+
+const handleSyncToPlatform = (row) => {
+  const result = store.syncUnderwritingToPlatform(row.id)
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    MessagePlugin.success('保单已录入平台')
+  } else {
+    MessagePlugin.error(result.message || '操作失败')
+  }
+}
+
+const handleClerkReject = (row) => {
+  MessagePlugin.info('请选择驳回原因')
+  // 简单实现：直接驳回
+  const result = store.rejectInsuranceApplication(row.id, '跟单员驳回，请修改后重新提交')
+  if (result.ok) {
+    store.touchInsuranceApplications()
+    MessagePlugin.success('已驳回至客户重新编辑')
   } else {
     MessagePlugin.error(result.message || '操作失败')
   }
@@ -1334,7 +1691,7 @@ const handleDocumentConfirm = () => {
   if (result.ok) {
     documentVisible.value = false
     store.touchInsuranceApplications()
-    MessagePlugin.success('投保资料已生成，流程已流转至合同签署阶段')
+    MessagePlugin.success('投保资料已生成，流程已流转至服务确认阶段')
   } else {
     MessagePlugin.error(result.message || '操作失败')
   }
@@ -1498,13 +1855,13 @@ const handleInkassoSignContract = () => {
   }
 }
 
-const handleCustomerSignContract = () => {
-  const row = currentContractData.value
-  if (!row) return
-  const result = store.signInsuranceContract(row.id, 'customer')
+const handleCustomerSignContract = (row) => {
+  const target = row || currentContractData.value
+  if (!target) return
+  const result = store.signInsuranceContract(target.id, 'customer')
   if (result.ok) {
     store.touchInsuranceApplications()
-    const updated = store.insuranceApplications.find(it => it.id === row.id)
+    const updated = store.insuranceApplications.find(it => it.id === target.id)
     if (updated) currentContractData.value = updated
     MessagePlugin.success('客户已签署合同')
   } else {
@@ -1659,7 +2016,7 @@ const handlePremiumConfirm = () => {
   MessagePlugin.success('保费已确认，请进行线下支付并上传支付凭证')
 }
 
-const handlePaymentInitConfirm = () => {
+const handlePaymentInitConfirm = async () => {
   const row = paymentInitData.value
   if (!row) return
   const displayName = paymentInitForm.payerName
@@ -1671,15 +2028,32 @@ const handlePaymentInitConfirm = () => {
     MessagePlugin.warning('请上传保费交纳凭证')
     return
   }
-  const voucherFile = paymentVoucherFiles.value[0]
+  // 读取文件为base64
+  const filePromises = paymentVoucherFiles.value.map(file => {
+    return new Promise((resolve) => {
+      if (!file.raw) {
+        resolve({ name: file.name, size: file.size, type: '', data: '' })
+        return
+      }
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const base64 = e.target.result.split(',')[1] || ''
+        resolve({ name: file.name, size: file.size, type: file.raw.type || '', data: base64 })
+      }
+      reader.onerror = () => resolve({ name: file.name, size: file.size, type: '', data: '' })
+      reader.readAsDataURL(file.raw)
+    })
+  })
+  const files = await Promise.all(filePromises)
   const res = store.uploadPaymentProof(row.id, {
     payerName: displayName,
     paymentSubject: paymentInitForm.paymentSubject,
     paymentDate: new Date().toISOString().split('T')[0],
     proofNo: '',
     remark: '保费交纳凭证上传',
-    voucherFileName: voucherFile.name || '',
-    voucherFileType: voucherFile.raw?.type || ''
+    voucherFileName: files[0]?.name || '',
+    voucherFileType: files[0]?.type || '',
+    voucherFiles: files
   })
   if (!res?.ok) {
     MessagePlugin.error(res?.message || '上传失败')
@@ -1690,7 +2064,7 @@ const handlePaymentInitConfirm = () => {
   paymentInitData.value = null
   paymentVoucherFiles.value = []
   paymentVoucherPreview.value = null
-  MessagePlugin.success('保费交纳凭证已上传，请等待跟单员确认')
+  MessagePlugin.success('保费已交纳，请等待跟单员确认保单生效')
 }
 
 const handlePaymentQrComplete = () => {
@@ -1755,6 +2129,13 @@ onMounted(() => {
 .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .table-title { font-size: 16px; font-weight: 600; color: #333; }
 .table-count { font-size: 14px; color: #999; }
+.preview-doc-modal { padding: 8px 0; }
+.preview-info-section { display: flex; flex-direction: column; gap: 12px; padding: 0 4px; }
+.preview-info-row { display: flex; align-items: center; gap: 8px; }
+.preview-label { font-size: 14px; color: #666; min-width: 80px; }
+.preview-value { font-size: 14px; color: #333; font-weight: 500; }
+.preview-footer { display: flex; justify-content: flex-end; }
+.divider { height: 1px; background: #eee; margin: 16px 0; }
 .mb-16 { margin-bottom: 16px; }
 
 .detail-container { padding: 0 16px; }
@@ -2844,4 +3225,5 @@ onMounted(() => {
   justify-content: space-between;
   width: 100%;
 }
+
 </style>

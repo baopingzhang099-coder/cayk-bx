@@ -377,9 +377,9 @@ const formatDateTime = (d) => {
 const handleSaveOcr = () => {
   const now = new Date()
 
-  // Coming from external policy upload flow (三级审核流程)
+  // Coming from external policy upload flow (OCR + auto-push to clerk)
   if (props.externalPolicyId) {
-    const res = store.processExternalPolicyOcr(props.externalPolicyId, {
+    const res = store.completePlatformOcrAndPushToClerk(props.externalPolicyId, {
       policyNo: ocrData.policyNo,
       insuranceCompany: ocrData.insuranceCompany,
       insurerName: ocrData.insurerName,
@@ -405,7 +405,7 @@ const handleSaveOcr = () => {
       MessagePlugin.error(res?.message || '保存失败')
       return
     }
-    MessagePlugin.success('OCR识别结果已保存')
+    MessagePlugin.success('OCR识别完成，已推送跟单员复核')
     emit('update:visible', false)
     return
   }

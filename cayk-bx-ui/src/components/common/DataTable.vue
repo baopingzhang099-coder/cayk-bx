@@ -7,8 +7,10 @@
       :pagination="paginationConfig"
       :row-key="rowKey"
       :selected-row-keys="selectedRowKeys"
+      :expanded-row-keys="expandedRowKeys"
       @select-change="handleSelectChange"
       @page-change="handlePageChange"
+      @expand-change="handleExpandChange"
       hover
       stripe
     >
@@ -46,10 +48,14 @@ const props = defineProps({
   selectedRowKeys: {
     type: Array,
     default: () => []
+  },
+  expandedRowKeys: {
+    type: Array,
+    default: () => []
   }
 })
 
-const emit = defineEmits(['update:selectedRowKeys', 'pageChange', 'selectChange'])
+const emit = defineEmits(['update:selectedRowKeys', 'pageChange', 'selectChange', 'expandChange'])
 
 const paginationConfig = computed(() => ({
   theme: 'simple',
@@ -63,6 +69,10 @@ const paginationConfig = computed(() => ({
 const handleSelectChange = (value) => {
   emit('update:selectedRowKeys', value)
   emit('selectChange', value)
+}
+
+const handleExpandChange = (keys) => {
+  emit('expandChange', keys)
 }
 
 const handlePageChange = (pageInfo) => {

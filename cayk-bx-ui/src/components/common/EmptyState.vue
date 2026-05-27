@@ -23,7 +23,7 @@ const emit = defineEmits(['action'])
 
 const iconName = computed(() => {
   const icons = {
-    empty: 'empty',
+    empty: 'no-result',
     error: 'error-circle',
     search: 'search',
     network: 'wifi-off'

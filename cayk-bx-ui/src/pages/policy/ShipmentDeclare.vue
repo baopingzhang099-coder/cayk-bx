@@ -216,16 +216,16 @@
 
           <t-divider>附件上传</t-divider>
           <t-form-item label="商业发票（必传）" name="commercialInvoice">
-            <t-upload v-model="formData.commercialInvoice" action="https://demo.com/upload" />
+            <t-upload v-model="formData.commercialInvoice" action="https://demo.com/upload" :request-method="mockUpload" />
           </t-form-item>
           <t-form-item label="提单/运单（必传）" name="billOfLading">
-            <t-upload v-model="formData.billOfLading" action="https://demo.com/upload" />
+            <t-upload v-model="formData.billOfLading" action="https://demo.com/upload" :request-method="mockUpload" />
           </t-form-item>
           <t-form-item label="报关单" name="customsDeclaration">
-            <t-upload v-model="formData.customsDeclaration" action="https://demo.com/upload" />
+            <t-upload v-model="formData.customsDeclaration" action="https://demo.com/upload" :request-method="mockUpload" />
           </t-form-item>
           <t-form-item label="买方收货凭证" name="receiptProof">
-            <t-upload v-model="formData.receiptProof" action="https://demo.com/upload" />
+            <t-upload v-model="formData.receiptProof" action="https://demo.com/upload" :request-method="mockUpload" />
           </t-form-item>
 
           <t-divider v-if="quotaWarning">{{ quotaWarning }}</t-divider>
@@ -252,14 +252,47 @@
         <t-table v-if="currentDocs.length" :data="currentDocs" :columns="[
           { colKey: 'name', title: '文件名' },
           { colKey: 'size', title: '大小', width: 80 },
-          { colKey: 'generatedAt', title: '生成时间', width: 160 }
+          { colKey: 'generatedAt', title: '生成时间', width: 160 },
+          { colKey: 'action', title: '操作', width: 80 }
         ]" row-key="name" size="small" :pagination="false">
           <template #name="{ row }">
-            <t-link theme="primary"><t-icon name="file-pdf" /> {{ row.name }}</t-link>
+            <t-icon name="file-pdf" /> {{ row.name }}
+          </template>
+          <template #action="{ row }">
+            <t-link theme="primary" @click="handleDownloadGeneratedFile(row)">下载</t-link>
           </template>
         </t-table>
         <t-empty v-else description="暂无生成资料" />
       </div>
+    </t-dialog>
+
+    <!-- 线下提交对话框 -->
+    <t-dialog v-model:visible="submitVisible" header="线下提交出运申报资料" width="500px">
+      <t-form ref="submitFormRef" :data="submitForm" label-width="120px">
+        <t-form-item label="提交方式" name="submitMethod">
+          <t-select v-model="submitForm.submitMethod" placeholder="请选择提交方式" clearable>
+            <t-option value="mail" label="邮寄" />
+            <t-option value="email" label="电子邮件" />
+            <t-option value="online" label="保险公司在线平台" />
+            <t-option value="in_person" label="当面递交" />
+          </t-select>
+        </t-form-item>
+        <t-form-item label="快递单号/编号" name="trackingNo">
+          <t-input v-model="submitForm.trackingNo" placeholder="请输入快递单号或提交编号（选填）" />
+        </t-form-item>
+        <t-form-item label="提交日期" name="submitDate">
+          <t-date-picker v-model="submitForm.submitDate" placeholder="请选择提交日期" clearable />
+        </t-form-item>
+        <t-form-item label="备注" name="submitNote">
+          <t-textarea v-model="submitForm.submitNote" placeholder="请输入备注信息（选填）" :rows="3" />
+        </t-form-item>
+      </t-form>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="submitVisible = false">取消</t-button>
+          <t-button theme="primary" @click="handleConfirmSubmit">确认提交</t-button>
+        </t-space>
+      </template>
     </t-dialog>
 
     <!-- 回传保险公司审批结果对话框 -->
@@ -299,7 +332,7 @@
           <t-input v-model="voucherForm.paymentRefNo" placeholder="请输入银行流水号" />
         </t-form-item>
         <t-form-item label="缴费凭证" name="paymentVouchers">
-          <t-upload v-model="voucherForm.paymentVouchers" action="https://demo.com/upload" accept="image/*,.pdf" />
+          <t-upload v-model="voucherForm.paymentVouchers" action="https://demo.com/upload" accept="image/*,.pdf" :request-method="mockUpload" />
         </t-form-item>
       </t-form>
       <template #footer>
@@ -352,6 +385,10 @@ import { useBusinessStore } from '@/stores/business'
 import { useUserStore } from '@/stores/user'
 import { checkRenewalGap } from '@/utils/rules/shipmentRules'
 import { checkFrozenStatus } from '@/utils/rules/creditLimitRules'
+
+const mockUpload = () => {
+  return Promise.resolve({ status: 'success' })
+}
 
 const formatDateTime = (d) => {
   if (!d) return ''
@@ -817,15 +854,43 @@ const handleSubmit = ({ validateResult }) => {
 
 const docsVisible = ref(false)
 const currentDocs = ref([])
+const submitVisible = ref(false)
+const submitFormRef = ref(null)
+const submitForm = reactive({
+  submitMethod: '',
+  trackingNo: '',
+  submitDate: '',
+  submitNote: ''
+})
+let currentSubmitRow = null
 
 const handleViewDocs = (row) => {
   currentDocs.value = row.generatedDocs || []
   docsVisible.value = true
 }
 
+const handleDownloadGeneratedFile = (file) => {
+  const content = '占位文件: ' + file.name + '\n大小: ' + (file.size || '未知') + '\n生成时间: ' + (file.generatedAt || '') + '\n此为系统自动生成的占位文件，仅供预览参考。'
+  const blob = new Blob([content], { type: 'application/octet-stream' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = file.name || 'document.pdf'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  MessagePlugin.success('文件 ' + file.name + ' 已下载')
+}
+
 const handleDownloadDocs = (row) => {
   const result = store.clerkDownloadDocs(row.id)
   if (result.ok) {
+    // Trigger actual file downloads for each generated doc
+    const docs = row.generatedDocs || []
+    docs.forEach((file) => {
+      handleDownloadGeneratedFile(file)
+    })
     MessagePlugin.success('资料下载完成，可线下提交保险公司审批')
   } else {
     MessagePlugin.error(result.message)
@@ -860,20 +925,26 @@ const handleCustomerConfirm = (row) => {
 }
 
 const handleClerkSubmit = (row) => {
-  DialogPlugin.confirm({
-    title: '确认线下提交',
-    content: '确认已将出运申报资料线下提交至保险公司审批？',
-    confirmBtnText: '确认提交',
-    cancelBtnText: '取消',
-    onConfirm: () => {
-      const result = store.clerkOfflineSubmit(row.id)
-      if (result.ok) {
-        MessagePlugin.success('已确认资料线下提交，等待保险公司审批')
-      } else {
-        MessagePlugin.error(result.message)
-      }
-    }
-  })
+  currentSubmitRow = row
+  submitForm.submitMethod = ''
+  submitForm.trackingNo = ''
+  submitForm.submitDate = ''
+  submitForm.submitNote = ''
+  submitVisible.value = true
+}
+
+const handleConfirmSubmit = () => {
+  if (!currentSubmitRow) {
+    MessagePlugin.warning('请先选择一条申报记录')
+    return
+  }
+  const result = store.clerkOfflineSubmit(currentSubmitRow.id)
+  if (result.ok) {
+    MessagePlugin.success('已确认资料线下提交，等待保险公司审批')
+    submitVisible.value = false
+  } else {
+    MessagePlugin.error(result.message)
+  }
 }
 
 const resultVisible = ref(false)

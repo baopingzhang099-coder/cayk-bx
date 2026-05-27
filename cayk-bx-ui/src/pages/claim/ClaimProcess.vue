@@ -85,12 +85,12 @@
                   <div class="node-title">
                     <span class="node-step-num">Step 1</span>
                     <span class="node-step-name">报案</span>
-                    <t-tag theme="default" variant="light" size="small" class="role-tag">客户</t-tag>
-                    <span class="node-handler">处理人：{{ currentClaim.claimContact }}</span>
+                    <t-tag :theme="stepRoles[0].role === userStore.role ? 'primary' : 'default'" variant="light" size="small" class="role-tag">{{ stepRoles[0].label }}</t-tag>
+                    <span class="node-handler">处理人：{{ stepInfo[0].handler }}</span>
                   </div>
                   <div class="node-meta">
                     <span class="meta-status" :class="'status-' + getStepStatusText(1)">{{ getStepStatusText(1) }}</span>
-                    <span class="meta-time">报案时间：{{ currentClaim.createTime }}</span>
+                    <span v-if="stepInfo[0].time" class="meta-time">{{ stepInfo[0].label }}：{{ stepInfo[0].time }}</span>
                   </div>
                 </div>
                 <div class="node-toggle">
@@ -158,6 +158,25 @@
                     <div class="info-item"><span class="info-label">预估损失：</span><span class="info-val text-primary font-bold">${{ Number(currentClaim.estimatedLossAmount).toLocaleString() }} {{ currentClaim.lossCurrency }}</span></div>
                   </div>
                 </div>
+
+                <t-divider />
+                <div class="node-approval">
+                  <div class="approval-row">
+                    <div class="approval-field">
+                      <span class="approval-label">审批结论</span>
+                      <t-radio-group v-model="approvalDecision" class="approval-radio-group">
+                        <t-radio value="approved">通过</t-radio>
+                        <t-radio value="rejected">退回修改</t-radio>
+                      </t-radio-group>
+                    </div>
+                  </div>
+                  <div class="approval-row">
+                    <div class="approval-field approval-field-full">
+                      <span class="approval-label">审批意见</span>
+                      <t-textarea v-model="approvalOpinion" placeholder="请输入审批意见" :autosize="{ minRows: 2, maxRows: 4 }" class="approval-textarea" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -173,12 +192,12 @@
                   <div class="node-title">
                     <span class="node-step-num">Step 2</span>
                     <span class="node-step-name">资料准备</span>
-                    <t-tag theme="primary" variant="light" size="small" class="role-tag">跟单员</t-tag>
-                    <span class="node-handler">处理人：跟单员李明 (C001)</span>
+                    <t-tag :theme="stepRoles[1].role === userStore.role ? 'primary' : 'default'" variant="light" size="small" class="role-tag">{{ stepRoles[1].label }}</t-tag>
+                    <span class="node-handler">处理人：{{ stepInfo[1].handler }}</span>
                   </div>
                   <div class="node-meta">
                     <span class="meta-status" :class="'status-' + getStepStatusText(2)">{{ getStepStatusText(2) }}</span>
-                    <span v-if="2 <= currentStep" class="meta-time">分派时间：{{ currentClaim.createTime }}</span>
+                    <span v-if="stepInfo[1].time" class="meta-time">{{ stepInfo[1].label }}：{{ stepInfo[1].time }}</span>
                   </div>
                 </div>
                 <div class="node-toggle">
@@ -292,6 +311,25 @@
                     </t-row>
                   </t-form>
                 </div>
+
+                <t-divider />
+                <div class="node-approval">
+                  <div class="approval-row">
+                    <div class="approval-field">
+                      <span class="approval-label">审批结论</span>
+                      <t-radio-group v-model="approvalDecision" class="approval-radio-group">
+                        <t-radio value="approved">通过</t-radio>
+                        <t-radio value="rejected">退回修改</t-radio>
+                      </t-radio-group>
+                    </div>
+                  </div>
+                  <div class="approval-row">
+                    <div class="approval-field approval-field-full">
+                      <span class="approval-label">审批意见</span>
+                      <t-textarea v-model="approvalOpinion" placeholder="请输入审批意见" :autosize="{ minRows: 2, maxRows: 4 }" class="approval-textarea" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -307,12 +345,12 @@
                   <div class="node-title">
                     <span class="node-step-num">Step 3</span>
                     <span class="node-step-name">定损核赔</span>
-                    <t-tag theme="warning" variant="light" size="small" class="role-tag">保险公司</t-tag>
-                    <span class="node-handler">处理人：{{ currentClaim.insuranceCompany }}理赔核算员</span>
+                    <t-tag :theme="stepRoles[2].role === userStore.role ? 'primary' : 'default'" variant="light" size="small" class="role-tag">{{ stepRoles[2].label }}</t-tag>
+                    <span class="node-handler">处理人：{{ stepInfo[2].handler }}</span>
                   </div>
                   <div class="node-meta">
                     <span class="meta-status" :class="'status-' + getStepStatusText(3)">{{ getStepStatusText(3) }}</span>
-                    <span v-if="3 < currentStep" class="meta-time">出具定损函时间：2026-05-21 11:30:00</span>
+                    <span v-if="stepInfo[2].time" class="meta-time">{{ stepInfo[2].label }}：{{ stepInfo[2].time }}</span>
                   </div>
                 </div>
                 <div class="node-toggle">
@@ -411,6 +449,25 @@
                     </t-form-item>
                   </t-form>
                 </div>
+
+                <t-divider />
+                <div class="node-approval">
+                  <div class="approval-row">
+                    <div class="approval-field">
+                      <span class="approval-label">审批结论</span>
+                      <t-radio-group v-model="approvalDecision" class="approval-radio-group">
+                        <t-radio value="approved">通过</t-radio>
+                        <t-radio value="rejected">退回修改</t-radio>
+                      </t-radio-group>
+                    </div>
+                  </div>
+                  <div class="approval-row">
+                    <div class="approval-field approval-field-full">
+                      <span class="approval-label">审批意见</span>
+                      <t-textarea v-model="approvalOpinion" placeholder="请输入审批意见" :autosize="{ minRows: 2, maxRows: 4 }" class="approval-textarea" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -426,12 +483,12 @@
                   <div class="node-title">
                     <span class="node-step-num">Step 4</span>
                     <span class="node-step-name">赔付到账</span>
-                    <t-tag theme="warning" variant="light" size="small" class="role-tag">保险公司</t-tag>
-                    <span class="node-handler">处理人：{{ currentClaim.insuranceCompany }}理赔专员</span>
+                    <t-tag :theme="stepRoles[3].role === userStore.role ? 'primary' : 'default'" variant="light" size="small" class="role-tag">{{ stepRoles[3].label }}</t-tag>
+                    <span class="node-handler">处理人：{{ stepInfo[3].handler }}</span>
                   </div>
                   <div class="node-meta">
                     <span class="meta-status" :class="'status-' + getStepStatusText(4)">{{ getStepStatusText(4) }}</span>
-                    <span v-if="4 < currentStep" class="meta-time">到账时间：2026-05-21 11:45:00</span>
+                    <span v-if="stepInfo[3].time" class="meta-time">{{ stepInfo[3].label }}：{{ stepInfo[3].time }}</span>
                   </div>
                 </div>
                 <div class="node-toggle">
@@ -513,6 +570,25 @@
                     <span class="agreement-desc">四家均支持，用于追索权融资</span>
                   </div>
                 </div>
+
+                <t-divider />
+                <div class="node-approval">
+                  <div class="approval-row">
+                    <div class="approval-field">
+                      <span class="approval-label">审批结论</span>
+                      <t-radio-group v-model="approvalDecision" class="approval-radio-group">
+                        <t-radio value="approved">通过</t-radio>
+                        <t-radio value="rejected">退回修改</t-radio>
+                      </t-radio-group>
+                    </div>
+                  </div>
+                  <div class="approval-row">
+                    <div class="approval-field approval-field-full">
+                      <span class="approval-label">审批意见</span>
+                      <t-textarea v-model="approvalOpinion" placeholder="请输入审批意见" :autosize="{ minRows: 2, maxRows: 4 }" class="approval-textarea" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -528,12 +604,12 @@
                   <div class="node-title">
                     <span class="node-step-num">Step 5</span>
                     <span class="node-step-name">权益转让与融资</span>
-                    <t-tag theme="default" variant="light" size="small" class="role-tag">客户/平台</t-tag>
-                    <span class="node-handler">处理人：{{ currentClaim.claimContact }} / 长安银科平台</span>
+                    <t-tag :theme="stepRoles[4].role === userStore.role ? 'primary' : 'default'" variant="light" size="small" class="role-tag">{{ stepRoles[4].label }}</t-tag>
+                    <span class="node-handler">处理人：{{ stepInfo[4].handler }}</span>
                   </div>
                   <div class="node-meta">
                     <span class="meta-status" :class="'status-' + getStepStatusText(5)">{{ getStepStatusText(5) }}</span>
-                    <span v-if="rwaSyncStatus === 'synced'" class="meta-time">RWA销账清算时间：2026-05-21 11:45:00</span>
+                    <span v-if="stepInfo[4].time" class="meta-time">{{ stepInfo[4].label }}：{{ stepInfo[4].time }}</span>
                   </div>
                 </div>
                 <div class="node-toggle">
@@ -620,37 +696,39 @@
                     </t-button>
                   </div>
                 </div>
+
+                <t-divider />
+                <div class="node-approval">
+                  <div class="approval-row">
+                    <div class="approval-field">
+                      <span class="approval-label">审批结论</span>
+                      <t-radio-group v-model="approvalDecision" class="approval-radio-group">
+                        <t-radio value="approved">通过</t-radio>
+                        <t-radio value="rejected">退回修改</t-radio>
+                      </t-radio-group>
+                    </div>
+                  </div>
+                  <div class="approval-row">
+                    <div class="approval-field approval-field-full">
+                      <span class="approval-label">审批意见</span>
+                      <t-textarea v-model="approvalOpinion" placeholder="请输入审批意见" :autosize="{ minRows: 2, maxRows: 4 }" class="approval-textarea" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Approval Decisions Card -->
-          <div v-if="userStore.role !== 'customer'" class="approval-card mt-24 mb-24">
-            <div class="approval-title">✍️ 长安银科跟单员审核结论</div>
-            <t-form label-align="left" label-width="100px">
-              <t-form-item label="审批结论">
-                <t-radio-group v-model="approvalDecision">
-                  <t-radio value="approved">通过，提交进入下一阶段</t-radio>
-                  <t-radio value="rejected">退回修改/驳回申请</t-radio>
-                </t-radio-group>
-              </t-form-item>
-              <t-form-item label="审批意见">
-                <t-textarea v-model="approvalOpinion" placeholder="请输入审核意见（必填）" :autosize="{ minRows: 3 }" />
-              </t-form-item>
-            </t-form>
-          </div>
-
-          <!-- Bottom Nav buttons -->
-          <div v-if="userStore.role !== 'customer'" class="bottom-actions">
-            <t-space>
-              <t-button variant="outline" :disabled="currentStep === 1" @click="prevStep">上一步</t-button>
-              <t-button v-if="currentStep < 5" theme="primary" :loading="isSubmitting" @click="submitStep">
-                下一步
-              </t-button>
-              <t-button v-else theme="success" :loading="isSubmitting" @click="completeWorkflow">
-                确认理赔结案
-              </t-button>
-            </t-space>
+          <div class="flow-actions">
+            <t-button variant="outline" @click="viewPrevStep">上一步</t-button>
+            <t-button v-if="viewingStep > 1 && viewingStep !== currentStep" variant="outline" @click="viewNextStep">下一步查看</t-button>
+            <t-button v-if="viewingStep === currentStep && isStepOperator" theme="primary" :loading="isSubmitting" @click="handleStepAction">
+              {{ stepRoles[currentStep - 1]?.action || '执行操作' }}
+            </t-button>
+            <t-button v-if="viewingStep === currentStep && !isStepOperator && currentStep < 5" theme="default" disabled>
+              等待{{ stepRoles[currentStep - 1]?.label }}操作
+            </t-button>
+            <t-button variant="outline" @click="goToList">返回列表</t-button>
           </div>
         </div>
       </t-tab-panel>
@@ -769,9 +847,10 @@ const store = useBusinessStore()
 const userStore = useUserStore()
 const activeTab = ref('process')
 const currentStep = ref(3)
+const viewingStep = ref(1)
 const currentClaim = ref(null)
 
-const expandedSteps = ref([true, true, true, false, false])
+const expandedSteps = reactive([true, true, true, false, false])
 const approvalDecision = ref('approved')
 const approvalOpinion = ref('资料审查无误，企业已全额交纳代理服务费，授权盖章完整，准予向保险公司提报正式理赔卷宗。')
 
@@ -801,6 +880,18 @@ const isSubmitting = ref(false)
 const isSyncingRwa = ref(false)
 const rwaSyncStatus = ref('pending')
 
+const stepInfo = computed(() => {
+  const c = currentClaim.value
+  if (!c) return Array(5).fill({ handler: '-', time: '', label: '' })
+  return [
+    { handler: c.claimContact || '客户', time: c.createTime || '', label: '报案时间' },
+    { handler: '跟单员李明 (C001)', time: c.createTime || '', label: '分派时间' },
+    { handler: (c.insuranceCompany || '保险公司') + '理赔核算员', time: '2026-05-21 11:30:00', label: '出具定损函时间' },
+    { handler: (c.insuranceCompany || '保险公司') + '理赔专员', time: '2026-05-21 11:45:00', label: '到账时间' },
+    { handler: (c.claimContact || '客户') + ' / 长安银科平台', time: rwaSyncStatus.value === 'synced' ? '2026-05-21 11:45:00' : '', label: 'RWA清算时间' }
+  ]
+})
+
 // Table filter filters
 const filters = reactive({
   claimNo: '',
@@ -816,6 +907,12 @@ const finalCompensatedAmount = computed(() => {
   return amount > 0 ? amount : 0
 })
 
+const isStepOperator = computed(() => {
+  const idx = currentStep.value - 1
+  if (idx < 0 || idx >= stepRoles.length) return false
+  return userStore.role === stepRoles[idx].role
+})
+
 const stepOptions = [
   { value: 1, label: '报案', companies: ['中国信保', '人保财险', '太平洋保险', '大地保险'] },
   { value: 2, label: '资料准备', companies: ['中国信保', '人保财险', '太平洋保险', '大地保险'] },
@@ -825,11 +922,11 @@ const stepOptions = [
 ]
 
 const stepRoles = [
-  { role: 'client', label: '客户' },
-  { role: 'clerk', label: '跟单员' },
-  { role: 'clerk', label: '跟单员' },
-  { role: 'insurer', label: '保险公司' },
-  { role: 'clerk', label: '跟单员' }
+  { role: 'customer', label: '客户', action: '确认报案信息' },
+  { role: 'clerk', label: '跟单员', action: '审核资料并提交' },
+  { role: 'inkasso', label: '长安银科', action: '核定损失' },
+  { role: 'inkasso', label: '长安银科', action: '确认到账' },
+  { role: 'customer', label: '客户/平台', action: '完成权益转让' }
 ]
 
 const statusMap = {
@@ -917,13 +1014,15 @@ const getStepName = (step) => {
 }
 
 const toggleCollapse = (idx) => {
-  expandedSteps.value[idx] = !expandedSteps.value[idx]
+  expandedSteps[idx] = !expandedSteps[idx]
 }
 
 const setStep = (stepNum) => {
   currentStep.value = stepNum
-  // Auto collapse others
-  expandedSteps.value = expandedSteps.value.map((_, i) => i === stepNum - 1 || i < stepNum)
+  viewingStep.value = stepNum
+  expandedSteps.forEach((_, i) => {
+    expandedSteps[i] = i === stepNum - 1 || i < stepNum
+  })
 }
 
 // Simulated OCR
@@ -1043,6 +1142,37 @@ const completeWorkflow = () => {
   }, 1000)
 }
 
+const handleStepAction = () => {
+  const step = currentStep.value
+  if (step === 1) {
+    MessagePlugin.info('报案信息已确认，等待各方处理')
+    return
+  }
+  if (step === 5) {
+    completeWorkflow()
+    return
+  }
+  submitStep()
+}
+
+const viewNextStep = () => {
+  if (viewingStep.value < 5) {
+    viewingStep.value++
+    expandedSteps[viewingStep.value - 1] = true
+  }
+}
+
+const viewPrevStep = () => {
+  if (viewingStep.value > 1) {
+    viewingStep.value--
+    expandedSteps[viewingStep.value - 1] = true
+  }
+}
+
+const goToList = () => {
+  activeTab.value = 'task-list'
+}
+
 // Switch and Processing Claim
 const startProcessing = (row) => {
   currentClaim.value = row
@@ -1108,6 +1238,10 @@ const handleView = (row) => {
   detailVisible.value = true
 }
 
+watch(currentStep, (val) => {
+  if (val > viewingStep.value) viewingStep.value = val
+})
+
 onMounted(() => {
   store.ensureSeeded()
   if (store.claims && store.claims.length > 0) {
@@ -1128,6 +1262,7 @@ $gray-200: #eeeeee;
 $gray-300: #dcdcdc;
 $gray-400: #c5c5c5;
 $gray-500: #9e9e9e;
+$gray-700: #5a5a5a;
 $gray-800: #2c2c2c;
 
 .page-container {
@@ -1910,4 +2045,17 @@ $gray-800: #2c2c2c;
   font-weight: 700;
   color: $gray-800;
 }
+
+.flow-actions {
+  display: flex; justify-content: center; gap: 16px; margin-top: 24px;
+  padding-top: 24px; border-top: 1px solid $gray-200;
+}
+
+.node-approval { padding: 8px 0 0; }
+.approval-row { margin-bottom: 12px; }
+.approval-field { display: flex; align-items: center; gap: 16px; }
+.approval-field-full { display: flex; align-items: flex-start; gap: 16px; }
+.approval-label { font-size: 14px; font-weight: 500; color: $gray-700; min-width: 80px; flex-shrink: 0; }
+.approval-radio-group :deep(.t-radio) { margin-right: 24px; }
+.approval-textarea { flex: 1; max-width: 500px; }
 </style>

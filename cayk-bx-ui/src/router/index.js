@@ -11,37 +11,44 @@ const routes = [
         path: '/insurance/purchase/new',
         name: 'InsurancePurchaseCreate',
         component: () => import('@/pages/insurance/InsurancePurchaseFormPage.vue'),
-        meta: { title: '新增投保', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso'] }
+        meta: { title: '新增投保', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/insurance/purchase/:id/edit',
         name: 'InsurancePurchaseEdit',
         component: () => import('@/pages/insurance/InsurancePurchaseFormPage.vue'),
-        meta: { title: '编辑投保', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso'] }
+        meta: { title: '编辑投保', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/insurance/purchase/:id',
-        name: 'InsurancePurchaseDetail',
-        component: () => import('@/pages/insurance/InsurancePurchaseFormPage.vue'),
-        meta: { title: '投保详情', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso'] }
+        redirect: (route) => {
+          const { id } = route.params
+          return `/insurance/purchase-process?id=${id}`
+        }
       },
       {
         path: '/insurance/questionnaire',
         name: 'InsuranceQuestionnaire',
         component: () => import('@/pages/insurance/InsuranceQuestionnaire.vue'),
-        meta: { title: '客户投保需求问卷', menuKey: 'insurance-questionnaire', roles: ['customer', 'inkasso'] }
+        meta: { title: '客户投保需求问卷', menuKey: 'insurance-questionnaire', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/insurance/purchase',
         name: 'InsurancePurchase',
         component: () => import('@/pages/insurance/InsurancePurchase.vue'),
-        meta: { title: '投保信息管理', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso'] }
+        meta: { title: '投保信息管理', menuKey: 'insurance-purchase', roles: ['customer', 'inkasso', 'clerk'] }
+      },
+      {
+        path: '/insurance/purchase-process',
+        name: 'InsurancePurchaseProcess',
+        component: () => import('@/pages/insurance/InsurancePurchaseProcess.vue'),
+        meta: { title: '投保流程管理', menuKey: 'insurance-purchase-process', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/insurance/report',
         name: 'InsuranceReport',
         component: () => import('@/pages/insurance/InsuranceReport.vue'),
-        meta: { title: '投保数据报表', menuKey: 'insurance-report', roles: ['customer', 'inkasso'] }
+        meta: { title: '投保数据报表', menuKey: 'insurance-report', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/policy/list',
@@ -50,22 +57,16 @@ const routes = [
         meta: { title: '保单信息管理', menuKey: 'policy-list', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
-        path: '/policy/change',
-        name: 'PolicyChangeList',
-        component: () => import('@/pages/policy/PolicyChangeList.vue'),
-        meta: { title: '保单变更管理', menuKey: 'policy-change', roles: ['customer', 'inkasso', 'clerk'] }
-      },
-      {
         path: '/policy/change/new',
         name: 'PolicyChangeCreate',
         component: () => import('@/pages/policy/PolicyChangeForm.vue'),
-        meta: { title: '保单变更申请', menuKey: 'policy-change', roles: ['customer'] }
+        meta: { title: '保单变更申请', menuKey: 'policy-list', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/policy/trade',
         name: 'PolicyTrade',
         component: () => import('@/pages/policy/PolicyTrade.vue'),
-        meta: { title: '贸易信息管理', menuKey: 'policy-trade', roles: ['inkasso', 'clerk'] }
+        meta: { title: '贸易信息管理', menuKey: 'policy-trade', roles: ['inkasso'] }
       },
       {
         path: '/policy/limit',
@@ -83,7 +84,7 @@ const routes = [
         path: '/policy/process',
         name: 'PolicyProcess',
         component: () => import('@/pages/policy/PolicyProcess.vue'),
-        meta: { title: '保单流程管理', menuKey: 'policy-process', roles: ['inkasso', 'clerk'] }
+        meta: { title: '保单流程管理', menuKey: 'policy-process', roles: ['customer', 'inkasso', 'clerk'] }
       },
       {
         path: '/policy/performance',

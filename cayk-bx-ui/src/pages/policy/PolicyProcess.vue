@@ -123,6 +123,11 @@
                         <t-input :value="'$' + Number(contractData.premium || 0).toLocaleString()" readonly />
                       </t-form-item>
                     </t-form>
+                    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+                      <t-button v-if="isCustomer && !refContract" theme="primary" @click="handleInitiateContract">发起委托合同签署申请</t-button>
+                      <t-button v-if="isInkasso && refContract?.status === 'pending_inkasso_sign'" theme="primary" @click="handleEsignOpen">在线签署盖章</t-button>
+                      <t-link v-if="refContract" theme="primary" @click="handleViewContractOpen">查看合同</t-link>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -413,6 +418,7 @@
           <t-button v-if="viewingStep === currentStep && !isStepOperator && currentStep < 7" theme="default" disabled>
             等待{{ stepRoles[currentStep - 1]?.label }}操作
           </t-button>
+          <t-button variant="outline" @click="goToList">返回列表</t-button>
         </div>
       </t-tab-panel>
 
@@ -458,7 +464,6 @@
             <div class="rf-row"><span class="rf-label">保险期间</span><span class="rf-value">{{ maintenanceResult.newPolicy.effectiveDate }} 至 {{ maintenanceResult.newPolicy.expiryDate }}</span></div>
             <div class="rf-row"><span class="rf-label">源保单号</span><span class="rf-value">{{ maintenanceResult.newPolicy.renewedFrom }}</span></div>
           </div>
-          <t-alert theme="info" message="新保单合同需重新签署并支付保费，请前往「委托合同签署」页面完成后续流程" style="margin-top:12px" />
         </template>
 
         <!-- Change result: show change record -->
@@ -553,6 +558,65 @@
         </div>
       </div>
     </t-dialog>
+
+    <!-- Esign Dialog -->
+    <t-dialog v-model:visible="esignVisible" header="电子签章 - 在线签署合同" width="680px" :footer="false" :destroy-on-close="true">
+      <div v-if="esignContract" class="esign-body">
+        <div class="esign-summary">
+          <div class="info-grid">
+            <div class="info-row"><span class="info-label">保单号</span><span class="info-value">{{ esignContract.policyNo }}</span></div>
+            <div class="info-row"><span class="info-label">被保险人</span><span class="info-value">{{ esignContract.companyName }}</span></div>
+            <div class="info-row"><span class="info-label">投保买方</span><span class="info-value">{{ esignContract.insuredName }}</span></div>
+            <div class="info-row"><span class="info-label">保险金额</span><span class="info-value">${{ Number(esignContract.coverageAmount || 0).toLocaleString() }}</span></div>
+          </div>
+        </div>
+        <t-alert message="请确认合同信息无误后，调用电子签章服务完成在线签署盖章。" theme="info" style="margin:16px 0" />
+        <div class="esign-seal-area" style="text-align:center;padding:32px;border:2px dashed #d0d0d0;border-radius:12px;margin-bottom:16px;">
+          <div v-if="esignStatus === 'idle'">
+            <t-icon name="stamp" size="48px" style="color:#b0b0b0;" />
+            <p style="color:#999;margin-top:8px;">点击下方按钮调用电子签章服务</p>
+          </div>
+          <div v-if="esignStatus === 'signing'">
+            <t-loading :loading="true" size="large" />
+            <p style="margin-top:8px;">正在调用电子签章服务...</p>
+          </div>
+          <div v-if="esignStatus === 'done'">
+            <div class="seal-stamp" style="display:inline-block;border:3px solid #e02424;border-radius:50%;padding:20px 16px;background:#fff5f5;">
+              <div style="font-size:14px;font-weight:700;color:#e02424;text-align:center;">长安银科<br/>电子签章</div>
+              <div style="font-size:11px;color:#e02424;text-align:center;margin-top:4px;">{{ esignDate }}</div>
+            </div>
+            <p style="color:#00a870;margin-top:8px;font-weight:600;">电子签章已完成</p>
+          </div>
+        </div>
+        <div class="esign-actions" style="display:flex;justify-content:flex-end;gap:8px;">
+          <t-button variant="outline" @click="esignVisible = false" :disabled="esignStatus === 'signing'">取消</t-button>
+          <t-button v-if="esignStatus === 'idle'" theme="primary" @click="handleEsignStart">调用电子签章</t-button>
+          <t-button v-if="esignStatus === 'done'" theme="primary" @click="handleEsignComplete">签署完成</t-button>
+        </div>
+      </div>
+    </t-dialog>
+
+    <!-- Contract View Dialog -->
+    <t-dialog v-model:visible="viewContractVisible" :header="'合同详情 - ' + (viewContract?.id || '')" width="700px" :footer="false">
+      <div v-if="viewContract" class="contract-view-body">
+        <t-form label-width="120">
+          <t-form-item label="合同编号"><t-input :value="viewContract.id" readonly /></t-form-item>
+          <t-form-item label="保单号"><t-input :value="viewContract.policyNo" readonly /></t-form-item>
+          <t-form-item label="被保险人"><t-input :value="viewContract.companyName" readonly /></t-form-item>
+          <t-form-item label="投保买方"><t-input :value="viewContract.insuredName" readonly /></t-form-item>
+          <t-form-item label="保险公司"><t-input :value="viewContract.insuranceCompany || '-'" readonly /></t-form-item>
+          <t-form-item label="保险金额"><t-input :value="'$' + Number(viewContract.coverageAmount || 0).toLocaleString()" readonly /></t-form-item>
+          <t-form-item label="保费金额"><t-input :value="'$' + Number(viewContract.premium || 0).toLocaleString()" readonly /></t-form-item>
+          <t-form-item label="合同状态">
+            <t-tag :theme="viewContract.status === 'insurance_active' ? 'success' : viewContract.status === 'pending_inkasso_sign' ? 'warning' : 'default'" variant="light">
+              {{ { pending_inkasso_sign: '待平台签署', inkasso_signed: '平台已签署', paid: '已支付', underwriting_submitted: '核保中', policy_issued: '保单已出具', policy_info_uploaded: '保单信息已上传', offline_paid: '线下已支付', insurance_active: '保险已生效' }[viewContract.status] || viewContract.status }}
+            </t-tag>
+          </t-form-item>
+          <t-form-item v-if="viewContract.paymentMethod" label="支付方式"><t-input :value="{ qr_code: '扫码支付', bank_transfer: '银行转账', online: '在线支付' }[viewContract.paymentMethod] || viewContract.paymentMethod" readonly /></t-form-item>
+          <t-form-item v-if="viewContract.paymentTime" label="支付时间"><t-input :value="viewContract.paymentTime" readonly /></t-form-item>
+        </t-form>
+      </div>
+    </t-dialog>
   </div>
 </template>
 
@@ -564,6 +628,10 @@ import { MessagePlugin } from 'tdesign-vue-next'
 
 const businessStore = useBusinessStore()
 const userStore = useUserStore()
+
+const isCustomer = computed(() => userStore.role === 'customer')
+const isInkasso = computed(() => userStore.role === 'inkasso')
+const isClerk = computed(() => userStore.role === 'clerk')
 
 const activeTab = ref('process')
 
@@ -837,11 +905,17 @@ const handleStepAction = () => {
   const c = refContract.value
 
   if (step === 1 && role === 'customer') {
-    window.location.href = '/policy/contract'
+    handleInitiateContract()
     return
   }
   if (step === 2 && role === 'customer') {
-    window.location.href = '/policy/contract'
+    if (refContract.value) {
+      const res = businessStore.processPayment(refContract.value.policyNo, formData.step2.paymentMethod || 'qr_code')
+      if (res.ok) MessagePlugin.success('保费支付成功')
+      else MessagePlugin.error(res.message || '支付失败')
+    } else {
+      MessagePlugin.warning('请先在第一步发起委托合同签署')
+    }
     return
   }
   if (step === 3 && role === 'clerk') {
@@ -858,7 +932,7 @@ const handleStepAction = () => {
       if (res.ok) MessagePlugin.success('保单已出具')
       else MessagePlugin.error(res.message)
     } else {
-      MessagePlugin.info('保单已在生效流程中，请检查委托合同签署页面')
+      MessagePlugin.info('保单已在生效流程中')
     }
     return
   }
@@ -879,6 +953,58 @@ const handleStepAction = () => {
     return
   }
   MessagePlugin.info('请到对应功能页面完成操作')
+}
+
+// ===== Contract Signing (inline, no redirect) =====
+const esignVisible = ref(false)
+const esignContract = ref(null)
+const esignStatus = ref('idle')
+const esignDate = ref('')
+const viewContractVisible = ref(false)
+const viewContract = ref(null)
+
+const handleInitiateContract = () => {
+  const c = refContract.value
+  const policyNo = c?.policyNo
+  if (!policyNo) { MessagePlugin.warning('未找到保单信息'); return }
+  const policy = businessStore.policies.find(p => p.policyNo === policyNo)
+  if (!policy) { MessagePlugin.warning('未找到保单'); return }
+  const result = businessStore.initContractFromPolicy(policy)
+  if (result) {
+    MessagePlugin.success('委托合同签署申请已发起，等待平台签署')
+  } else {
+    MessagePlugin.warning('该保单已发起过委托合同签署')
+  }
+}
+
+const handleEsignOpen = () => {
+  esignContract.value = refContract.value
+  esignStatus.value = 'idle'
+  esignDate.value = ''
+  esignVisible.value = true
+}
+
+const handleEsignStart = () => {
+  esignStatus.value = 'signing'
+  setTimeout(() => {
+    esignStatus.value = 'done'
+    esignDate.value = new Date().toLocaleString('zh-CN')
+  }, 2000)
+}
+
+const handleEsignComplete = () => {
+  const c = esignContract.value
+  if (c) {
+    const res = businessStore.inkassoSignContract(c.policyNo, '长安银科')
+    if (res.ok) MessagePlugin.success('合同签署完成')
+    else MessagePlugin.error(res.message || '签署失败')
+  }
+  esignVisible.value = false
+}
+
+const handleViewContractOpen = () => {
+  viewContract.value = refContract.value
+  viewContractVisible.value = true
 }
 
 const updateStep4FromContract = () => {
@@ -925,6 +1051,10 @@ const processTasks = computed(() => businessStore.processTasks)
 const onPageChange = (pageInfo) => {
   pagination.value.defaultCurrent = pageInfo.current
   pagination.value.defaultPageSize = pageInfo.pageSize
+}
+
+const goToList = () => {
+  router.push('/policy/list')
 }
 
 const handleView = (row) => {

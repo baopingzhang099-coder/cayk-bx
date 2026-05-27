@@ -196,7 +196,7 @@ const selectedTypeLabel = computed(() => {
 onMounted(() => {
   if (!policyNo.value) {
     MessagePlugin.warning('缺少保单号')
-    router.push('/policy/change')
+    router.push('/policy/list')
   }
   if (!policy.value) {
     MessagePlugin.warning('未找到保单信息')
@@ -205,7 +205,7 @@ onMounted(() => {
 
 const handleBack = () => {
   if (submitted.value) {
-    router.push('/policy/change')
+    router.push('/policy/list')
   } else {
     router.back()
   }
@@ -228,7 +228,7 @@ const handleSaveDraft = () => {
   const res = store.createPolicyChangeApp(policyNo.value, form.value)
   if (!res?.ok) { MessagePlugin.error(res?.message || '保存失败'); return }
   MessagePlugin.success('草稿已保存')
-  submitted.value = true
+  router.push('/policy/list')
 }
 
 const handleSubmit = () => {

@@ -9,215 +9,114 @@
     </div>
     <div class="page-header">
       <div class="page-title">保单信息管理</div>
-      <t-badge v-if="isClerk && unreadNotificationCount > 0" :count="unreadNotificationCount" :offset="[-4, 4]" dot>
-        <t-button shape="circle" variant="text" @click="notificationVisible = true">
+      <div class="header-actions">
+        <t-button v-if="isCustomer || isClerk" theme="primary" variant="outline" @click="externalUploadVisible = true">
+          <template #icon><t-icon name="upload" /></template>
+          上传电子保单
+        </t-button>
+        <t-badge v-if="isClerk && unreadNotificationCount > 0" :count="unreadNotificationCount" :offset="[-4, 4]" dot>
+          <t-button shape="circle" variant="text" @click="notificationVisible = true">
+            <template #icon><t-icon name="notification" /></template>
+          </t-button>
+        </t-badge>
+        <t-button v-if="isClerk && unreadNotificationCount === 0" shape="circle" variant="text" @click="notificationVisible = true">
           <template #icon><t-icon name="notification" /></template>
         </t-button>
-      </t-badge>
-      <t-button v-if="isClerk && unreadNotificationCount === 0" shape="circle" variant="text" @click="notificationVisible = true">
-        <template #icon><t-icon name="notification" /></template>
-      </t-button>
+      </div>
     </div>
 
-    <t-tabs v-model="mainTab" theme="card" class="mb-16">
-      <t-tab-panel value="upload" label="电子保单列表">
-        <div class="table-header">
-          <span class="table-title">电子保单列表</span>
+    <!-- 筛选区域 -->
+    <t-card class="search-filter">
+      <t-form layout="inline">
+        <t-form-item label="保单号">
+          <t-input v-model="policySearchParams.policyNo" placeholder="请输入保单号" clearable />
+        </t-form-item>
+        <t-form-item label="被保险人">
+          <t-input v-model="policySearchParams.policyholder" placeholder="请输入被保险人" clearable />
+        </t-form-item>
+        <t-form-item label="投保买方">
+          <t-input v-model="policySearchParams.insured" placeholder="请输入投保买方" clearable />
+        </t-form-item>
+        <t-form-item label="保险公司">
+          <t-input v-model="policySearchParams.insuranceCompany" placeholder="请输入保险公司" clearable />
+        </t-form-item>
+        <t-form-item label="状态">
+          <t-select v-model="policySearchParams.status" placeholder="请选择状态" clearable>
+            <t-option v-for="item in policySearchStatusOptions" :key="item.value" :value="item.value" :label="item.label" />
+          </t-select>
+        </t-form-item>
+        <t-form-item>
           <t-space>
-            <t-button theme="primary" v-if="isCustomer" @click="externalUploadVisible = true">
-              <template #icon><t-icon name="file-pdf" /></template>
-              上传电子保单
-            </t-button>
-            <t-button theme="primary" v-if="isClerk" @click="clerkUploadVisible = true">
-              <template #icon><t-icon name="file-pdf" /></template>
-              代客上传电子保单
-            </t-button>
+            <t-button theme="primary" @click="handlePolicySearch">查询</t-button>
+            <t-button variant="outline" @click="handlePolicyReset">重置</t-button>
           </t-space>
+        </t-form-item>
+      </t-form>
+    </t-card>
+
+    <!-- 统计卡片 -->
+    <div class="stats-grid mb-24">
+      <stat-card title="有效保单" :value="activePolicyCount" icon="check-circle" color="success" />
+      <stat-card title="即将到期" :value="expiringPolicyCount" icon="alarm" color="warning" />
+      <stat-card title="总保额" :value="`$${totalCoverage.toLocaleString()}`" icon="wallet" color="primary" />
+      <stat-card title="总保费" :value="`$${totalPremium.toLocaleString()}`" icon="credit-card" color="danger" />
+    </div>
+
+    <!-- 保单列表 -->
+    <data-table
+      :data="unifiedPolicyTableData"
+      :columns="unifiedPolicyColumns"
+      :pagination="unifiedPagination"
+      :loading="loading"
+      :expanded-row-keys="expandedRowKeys"
+      row-key="id"
+      @page-change="handleUnifiedPageChange"
+      @expand-change="handleExpandChange"
+    >
+      <template #status="{ row }">
+        <status-tag :status="row.status" :status-map="policyStatusMap" />
+      </template>
+      <template #coverageAmount="{ row }">
+        <span>${{ Number(row.coverageAmount || 0).toLocaleString() }}</span>
+      </template>
+      <template #premium="{ row }">
+        <span>${{ Number(row.premium || 0).toLocaleString() }}</span>
+      </template>
+      <template #externalPolicy="{ row }">
+        <span v-if="row.externalPolicyId && row.insuranceCompany" style="font-weight:500;">{{ row.insuranceCompany }}电子保单</span>
+        <span v-else-if="row.externalPolicyId" style="font-weight:500;">电子保单</span>
+        <span v-else style="color:#999;">-</span>
+      </template>
+      <template #operation="{ row }">
+        <t-space>
+          <t-link theme="primary" @click="handleViewPolicy(row)">查看详情</t-link>
+          <t-link theme="primary" @click="router.push('/policy/change/new?policyNo=' + row.policyNo)">变更</t-link>
+          <t-link theme="primary" @click="handleRenewal(row)">续保</t-link>
+          <t-link theme="primary" @click="handleSurrender(row)">退保</t-link>
+        </t-space>
+      </template>
+      <template #expandedRow="{ row }">
+        <div class="expanded-sub-records">
+          <div v-if="subRecordsByPolicy[row.policyNo]?.length" class="sub-records-list">
+            <div class="sr-row" v-for="rec in subRecordsByPolicy[row.policyNo]" :key="rec.id">
+              <t-tag :theme="rec.type === 'change' ? 'warning' : rec.type === 'renewal' ? 'primary' : rec.type === 'surrender' ? 'danger' : rec.type === 'external' ? 'success' : 'default'" size="small" variant="light" class="sr-type">
+                {{ rec.type === 'change' ? '变更' : rec.type === 'renewal' ? '续保' : rec.type === 'surrender' ? '退保' : rec.type === 'external' ? '电子保单' : '投保' }}
+              </t-tag>
+              <span class="sr-id" :title="rec.id">{{ rec.id }}</span>
+              <status-tag :status="rec.status" :status-map="rec.statusMap" size="small" />
+              <span class="sr-date">{{ rec.applicationDate }}</span>
+              <span class="sr-ops">
+                <t-link v-for="op in getSubRecordOps(rec)" :key="op.label" :theme="op.theme" @click="op.handler">{{ op.label }}</t-link>
+              </span>
+              <t-link v-if="rec.type === 'change'" theme="primary" @click="handleChangeView(rec._raw)">详情</t-link>
+              <t-link v-else theme="primary" @click="handleSubRecordView(rec)">详情</t-link>
+            </div>
+          </div>
+          <div v-else class="sr-empty">暂无子记录</div>
         </div>
+      </template>
+    </data-table>
 
-        <div class="stats-grid mb-24">
-          <stat-card title="总上传" :value="uploadTotalCount" icon="file" color="primary" />
-          <stat-card title="待处理" :value="uploadPendingCount" icon="search" color="warning" />
-          <stat-card title="已生效" :value="uploadCompletedCount" icon="check-circle" color="success" />
-        </div>
-
-        <data-table
-          :data="uploadTableData"
-          :columns="uploadColumns"
-          :pagination="uploadPagination"
-          :loading="uploadLoading"
-          row-key="id"
-          @page-change="handleUploadPageChange"
-        >
-          <template #status="{ row }">
-            <status-tag :status="row.status" :status-map="uploadStatusMap" />
-          </template>
-          <template #operation="{ row }">
-            <t-space>
-              <t-link @click="handleViewUpload(row)">查看</t-link>
-              <t-link v-if="isCustomer && row.status === 'draft'" theme="primary" @click="handleExternalSubmitToPlatform(row)">提交平台审核</t-link>
-              <t-link v-if="isCustomer && row.status === 'clerk_pending_auth'" theme="primary" @click="handleCustomerAuthorizeExternal(row)">授权</t-link>
-              <t-link v-if="isClerk && row.status === 'clerk_auth_authorized'" theme="primary" @click="handlePushToPlatformReview(row)">推送平台审核</t-link>
-              <t-link v-if="isInkasso && row.status === 'platform_review'" theme="primary" @click="handleOcrUpload(row)">OCR识别</t-link>
-              <t-link v-if="isInkasso && row.status === 'platform_review'" theme="primary" @click="handlePlatformApprove(row)">审核通过</t-link>
-              <t-link v-if="isInkasso && row.status === 'returned'" theme="primary" @click="handleOcrUpload(row)">OCR识别</t-link>
-              <t-link v-if="isInkasso && row.status === 'returned'" theme="primary" @click="handleResubmit(row)">提交审核</t-link>
-              <t-link v-if="isClerk && row.status === 'clerk_review'" theme="primary" @click="handleClerkApproveExternal(row)">审核通过</t-link>
-              <t-link v-if="isClerk && row.status === 'clerk_review'" theme="danger" @click="handleClerkRejectExternal(row)">驳回</t-link>
-              <t-link v-if="isClerk && (row.status === 'clerk_ocr_failed' || row.status === 'clerk_confirm')" theme="primary" @click="handleClerkApproveFailedOcr(row)">确认生效</t-link>
-              <t-link v-if="isClerk && row.status === 'clerk_confirm'" theme="danger" @click="handleClerkRejectExternal(row)">驳回</t-link>
-              <t-link v-if="isClerk && row.status === 'clerk_ocr_failed'" theme="danger" @click="handleDeleteExternal(row)">删除</t-link>
-            </t-space>
-          </template>
-        </data-table>
-      </t-tab-panel>
-
-      <t-tab-panel value="review" label="保单投保列表">
-        <div class="table-header">
-          <span class="table-title">投保列表</span>
-          <t-space>
-            <t-button theme="primary" v-if="isInkasso" @click="ocrDialogVisible = true">
-              <template #icon><t-icon name="scan" /></template>
-              电子保单数字化（OCR）识别
-            </t-button>
-          </t-space>
-        </div>
-
-        <search-filter
-          :status-options="statusOptions"
-          @search="handleSearch"
-          @reset="handleReset"
-        />
-
-        <div class="stats-grid mb-24">
-          <stat-card title="已审核" :value="activePolicyCount" icon="check-circle" color="success" />
-          <stat-card title="总申请数" :value="store.insuranceApplications.length" icon="file" color="primary" />
-          <stat-card title="总投保金额" :value="`$${totalInsuranceAmount.toLocaleString()}`" icon="credit-card" color="danger" />
-        </div>
-
-        <data-table
-          :data="tableData"
-          :columns="columns"
-          :pagination="pagination"
-          :loading="loading"
-          row-key="id"
-          @page-change="handlePageChange"
-        >
-          <template #status="{ row }">
-            <status-tag :status="row.status" :status-map="statusMap" />
-          </template>
-          <template #insuranceAmount="{ row }">
-            <span>${{ Number(row.insuranceAmount || 0).toLocaleString() }}</span>
-          </template>
-          <template #expectedInsurancePeriod="{ row }">
-            <span>{{ Array.isArray(row.expectedInsurancePeriod) ? row.expectedInsurancePeriod.join(' ~ ') : row.expectedInsurancePeriod }}</span>
-          </template>
-          <template #serviceFee="{ row }">
-            <template v-if="row.serviceFeePaid">
-              <span style="color:#00a870;font-weight:600;">${{ Number(row.serviceFeeAmount || 0).toLocaleString() }}</span>
-              <t-tag theme="success" variant="light" size="small" style="margin-left:4px;">已支付</t-tag>
-            </template>
-            <span v-else style="color:#999;">-</span>
-          </template>
-          <template #operation="{ row }">
-            <t-space>
-              <t-link @click="handleView(row)">查看</t-link>
-              <t-link v-if="isInkasso && row.status === 'pending_review'" theme="primary" @click="handleApprove(row)">申请跟单员确认</t-link>
-              <t-link v-if="isClerk && row.status === 'clerk_review'" theme="primary" @click="handleClerkApprove(row)">审核</t-link>
-              <t-link v-if="isClerk && row.status === 'approved'" theme="primary" @click="handleSubmitUnderwriting(row)">提交核保</t-link>
-              <t-link v-if="isClerk && row.status === 'underwriting'" theme="primary" @click="handleUnderwritingComplete(row)">核保通过</t-link>
-              <t-link v-if="isClerk && row.status === 'uw_completed'" theme="primary" @click="handleSyncToPlatform(row)">同步保单</t-link>
-              <t-link v-if="isClerk && row.status === 'payment_uploaded'" theme="primary" @click="handleClerkConfirmPayment(row)">确认缴费</t-link>
-              <t-link v-if="isInkasso && row.status === 'ocr_pending'" theme="primary" @click="handleApprove(row)">申请跟单员确认</t-link>
-              <t-link v-if="isClerk && (row.status === 'ocr_pending' || row.status === 'ocr_clerk_review')" theme="primary" @click="handleClerkApprove(row)">审核</t-link>
-              <t-link v-if="isCustomer && row.status === 'ocr_pending'" theme="primary" @click="handleSubmitToPlatform(row)">提交平台审核</t-link>
-              <t-link v-if="!isInkasso && !isClerk && row.status === 'rejected'" theme="primary" @click="handleSubmit(row)">重新提交</t-link>
-            </t-space>
-          </template>
-        </data-table>
-      </t-tab-panel>
-
-      <t-tab-panel value="policy" label="保单列表">
-        <div class="table-header">
-          <span class="table-title">保单信息管理</span>
-        </div>
-
-        <div class="stats-grid mb-24">
-          <stat-card title="有效保单" :value="activePolicyCount" icon="check-circle" color="success" />
-          <stat-card title="即将到期" :value="expiringPolicyCount" icon="alarm" color="warning" />
-          <stat-card title="总保额" :value="`$${totalCoverage.toLocaleString()}`" icon="wallet" color="primary" />
-          <stat-card title="总保费" :value="`$${totalPremium.toLocaleString()}`" icon="credit-card" color="danger" />
-        </div>
-
-        <data-table
-          :data="policyTableData"
-          :columns="policyColumns"
-          :pagination="policyPagination"
-          :loading="loading"
-          row-key="id"
-          @page-change="handlePolicyPageChange"
-        >
-          <template #status="{ row }">
-            <status-tag :status="row.status" :status-map="policyStatusMap" />
-          </template>
-          <template #coverageAmount="{ row }">
-            <span>${{ Number(row.coverageAmount || 0).toLocaleString() }}</span>
-          </template>
-          <template #premium="{ row }">
-            <span>${{ Number(row.premium || 0).toLocaleString() }}</span>
-          </template>
-          <template #operation="{ row }">
-            <t-space>
-              <t-link @click="handleViewPolicy(row)">查看</t-link>
-              <t-link theme="primary" @click="handlePolicyChange(row)">变更</t-link>
-              <t-link theme="primary" @click="handleRenewal(row)">续保</t-link>
-              <t-link theme="danger" @click="handleSurrender(row)">退保</t-link>
-            </t-space>
-          </template>
-        </data-table>
-      </t-tab-panel>
-
-
-      <t-tab-panel value="renewal" label="保单续保列表">
-        <div class="table-header">
-          <span class="table-title">续保申请列表</span>
-          <span class="table-count">共 {{ renewalApps.length }} 条记录</span>
-        </div>
-        <data-table :data="renewalTableData" :columns="renewalColumns" :pagination="renewalPagination" :loading="loading" row-key="id" @page-change="handleRenewalPageChange">
-          <template #status="{ row }">
-            <status-tag :status="row.status" :status-map="renewalStatusMap" />
-          </template>
-          <template #paymentStatus="{ row }">
-            <span :style="{ color: (row.paymentStatus === 'paid' || row.status === 'renew_paid') ? '#00a870' : '#ffb800', fontWeight: 600 }">{{ paymentStatusIcon(row) }}</span>
-          </template>
-          <template #operation="{ row }">
-            <t-space>
-              <t-link @click="handleRenewalView(row)">查看</t-link>
-              <!-- Inkasso operations -->
-              <t-link v-if="isInkasso && row.status === 'renew_inkasso_review' && !row.generatedApplicationForm.length" theme="primary" @click="handleRenewalGenDocs(row)">生成续保资料</t-link>
-              <t-link v-if="isInkasso && row.status === 'renew_inkasso_review' && row.generatedApplicationForm.length" theme="primary" @click="handleRenewalPushClerk(row)">推送给跟单员</t-link>
-              <t-link v-if="isInkasso && row.status === 'renew_supplement'" theme="primary" @click="handleRenewalPlatformPushSupplement(row)">推送客户补充资料</t-link>
-              <t-link v-if="isInkasso && row.status === 'renew_platform_review'" theme="success" @click="handleRenewalPlatformApproveSupplement(row)">审核通过</t-link>
-              <t-link v-if="isInkasso && row.status === 'renew_active'" theme="primary" @click="handleRenewalPaymentApplication(row)">推送客户交纳保费申请</t-link>
-              <t-link v-if="isInkasso && row.status === 'renew_payment_uploaded'" theme="primary" @click="handleRenewalVerifyVoucher(row)">维护缴费凭证</t-link>
-              <!-- Clerk operations -->
-              <t-link v-if="isClerk && row.status === 'renew_clerk_review'" theme="success" @click="handleRenewalClerkApprove(row)">审核通过</t-link>
-              <t-link v-if="isClerk && row.status === 'renew_clerk_review'" theme="danger" @click="handleRenewalClerkReject(row)">驳回</t-link>
-              <t-link v-if="isClerk && row.status === 'renew_insurer_review'" theme="success" @click="handleRenewalInsurerApprove(row)">保险公司批准</t-link>
-              <t-link v-if="isClerk && row.status === 'renew_insurer_review'" theme="danger" @click="handleRenewalInsurerReject(row)">保险公司驳回</t-link>
-              <t-link v-if="isClerk && row.status === 'renew_insurer_approved'" theme="primary" @click="handleRenewalClerkSync(row)">同步新保单</t-link>
-              <t-link v-if="isClerk && row.status === 'renew_insurer_rejected'" theme="primary" @click="handleRenewalInitSupplement(row)">发起补充请求</t-link>
-              <t-link v-if="isClerk && row.status === 'renew_clerk_resubmit'" theme="primary" @click="handleRenewalClerkResubmit(row)">提交续保申请</t-link>
-              <t-link v-if="isClerk && row.status === 'renew_payment_verified'" theme="primary" @click="handleRenewalSyncPayment(row)">同步缴费凭证</t-link>
-              <!-- Customer operations -->
-              <t-link v-if="isCustomer && row.status === 'renew_customer_supplement'" theme="primary" @click="handleRenewalCustomerSupplement(row)">补充材料</t-link>
-              <t-link v-if="isCustomer && row.status === 'renew_customer_supplemented'" theme="primary" @click="handleRenewalCustomerPushPlatform(row)">推送平台审核</t-link>
-              <t-link v-if="isCustomer && row.status === 'renew_pending_payment'" theme="primary" @click="handleRenewalUploadVoucher(row)">上传缴费凭证</t-link>
-            </t-space>
-          </template>
-        </data-table>
-
-        <!-- Renewal Detail Dialog -->
         <t-dialog v-model:visible="renewalDetailVisible" :header="'续保详情 - ' + (renewalDetailRow?.id || '')" width="800px" :footer="false">
           <div v-if="renewalDetailRow" class="detail-body">
             <!-- Basic info -->
@@ -411,59 +310,6 @@
             </t-space>
           </template>
         </t-dialog>
-
-      </t-tab-panel>
-
-      <t-tab-panel value="surrender" label="保单退保列表">
-        <div class="table-header">
-          <span class="table-title">退保申请列表</span>
-        </div>
-        <div class="stats-grid mb-24">
-          <stat-card title="总申请" :value="srTotalCount" icon="file" color="primary" />
-          <stat-card title="待处理" :value="srPendingCount" icon="search" color="warning" />
-          <stat-card title="已完成" :value="srCompletedCount" icon="check-circle" color="success" />
-        </div>
-        <data-table :data="surrenderTableData" :columns="surrenderColumns" :pagination="surrenderPagination" :loading="loading" row-key="id" @page-change="handleSurrenderPageChange">
-          <template #status="{ row }">
-            <status-tag :status="row.status" :status-map="srStatusMap" />
-          </template>
-          <template #coverageAmount="{ row }">
-            <span>${{ Number(row.coverageAmount || 0).toLocaleString() }}</span>
-          </template>
-          <template #operation="{ row }">
-            <t-space>
-              <t-link @click="handleSurrenderView(row)">查看</t-link>
-
-              <!-- Customer operations -->
-              <t-link v-if="isCustomer && row.status === 'sr_platform_synced'" theme="success" @click="handleSurrenderConfirmRefund(row)">确认退款</t-link>
-              <t-link v-if="isCustomer && row.status === 'sr_customer_supplement'" theme="primary" @click="handleSurrenderCustomerSupplement(row)">补充材料</t-link>
-              <t-link v-if="isCustomer && row.status === 'sr_customer_supplement'" theme="primary" @click="handleSurrenderCustomerPush(row)">推送平台审核</t-link>
-
-              <!-- Inkasso operations -->
-              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && !row.generatedSurrenderForm?.length" theme="primary" @click="handleSurrenderGenDocs(row, 'form')">生成退保申请表</t-link>
-              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && !row.generatedSurrenderChecklist?.length" theme="primary" @click="handleSurrenderGenDocs(row, 'checklist')">生成材料清单</t-link>
-              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && row.generatedSurrenderForm?.length" theme="danger" @click="handleSurrenderDelDocs(row, 'form')">删除退保申请表</t-link>
-              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && row.generatedSurrenderChecklist?.length" theme="danger" @click="handleSurrenderDelDocs(row, 'checklist')">删除材料清单</t-link>
-              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && row.generatedSurrenderForm?.length > 0 && !row.rejectReason" theme="primary" @click="handleSurrenderPushClerk(row)">推送给跟单员</t-link>
-              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && row.rejectReason && !row.supplementHistory?.some(s => s.type === 'submission')" theme="primary" @click="handleSurrenderPushCustomerSupplement(row)">推送客户补充</t-link>
-              <t-link v-if="isInkasso && row.status === 'sr_platform_review' && row.rejectReason && row.supplementHistory?.some(s => s.type === 'submission')" theme="primary" @click="handleSurrenderPushClerkAfterSupplement(row)">推送跟单员确认</t-link>
-              <t-link v-if="isInkasso && row.status === 'sr_supplement'" theme="primary" @click="handleSurrenderPlatformSupplement(row)">补充材料</t-link>
-
-              <!-- Clerk operations -->
-              <t-link v-if="isClerk && row.status === 'sr_clerk_review'" theme="success" @click="handleSurrenderClerkApprove(row)">审核通过</t-link>
-              <t-link v-if="isClerk && row.status === 'sr_clerk_review'" theme="danger" @click="handleSurrenderClerkReject(row)">驳回</t-link>
-              <t-link v-if="isClerk && row.status === 'sr_insurer_review'" theme="success" @click="handleSurrenderInsurerApprove(row)">保险公司批准</t-link>
-              <t-link v-if="isClerk && row.status === 'sr_insurer_review'" theme="danger" @click="handleSurrenderInsurerReject(row)">驳回</t-link>
-              <t-link v-if="isClerk && row.status === 'sr_insurer_approved'" theme="primary" @click="handleSurrenderInsurerPay(row)">发起退款</t-link>
-              <t-link v-if="isClerk && row.status === 'sr_payment_initiated'" theme="primary" @click="handleSurrenderSyncPlatform(row)">同步平台</t-link>
-              <t-link v-if="isClerk && row.status === 'sr_insurer_rejected'" theme="primary" @click="handleSurrenderInitSupplement(row)">发起补充请求</t-link>
-              <t-link v-if="isClerk && row.status === 'sr_insurer_rejected'" theme="danger" @click="handleSurrenderRejectTerminate(row)">退保终止</t-link>
-            </t-space>
-          </template>
-        </data-table>
-      </t-tab-panel>
-
-    </t-tabs>
 
     <!-- 投保确认详情弹窗 -->
     <t-dialog v-model:visible="detailVisible" header="投保方案审核" width="760px" :footer="false">
@@ -890,78 +736,75 @@
           </div>
         </div>
 
+        <!-- 责任限额 (from electronic policy) -->
+        <div v-if="currentPolicyElectronic" class="pd-card">
+          <div class="pd-card-header">🛡️ 责任限额</div>
+          <div class="pd-card-body">
+            <div class="pd-grid">
+              <div class="pd-field"><span class="pd-label">保险金额</span><span class="pd-value pd-number">${{ Number(currentPolicyElectronic.coverageAmount || 0).toLocaleString() }}</span></div>
+              <div class="pd-field"><span class="pd-label">最高赔偿限额</span><span class="pd-value pd-number">{{ currentPolicyElectronic.maxCompensationLimit ? '$' + Number(currentPolicyElectronic.maxCompensationLimit).toLocaleString() : '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">买方信用限额</span><span class="pd-value pd-number">{{ currentPolicyElectronic.buyerCreditLimit ? '$' + Number(currentPolicyElectronic.buyerCreditLimit).toLocaleString() : '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">免赔额</span><span class="pd-value pd-number">{{ currentPolicyElectronic.deductible ? '$' + Number(currentPolicyElectronic.deductible).toLocaleString() : '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">等待期</span><span class="pd-value">{{ currentPolicyElectronic.idlePeriod ? currentPolicyElectronic.idlePeriod + ' 天' : '-' }}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 申报规则 (from electronic policy) -->
+        <div v-if="currentPolicyElectronic" class="pd-card">
+          <div class="pd-card-header">📋 申报规则</div>
+          <div class="pd-card-body">
+            <div class="pd-grid">
+              <div class="pd-field"><span class="pd-label">申报方式</span><span class="pd-value">{{ currentPolicyElectronic.declarationMethod || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">申报周期</span><span class="pd-value">{{ currentPolicyElectronic.declarationCycle || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">申报截止日</span><span class="pd-value">{{ currentPolicyElectronic.declarationDeadline || '-' }}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 承保范围 (from electronic policy) -->
+        <div v-if="currentPolicyElectronic" class="pd-card">
+          <div class="pd-card-header">🌐 承保范围</div>
+          <div class="pd-card-body">
+            <div class="pd-grid">
+              <div class="pd-field"><span class="pd-label">承保风险</span><span class="pd-value">{{ currentPolicyElectronic.coveredRisks || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">条款版本</span><span class="pd-value">{{ currentPolicyElectronic.clauseVersion || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">国别风险版本</span><span class="pd-value">{{ currentPolicyElectronic.countryRiskVersion || '-' }}</span></div>
+              <div class="pd-field"><span class="pd-label">自有控制限额</span><span class="pd-value">{{ currentPolicyElectronic.selfControlledLimit || '-' }}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 费用记录 -->
+        <div class="pd-card">
+          <div class="pd-card-header">💰 费用记录</div>
+          <div class="pd-card-body">
+            <div v-if="policyFeeRecords.length > 0" class="pd-fee-table">
+              <div class="pd-fee-header">
+                <span class="pd-fee-col type">类型</span>
+                <span class="pd-fee-col amount">金额</span>
+                <span class="pd-fee-col status">状态</span>
+                <span class="pd-fee-col date">日期</span>
+                <span class="pd-fee-col source">来源</span>
+              </div>
+              <div v-for="(fr, fi) in policyFeeRecords" :key="fi" class="pd-fee-row">
+                <span class="pd-fee-col type">{{ fr.type }}</span>
+                <span class="pd-fee-col amount pd-number" :style="{ color: fr.amount < 0 ? '#dc2626' : '#1e293b' }">{{ fr.amount >= 0 ? '$' + Number(fr.amount).toLocaleString() : '-$' + Math.abs(fr.amount).toLocaleString() }}</span>
+                <span class="pd-fee-col status">
+                  <t-tag :theme="fr.status === 'paid' ? 'success' : fr.status === 'pending' ? 'warning' : fr.status === 'refund' ? 'danger' : 'default'" size="small" variant="light">{{ fr.statusLabel }}</t-tag>
+                </span>
+                <span class="pd-fee-col date">{{ fr.date || '-' }}</span>
+                <span class="pd-fee-col source">{{ fr.source }}</span>
+              </div>
+            </div>
+            <div v-else class="pd-empty-tip">暂无费用记录</div>
+          </div>
+        </div>
+
       </div>
     </t-dialog>
 
     <!-- 导出弹窗 -->
-    <t-dialog v-model:visible="exportVisible" header="导出预览" width="800px" :footer="false">
-      <div class="export-modal">
-        <div class="export-filters">
-          <h4 class="filter-title">筛选条件</h4>
-          <div class="filter-grid">
-            <div class="filter-item" v-if="searchParams.enterpriseName">
-              <span class="filter-label">企业名称：</span>
-              <span class="filter-value">{{ searchParams.enterpriseName }}</span>
-            </div>
-            <div class="filter-item" v-if="searchParams.buyerName">
-              <span class="filter-label">买方名称：</span>
-              <span class="filter-value">{{ searchParams.buyerName }}</span>
-            </div>
-            <div class="filter-item" v-if="searchParams.status">
-              <span class="filter-label">状态：</span>
-              <span class="filter-value">{{ statusMap[searchParams.status] || searchParams.status }}</span>
-            </div>
-            <div class="filter-item" v-if="!Object.values(searchParams).some(v => v && (Array.isArray(v) ? v.length : true))">
-              <span class="filter-label">筛选条件：</span>
-              <span class="filter-value">全部数据</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="export-preview">
-          <h4 class="preview-title">数据预览（共 {{ exportData.length }} 条）</h4>
-          <div class="preview-table-wrapper">
-            <table class="preview-table">
-              <thead>
-                <tr>
-                  <th>投保编号</th>
-                  <th>企业名称</th>
-                  <th>买方名称</th>
-                  <th>买方国别</th>
-                  <th>投保类型</th>
-                  <th>投保金额</th>
-                  <th>状态</th>
-                  <th>申请日期</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in exportData.slice(0, 10)" :key="row.id">
-                  <td>{{ row.id }}</td>
-                  <td>{{ row.companyName }}</td>
-                  <td>{{ row.buyerName }}</td>
-                  <td>{{ row.buyerCountry }}</td>
-                  <td>{{ row.insuranceType }}</td>
-                  <td>${{ Number(row.insuranceAmount || 0).toLocaleString() }}</td>
-                  <td>{{ statusMap[row.status] || row.status }}</td>
-                  <td>{{ row.createTime }}</td>
-                </tr>
-                <tr v-if="exportData.length > 10">
-                  <td colspan="8" class="more-data">... 还有 {{ exportData.length - 10 }} 条数据</td>
-                </tr>
-                <tr v-if="exportData.length === 0">
-                  <td colspan="8" class="no-data">暂无数据</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <t-button variant="outline" @click="exportVisible = false">取消</t-button>
-          <t-button theme="primary" @click="generateExcel">导出Excel</t-button>
-        </div>
-      </div>
-    </t-dialog>
 
     <!-- 跟单员驳回弹窗 -->
     <t-dialog v-model:visible="clerkRejectVisible" header="驳回投保申请" width="500px">
@@ -1199,20 +1042,18 @@
         </div>
 
         <div class="modal-footer">
-          <template v-if="isInkasso && externalDetailRow.status === 'platform_review'">
+          <template v-if="isInkasso && (externalDetailRow.status === 'platform_review' || externalDetailRow.status === 'returned')">
             <t-button theme="primary" @click="handleOcrUpload(externalDetailRow)">OCR识别</t-button>
-            <t-button theme="primary" @click="handlePlatformApprove(externalDetailRow)">审核通过</t-button>
           </template>
-          <template v-if="isInkasso && externalDetailRow.status === 'returned'">
-            <t-button theme="primary" @click="handleOcrUpload(externalDetailRow)">OCR识别</t-button>
-            <t-button theme="primary" @click="handleResubmit(externalDetailRow)">提交审核</t-button>
+          <template v-if="isCustomer && externalDetailRow.status === 'draft'">
+            <t-button theme="primary" @click="handleSubmitToPlatformReview(externalDetailRow)">提交平台审核</t-button>
+          </template>
+          <template v-if="isCustomer && externalDetailRow.status === 'clerk_pending_auth'">
+            <t-button theme="primary" @click="handleCustomerAuthorizeExternal(externalDetailRow)">确认授权</t-button>
           </template>
           <template v-if="isClerk && externalDetailRow.status === 'clerk_review'">
             <t-button theme="primary" @click="handleClerkApproveExternal(externalDetailRow)">审核通过</t-button>
             <t-button theme="danger" @click="handleClerkRejectExternal(externalDetailRow)">驳回</t-button>
-          </template>
-          <template v-if="isCustomer && externalDetailRow.status === 'clerk_pending_auth'">
-            <t-button theme="primary" @click="handleCustomerAuthorizeExternal(externalDetailRow)">确认授权</t-button>
           </template>
           <t-button variant="outline" @click="externalDetailVisible = false">关闭</t-button>
         </div>
@@ -1527,170 +1368,6 @@
       </template>
     </t-dialog>
 
-<!-- 限额申请详情弹窗 -->
-    <t-dialog v-model:visible="clAppDetailVisible" :header="'限额申请详情 - ' + (clAppDetailRow?.id || '')" width="800px" :footer="false">
-      <div v-if="clAppDetailRow" class="detail-body">
-        <div class="detail-card">
-          <div class="detail-card-title">基本信息</div>
-          <div class="detail-grid">
-            <div class="detail-row"><span class="detail-label">申请编号</span><span class="detail-value">{{ clAppDetailRow.id }}</span></div>
-            <div class="detail-row"><span class="detail-label">保单号</span><span class="detail-value">{{ clAppDetailRow.policyNo }}</span></div>
-            <div class="detail-row"><span class="detail-label">买方名称</span><span class="detail-value">{{ clAppDetailRow.buyerName }}</span></div>
-            <div class="detail-row"><span class="detail-label">申请额度</span><span class="detail-value">${{ Number(clAppDetailRow.appliedLimit || 0).toLocaleString() }}</span></div>
-            <div class="detail-row"><span class="detail-label">币种</span><span class="detail-value">{{ clAppDetailRow.currency }}</span></div>
-            <div class="detail-row"><span class="detail-label">申请日期</span><span class="detail-value">{{ clAppDetailRow.applicationDate }}</span></div>
-            <div class="detail-row"><span class="detail-label">申请原因</span><span class="detail-value">{{ clAppDetailRow.applicationReason || '-' }}</span></div>
-            <div class="detail-row"><span class="detail-label">状态</span><span class="detail-value"><status-tag :status="clAppDetailRow.status" :status-map="clAppStatusMap" /></span></div>
-          </div>
-        </div>
-        <div v-if="clAppDetailRow.creditQueryResult" class="detail-card">
-          <div class="detail-card-title">资信查询结果（模拟）</div>
-          <div class="detail-grid">
-            <div class="detail-row"><span class="detail-label">买方信用评级</span><span class="detail-value">{{ clAppDetailRow.creditQueryResult.buyerCreditRating }}</span></div>
-            <div class="detail-row"><span class="detail-label">资信机构评估额度</span><span class="detail-value">${{ Number(clAppDetailRow.creditQueryResult.buyerCreditLimit).toLocaleString() }}</span></div>
-            <div class="detail-row"><span class="detail-label">历史违约率</span><span class="detail-value">{{ clAppDetailRow.creditQueryResult.historicalDefaultRate }}%</span></div>
-            <div class="detail-row"><span class="detail-label">查询时间</span><span class="detail-value">{{ clAppDetailRow.creditQueryResult.queryTime }}</span></div>
-          </div>
-        </div>
-        <div v-if="clAppDetailRow.overLimitWarning" class="detail-card" style="border-color:#f59e0b;">
-          <div class="detail-card-title" style="color:#f59e0b;">超限预警</div>
-          <div style="padding:8px 12px;color:#92400e;background:#fffbeb;border-radius:4px;">{{ clAppDetailRow.overLimitMessage }}</div>
-        </div>
-        <div v-if="clAppDetailRow.generatedCreditReport?.length > 0" class="detail-card">
-          <div class="detail-card-title">生成文件</div>
-          <div class="detail-grid">
-            <div class="detail-row"><span class="detail-label">限额申请表</span><span class="detail-value">{{ clAppDetailRow.generatedApplicationForm?.[0]?.name || '-' }}</span></div>
-            <div class="detail-row"><span class="detail-label">买方资信报告</span><span class="detail-value">{{ clAppDetailRow.generatedCreditReport?.[0]?.name || '-' }}</span></div>
-            <div class="detail-row"><span class="detail-label">材料清单</span><span class="detail-value">{{ clAppDetailRow.generatedChecklist?.[0]?.name || '-' }}</span></div>
-          </div>
-        </div>
-        <div v-if="clAppDetailRow.insurerDecision === 'approved'" class="detail-card">
-          <div class="detail-card-title">保险公司批准结果</div>
-          <div class="detail-grid">
-            <div class="detail-row"><span class="detail-label">批准额度</span><span class="detail-value" style="color:#00a870;">${{ Number(clAppDetailRow.approvedLimit).toLocaleString() }}</span></div>
-            <div class="detail-row"><span class="detail-label">费率</span><span class="detail-value">{{ clAppDetailRow.approvedRate }}%</span></div>
-            <div class="detail-row"><span class="detail-label">生效日期</span><span class="detail-value">{{ clAppDetailRow.effectiveDate || '-' }}</span></div>
-            <div class="detail-row"><span class="detail-label">到期日期</span><span class="detail-value">{{ clAppDetailRow.expiryDate || '-' }}</span></div>
-            <div class="detail-row"><span class="detail-label">特殊条件</span><span class="detail-value">{{ clAppDetailRow.specialConditions || '无' }}</span></div>
-            <div class="detail-row"><span class="detail-label">审核时间</span><span class="detail-value">{{ clAppDetailRow.insurerReviewTime }}</span></div>
-          </div>
-        </div>
-        <div v-if="clAppDetailRow.insurerDecision === 'rejected'" class="detail-card" style="border-color:#e34d57;">
-          <div class="detail-card-title" style="color:#e34d57;">保险公司驳回结果</div>
-          <div class="detail-grid">
-            <div class="detail-row"><span class="detail-label">驳回类型</span><span class="detail-value">{{ clAppDetailRow.rejectType === 'refuse_coverage' ? '拒绝承保' : '信用问题' }}</span></div>
-            <div class="detail-row"><span class="detail-label">驳回原因</span><span class="detail-value" style="color:#e34d57;">{{ clAppDetailRow.rejectReason }}</span></div>
-            <div class="detail-row"><span class="detail-label">审核时间</span><span class="detail-value">{{ clAppDetailRow.insurerReviewTime }}</span></div>
-          </div>
-        </div>
-        <div v-if="clAppDetailRow.recordedQuota > 0" class="detail-card">
-          <div class="detail-card-title">配额录入</div>
-          <div class="detail-grid">
-            <div class="detail-row"><span class="detail-label">录入配额</span><span class="detail-value">${{ Number(clAppDetailRow.recordedQuota).toLocaleString() }}</span></div>
-            <div class="detail-row"><span class="detail-label">录入时间</span><span class="detail-value">{{ clAppDetailRow.recordedTime }}</span></div>
-          </div>
-        </div>
-        <div v-if="clAppDetailRow.syncRecord" class="detail-card">
-          <div class="detail-card-title">同步记录</div>
-          <div class="detail-grid">
-            <div class="detail-row"><span class="detail-label">同步内容</span><span class="detail-value">{{ clAppDetailRow.syncRecord }}</span></div>
-            <div class="detail-row"><span class="detail-label">同步时间</span><span class="detail-value">{{ clAppDetailRow.syncTime }}</span></div>
-          </div>
-        </div>
-      </div>
-    </t-dialog>
-
-<!-- 限额申请创建弹窗 -->
-    <t-dialog v-model:visible="clAppCreateVisible" header="创建限额申请" width="550px" :destroy-on-close="true" @confirm="confirmClAppCreate" @cancel="clAppCreateVisible = false">
-      <t-form ref="clAppCreateFormRef" :data="clAppCreateForm" :rules="clAppCreateRules" label-width="110px">
-        <t-form-item label="保单号" name="policyNo">
-          <t-select v-model="clAppCreateForm.policyNo" :options="clAppPolicyOptions" placeholder="请选择保单" />
-        </t-form-item>
-        <t-form-item label="买方名称" name="buyerName">
-          <t-input v-model="clAppCreateForm.buyerName" placeholder="请输入买方名称" />
-        </t-form-item>
-        <t-form-item label="申请额度" name="appliedLimit">
-          <t-input-adornment prepend="$">
-            <t-input v-model="clAppCreateForm.appliedLimit" type="number" placeholder="请输入申请额度" />
-          </t-input-adornment>
-        </t-form-item>
-        <t-form-item label="币种" name="currency">
-          <t-select v-model="clAppCreateForm.currency" :options="[{value:'USD',label:'USD'},{value:'CNY',label:'CNY'},{value:'EUR',label:'EUR'}]" />
-        </t-form-item>
-        <t-form-item label="申请原因" name="applicationReason">
-          <t-textarea v-model="clAppCreateForm.applicationReason" placeholder="请输入申请原因" :autosize="{minRows:2,maxRows:4}" />
-        </t-form-item>
-      </t-form>
-    </t-dialog>
-
-<!-- 限额申请保险公司批准弹窗 -->
-    <t-dialog v-model:visible="clAppInsurerApproveVisible" header="保险公司批准限额" width="550px" :destroy-on-close="true" @confirm="confirmClAppInsurerApprove" @cancel="clAppInsurerApproveVisible = false">
-      <t-form ref="clAppInsurerApproveFormRef" :data="clAppInsurerApproveForm" :rules="clAppInsurerApproveRules" label-width="110px">
-        <t-form-item label="批准额度" name="approvedLimit">
-          <t-input-adornment prepend="$">
-            <t-input v-model="clAppInsurerApproveForm.approvedLimit" type="number" placeholder="请输入批准额度" />
-          </t-input-adornment>
-        </t-form-item>
-        <t-form-item label="费率" name="approvedRate">
-          <t-input-adornment prepend="%">
-            <t-input v-model="clAppInsurerApproveForm.approvedRate" type="number" placeholder="请输入费率" />
-          </t-input-adornment>
-        </t-form-item>
-        <t-form-item label="生效日期" name="effectiveDate">
-          <t-date-picker v-model="clAppInsurerApproveForm.effectiveDate" placeholder="选择生效日期" />
-        </t-form-item>
-        <t-form-item label="到期日期" name="expiryDate">
-          <t-date-picker v-model="clAppInsurerApproveForm.expiryDate" placeholder="选择到期日期" />
-        </t-form-item>
-        <t-form-item label="特殊条件" name="specialConditions">
-          <t-input v-model="clAppInsurerApproveForm.specialConditions" placeholder="可选项" />
-        </t-form-item>
-        <t-form-item label="审核意见" name="insurerOpinion">
-          <t-textarea v-model="clAppInsurerApproveForm.insurerOpinion" placeholder="请输入审核意见（可选）" :autosize="{minRows:2,maxRows:4}" />
-        </t-form-item>
-      </t-form>
-    </t-dialog>
-
-<!-- 限额申请保险公司驳回弹窗 -->
-    <t-dialog v-model:visible="clAppInsurerRejectVisible" header="保险公司驳回限额" width="500px" :destroy-on-close="true" @confirm="confirmClAppInsurerReject" @cancel="clAppInsurerRejectVisible = false">
-      <t-form ref="clAppInsurerRejectFormRef" :data="clAppInsurerRejectForm" :rules="clAppInsurerRejectRules" label-width="100px">
-        <t-form-item label="驳回类型" name="rejectType">
-          <t-radio-group v-model="clAppInsurerRejectForm.rejectType">
-            <t-radio value="credit_issue">信用问题</t-radio>
-            <t-radio value="refuse_coverage">拒绝承保</t-radio>
-          </t-radio-group>
-        </t-form-item>
-        <t-form-item label="驳回原因" name="rejectReason">
-          <t-textarea v-model="clAppInsurerRejectForm.rejectReason" placeholder="请输入驳回原因" :autosize="{minRows:3,maxRows:5}" />
-        </t-form-item>
-      </t-form>
-    </t-dialog>
-
-    <t-dialog v-model:visible="clAppClerkRejectVisible" header="跟单员驳回限额申请" width="500px" :destroy-on-close="true" @confirm="confirmClAppClerkReject" @cancel="clAppClerkRejectVisible = false">
-      <t-form label-width="100px">
-        <t-form-item label="驳回原因">
-          <t-textarea v-model="clAppClerkRejectReason" placeholder="请填写驳回原因" :autosize="{minRows:3,maxRows:5}" />
-        </t-form-item>
-      </t-form>
-    </t-dialog>
-
-    <t-dialog v-model:visible="clAppQuotaVisible" header="录入配额" width="500px" :destroy-on-close="true" @confirm="confirmClAppRecordQuota" @cancel="clAppQuotaVisible = false">
-      <t-form label-width="100px">
-        <t-form-item label="配额金额">
-          <t-input-adornment prepend="$">
-            <t-input v-model="clAppRecordedQuota" type="number" placeholder="请输入配额金额" />
-          </t-input-adornment>
-        </t-form-item>
-      </t-form>
-    </t-dialog>
-
-    <t-dialog v-model:visible="clAppSyncVisible" header="同步配额至平台" width="500px" :destroy-on-close="true" @confirm="confirmClAppSync" @cancel="clAppSyncVisible = false">
-      <t-form label-width="100px">
-        <t-form-item label="同步备注">
-          <t-textarea v-model="clAppSyncRecord" placeholder="请输入同步备注" :autosize="{minRows:3,maxRows:5}" />
-        </t-form-item>
-      </t-form>
-    </t-dialog>
 
     <!-- 站内信弹窗 -->
     <t-dialog v-model:visible="notificationVisible" header="站内信" width="550px" :footer="false" destroy-on-close>
@@ -1710,6 +1387,245 @@
         </div>
       </div>
       <div v-else class="no-data" style="text-align:center;padding:40px 0;color:#999;">暂无消息</div>
+    </t-dialog>
+
+    <!-- Change Detail Dialog -->
+    <t-dialog v-model:visible="chgDetailVisible" :header="'变更详情 - ' + (chgDetailRow?.id || '')" width="800px" :footer="false">
+      <div v-if="chgDetailRow" class="detail-body">
+        <div class="detail-card">
+          <div class="detail-card-title">基本信息</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">申请编号</span><span class="detail-value">{{ chgDetailRow.id }}</span></div>
+            <div class="detail-row"><span class="detail-label">保单号</span><span class="detail-value">{{ chgDetailRow.policyNo }}</span></div>
+            <div class="detail-row"><span class="detail-label">变更类型</span><span class="detail-value">{{ chgDetailRow.changeTypeName }}</span></div>
+            <div class="detail-row"><span class="detail-label">变更原因</span><span class="detail-value">{{ chgDetailRow.changeReason }}</span></div>
+            <div class="detail-row"><span class="detail-label">变更前内容</span><span class="detail-value">{{ chgDetailRow.beforeContent || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">变更后内容</span><span class="detail-value">{{ chgDetailRow.afterContent || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">生效日期</span><span class="detail-value">{{ chgDetailRow.effectiveDate || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">状态</span><span class="detail-value"><status-tag :status="chgDetailRow.status" :status-map="chgStatusMapForList" /></span></div>
+          </div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-title">上传文件</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">变更申请书</span><span class="detail-value">{{ chgDetailRow.changeApplication?.[0]?.name || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">证明材料</span><span class="detail-value">{{ chgDetailRow.supportingDocs?.[0]?.name || '-' }}</span></div>
+          </div>
+        </div>
+        <div v-if="chgDetailRow.generatedChangeForm?.length > 0" class="detail-card">
+          <div class="detail-card-title">平台生成文件</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">变更申请表</span><span class="detail-value">{{ chgDetailRow.generatedChangeForm[0]?.name || '-' }} <t-link v-if="isInkasso" theme="primary" @click="handleChgDocPreview(chgDetailRow, 'change_form')">预览</t-link></span></div>
+            <div class="detail-row"><span class="detail-label">材料清单</span><span class="detail-value">{{ chgDetailRow.generatedChecklist?.[0]?.name || '-' }} <t-link v-if="isInkasso" theme="primary" @click="handleChgDocPreview(chgDetailRow, 'checklist')">预览</t-link></span></div>
+          </div>
+        </div>
+        <div v-if="chgDetailRow.rejectReason" class="detail-card">
+          <div class="detail-card-title">驳回原因</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">驳回原因</span><span class="detail-value" style="color:#e34d57;">{{ chgDetailRow.rejectReason }}</span></div>
+          </div>
+        </div>
+        <div v-if="chgDetailRow.insurerDecision" class="detail-card">
+          <div class="detail-card-title">保险公司决定</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">决定</span><span class="detail-value" :style="{ color: chgDetailRow.insurerDecision === 'approved' ? '#00a870' : '#e34d57' }">{{ chgDetailRow.insurerDecision === 'approved' ? '已通过' : '已驳回' }}</span></div>
+            <div class="detail-row"><span class="detail-label">意见</span><span class="detail-value">{{ chgDetailRow.insurerOpinion || '-' }}</span></div>
+            <div class="detail-row"><span class="detail-label">决定时间</span><span class="detail-value">{{ chgDetailRow.insurerDecisionTime || '-' }}</span></div>
+          </div>
+        </div>
+        <div v-if="chgDetailRow.clerkUpdateRecord" class="detail-card">
+          <div class="detail-card-title">跟单员变更记录</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">变更记录</span><span class="detail-value">{{ chgDetailRow.clerkUpdateRecord }}</span></div>
+            <div class="detail-row"><span class="detail-label">录入时间</span><span class="detail-value">{{ chgDetailRow.clerkSyncTime || '-' }}</span></div>
+          </div>
+        </div>
+        <div v-if="chgDetailRow.supplementRequest" class="detail-card">
+          <div class="detail-card-title">补充材料请求</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">补充要求</span><span class="detail-value">{{ chgDetailRow.supplementRequest }}</span></div>
+            <div class="detail-row"><span class="detail-label">推送时间</span><span class="detail-value">{{ chgDetailRow.platformPushTime || '-' }}</span></div>
+          </div>
+        </div>
+        <div v-if="chgDetailRow.supplementHistory?.length" class="detail-card">
+          <div class="detail-card-title">客户补充资料记录</div>
+          <div class="detail-grid">
+            <div v-for="(entry, idx) in chgDetailRow.supplementHistory" :key="idx" class="supplement-entry">
+              <div class="supplement-entry-header">
+                <t-tag theme="primary" variant="light" size="small">第{{ idx + 1 }}次补充</t-tag>
+                <span class="supplement-time">{{ entry.time }}</span>
+              </div>
+              <div class="supplement-entry-body">
+                <div class="supplement-entry-row"><span class="detail-label">补充说明：</span><span class="detail-value">{{ entry.note }}</span></div>
+                <div v-if="entry.files?.length" class="supplement-entry-row"><span class="detail-label">补充文件：</span><span class="detail-value">{{ entry.files.map(f => f.name).join('、') }}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-if="chgDetailRow.endorsementNo" class="detail-card">
+          <div class="detail-card-title">批单信息</div>
+          <div class="detail-grid">
+            <div class="detail-row"><span class="detail-label">批单编号</span><span class="detail-value">{{ chgDetailRow.endorsementNo }}</span></div>
+            <div class="detail-row"><span class="detail-label">生成时间</span><span class="detail-value">{{ chgDetailRow.endorsementTime || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">变更前内容</span><span class="detail-value">{{ chgDetailRow.beforeContent || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">变更后内容</span><span class="detail-value">{{ chgDetailRow.afterContent || '-' }}</span></div>
+            <div class="detail-row" style="grid-column:1/-1;"><span class="detail-label">生效日期</span><span class="detail-value">{{ chgDetailRow.effectiveDate || '-' }}</span></div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button v-if="isCustomer && chgDetailRow?.status === 'chg_draft'" theme="primary" @click="handleChgSubmitPlatform(chgDetailRow)">提交平台审核</t-button>
+          <t-button v-if="isCustomer && chgDetailRow?.status === 'chg_insurer_approved'" theme="primary" @click="handleChgGenerateEndorsement(chgDetailRow)">生成批单</t-button>
+          <t-button v-if="isCustomer && (chgDetailRow?.status === 'chg_supplement' || chgDetailRow?.status === 'chg_platform_supplemented')" theme="primary" @click="handleChgCustomerSupplementOpen(chgDetailRow)">补充材料</t-button>
+          <t-button v-if="isCustomer && chgDetailRow?.status === 'chg_customer_supplement'" theme="primary" @click="handleChgResubmitPlatform(chgDetailRow)">推送平台审核</t-button>
+          <t-button v-if="isInkasso && chgDetailRow?.status === 'chg_platform_review' && !chgDetailRow?.generatedChangeForm?.length" theme="primary" @click="handleChgGenerateDocs(chgDetailRow)">生成变更申请表</t-button>
+          <t-button v-if="isInkasso && chgDetailRow?.status === 'chg_platform_review' && chgDetailRow?.generatedChangeForm?.length > 0 && !chgDetailRow?.rejectReason" theme="primary" @click="handleChgPushClerk(chgDetailRow)">推送给跟单员</t-button>
+          <t-button v-if="isInkasso && chgDetailRow?.status === 'chg_platform_review' && chgDetailRow?.rejectReason" theme="primary" @click="handleChgPushCustomerSupplement(chgDetailRow)">推送客户补充</t-button>
+          <t-button v-if="isInkasso && chgDetailRow?.status === 'chg_supplement'" theme="primary" @click="handleChgPlatformSupplement(chgDetailRow)">补充材料</t-button>
+          <t-button v-if="isInkasso && chgDetailRow?.status === 'chg_customer_supplement'" theme="primary" @click="handleChgResubmitPlatform(chgDetailRow)">提交平台</t-button>
+          <t-button v-if="isClerk && chgDetailRow?.status === 'chg_clerk_review'" theme="success" @click="handleChgClerkApprove(chgDetailRow)">审核通过</t-button>
+          <t-button v-if="isClerk && chgDetailRow?.status === 'chg_clerk_review'" theme="danger" @click="handleChgClerkRejectOpen(chgDetailRow)">驳回</t-button>
+          <t-button v-if="isClerk && chgDetailRow?.status === 'chg_insurer_review'" theme="success" @click="handleChgInsurerApproveOpen(chgDetailRow)">保险公司批准</t-button>
+          <t-button v-if="isClerk && chgDetailRow?.status === 'chg_insurer_review'" theme="danger" @click="handleChgInsurerRejectOpen(chgDetailRow)">驳回</t-button>
+          <t-button v-if="isClerk && chgDetailRow?.status === 'chg_insurer_approved'" theme="primary" @click="handleChgClerkRecordOpen(chgDetailRow)">录入变更记录</t-button>
+          <t-button v-if="isClerk && chgDetailRow?.status === 'chg_insurer_approved'" theme="primary" @click="handleChgSyncPlatform(chgDetailRow)">同步平台</t-button>
+          <t-button v-if="isClerk && chgDetailRow?.status === 'chg_insurer_rejected'" theme="primary" @click="handleChgClerkReject(chgDetailRow)">发起补充请求</t-button>
+          <t-button variant="outline" @click="chgDetailVisible = false">关闭</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- Change Reject Dialog -->
+    <t-dialog v-model:visible="chgRejectVisible" header="驳回变更申请" width="500px">
+      <div class="reject-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="warning-circle" size="16px" class="tip-icon danger" />
+          <span class="tip-text">确认驳回该变更申请？驳回后将退回平台重新处理。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">驳回原因 <span style="color:#dc2626;">*</span></label>
+          <t-textarea v-model="chgRejectReason" placeholder="请输入驳回原因" :rows="4" maxlength="500" show-limit-number />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="chgRejectVisible = false">取消</t-button>
+          <t-button theme="danger" @click="confirmChgReject">确认驳回</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- Change Supplement Dialog (3 modes) -->
+    <t-dialog v-model:visible="chgSupplementVisible" :header="chgSupplementMode === 'platform' ? '平台补充材料' : (chgSupplementMode === 'customer' ? '客户补充材料' : '补充材料')" width="550px">
+      <div class="supplement-content">
+        <div v-if="chgSupplementMode === 'platform'" class="reject-content">
+          <div class="confirm-tip" style="margin-top:0;">
+            <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+            <span class="tip-text">平台补充相关材料。</span>
+          </div>
+          <div class="reject-form" style="margin-top:16px;">
+            <label class="reject-label">补充说明</label>
+            <t-textarea v-model="chgSupplementRequest" placeholder="请输入补充说明" :rows="3" />
+          </div>
+        </div>
+        <div v-if="chgSupplementMode === 'customer'" class="reject-content">
+          <div class="confirm-tip" style="margin-top:0;">
+            <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+            <span class="tip-text">请填写补充说明并上传补充材料后提交。</span>
+          </div>
+          <div class="reject-form" style="margin-top:16px;">
+            <label class="reject-label">补充说明</label>
+            <t-textarea v-model="chgSupplementRequest" placeholder="请描述补充的内容" :rows="3" maxlength="500" />
+          </div>
+          <div class="reject-form" style="margin-top:12px;">
+            <label class="reject-label">补充材料</label>
+            <t-upload v-model="chgSupplementFiles" theme="file" :auto-upload="false" accept="application/pdf,image/jpeg,image/png" placeholder="选择补充文件" />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="chgSupplementVisible = false">取消</t-button>
+          <t-button theme="primary" @click="confirmChgSupplement">确认</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- Insurer Approve Dialog -->
+    <t-dialog v-model:visible="chgInsurerApproveVisible" header="保险公司批准" width="500px">
+      <div class="insurer-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+          <span class="tip-text">确认批准该变更申请？批准后将自动生成批单并同步给平台。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">审核意见</label>
+          <t-textarea v-model="chgInsurerOpinion" placeholder="请输入审核意见（可选）" :rows="3" />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="chgInsurerApproveVisible = false">取消</t-button>
+          <t-button theme="success" @click="confirmChgInsurerApprove">确认批准</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- Insurer Reject Dialog -->
+    <t-dialog v-model:visible="chgInsurerRejectVisible" header="驳回保险公司审核" width="500px">
+      <div class="insurer-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="warning-circle" size="16px" class="tip-icon danger" />
+          <span class="tip-text">驳回该变更申请，将退回跟单员处理。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">审批意见 <span style="color:#dc2626;">*</span></label>
+          <t-textarea v-model="chgInsurerRejectOpinion" placeholder="请输入审批意见" :rows="4" maxlength="500" show-limit-number />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="chgInsurerRejectVisible = false">取消</t-button>
+          <t-button theme="danger" @click="confirmChgInsurerReject">确认驳回</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- Clerk Record Dialog -->
+    <t-dialog v-model:visible="chgRecordVisible" header="录入变更记录" width="500px">
+      <div class="record-content">
+        <div class="confirm-tip" style="margin-top:0;">
+          <t-icon name="info-circle-filled" size="16px" class="tip-icon" />
+          <span class="tip-text">录入变更记录，完成后同步给平台。</span>
+        </div>
+        <div class="reject-form" style="margin-top:16px;">
+          <label class="reject-label">变更记录 <span style="color:#dc2626;">*</span></label>
+          <t-textarea v-model="chgClerkRecord" placeholder="请输入变更记录内容" :rows="4" maxlength="500" show-limit-number />
+        </div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="chgRecordVisible = false">取消</t-button>
+          <t-button theme="primary" @click="confirmChgRecord">确认录入</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
+
+    <!-- Doc Preview Dialog -->
+    <t-dialog v-model:visible="chgDocPreviewVisible" :header="chgDocPreviewTitle" width="750px" :destroy-on-close="true" :draggable="true" top="48px">
+      <div v-if="chgDocPreviewContent" class="doc-preview-wrapper">
+        <div class="doc-preview-header">
+          <span class="doc-preview-meta">文件名称：{{ chgDocPreviewFileName }}</span>
+          <span class="doc-preview-meta">文件大小：{{ chgDocPreviewFileSize }}</span>
+        </div>
+        <div class="doc-preview-body" v-html="chgDocPreviewContent"></div>
+      </div>
+      <template #footer>
+        <t-space>
+          <t-button variant="outline" @click="chgDocPreviewVisible = false">关闭</t-button>
+        </t-space>
+      </template>
     </t-dialog>
   </div>
 </template>
@@ -1737,35 +1653,57 @@ const router = useRouter()
 const store = useBusinessStore()
 const userStore = useUserStore()
 const loading = computed(() => false)
+const expandedRowKeys = ref([])
 const searchParams = ref({ enterpriseName: '', buyerName: '', status: '', dateRange: [] })
 
 const isInkasso = computed(() => userStore.role === 'inkasso')
 const isClerk = computed(() => userStore.role === 'clerk')
 const isCustomer = computed(() => userStore.role === 'customer')
-const mainTab = ref(route.query.tab || 'review')
 
-// ===== Application review =====
-const currentStatusTab = ref('all')
-
-const statusTabs = [
-  { value: 'all', label: '全部' },
-  { value: 'pending_review', label: '待处理' }
-]
-
-const statusOptions = [
-  { value: 'approved', label: '已审核' },
-  { value: 'clerk_review', label: '待审核' },
-  { value: 'underwriting', label: '核保中' },
-  { value: 'uw_completed', label: '核保通过' },
-  { value: 'platform_synced', label: '待确认保费' },
-  { value: 'premium_confirmed', label: '保费已确认' },
-  { value: 'payment_uploaded', label: '凭证已上传' },
-  { value: 'active', label: '已生效' },
-  { value: 'ocr_pending', label: '待确认' },
-  { value: 'ocr_clerk_review', label: '待审核' },
-  { value: 'ocr_approved', label: '已确认' },
-  { value: 'rejected', label: '已驳回' }
-]
+const getSubRecordOps = (rec) => {
+  const raw = rec._raw; const ops = []
+  if (!raw) return ops
+  if (rec.type === 'change') {
+    if (isCustomer.value && raw.status === 'chg_draft') ops.push({ label: '提交审核', theme: 'primary', handler: () => handleChgSubmitPlatform(raw) })
+    if (isCustomer.value && raw.status === 'chg_insurer_approved') ops.push({ label: '生成批单', theme: 'primary', handler: () => handleChgGenerateEndorsement(raw) })
+    if (isCustomer.value && (raw.status === 'chg_supplement' || raw.status === 'chg_platform_supplemented')) ops.push({ label: '补充材料', theme: 'primary', handler: () => handleChgCustomerSupplement(raw) })
+    if (isInkasso.value && raw.status === 'chg_platform_review' && !raw.generatedChangeForm?.length) ops.push({ label: '生成申请表', theme: 'primary', handler: () => handleChgGenerateDocs(raw) })
+    if (isInkasso.value && raw.status === 'chg_platform_review' && raw.generatedChangeForm?.length > 0 && !raw.rejectReason) ops.push({ label: '推送跟单员', theme: 'primary', handler: () => handleChgPushClerk(raw) })
+    if (isInkasso.value && raw.status === 'chg_platform_review' && raw.rejectReason) ops.push({ label: '推送客户补充', theme: 'primary', handler: () => handleChgPushCustomerSupplement(raw) })
+    if (isInkasso.value && raw.status === 'chg_supplement') ops.push({ label: '补充材料', theme: 'primary', handler: () => handleChgPlatformSupplement(raw) })
+    if (isClerk.value && raw.status === 'chg_clerk_review') { ops.push({ label: '审核通过', theme: 'success', handler: () => handleChgClerkApprove(raw) }); ops.push({ label: '驳回', theme: 'danger', handler: () => handleChgClerkRejectOpen(raw) }) }
+    if (isClerk.value && raw.status === 'chg_insurer_review') { ops.push({ label: '批准', theme: 'success', handler: () => handleChgInsurerApproveOpen(raw) }); ops.push({ label: '驳回', theme: 'danger', handler: () => handleChgInsurerRejectOpen(raw) }) }
+    if (isClerk.value && raw.status === 'chg_insurer_approved') ops.push({ label: '录入记录', theme: 'primary', handler: () => handleChgClerkRecordOpen(raw) })
+    if (isClerk.value && raw.status === 'chg_insurer_rejected') ops.push({ label: '发起补充', theme: 'primary', handler: () => handleChgClerkReject(raw) })
+  } else if (rec.type === 'renewal') {
+    if (isInkasso.value && raw.status === 'renew_inkasso_review' && !raw?.generatedApplicationForm?.length) ops.push({ label: '生成续保资料', theme: 'primary', handler: () => handleRenewalGenDocs(raw) })
+    if (isInkasso.value && raw.status === 'renew_inkasso_review' && raw?.generatedApplicationForm?.length) ops.push({ label: '推送给跟单员', theme: 'primary', handler: () => handleRenewalPushClerk(raw) })
+    if (isInkasso.value && raw.status === 'renew_supplement') ops.push({ label: '推送客户补充', theme: 'primary', handler: () => handleRenewalPlatformPushSupplement(raw) })
+    if (isInkasso.value && raw.status === 'renew_platform_review') ops.push({ label: '审核通过', theme: 'success', handler: () => handleRenewalPlatformApproveSupplement(raw) })
+    if (isInkasso.value && raw.status === 'renew_active') ops.push({ label: '推送缴费申请', theme: 'primary', handler: () => handleRenewalPaymentApplication(raw) })
+    if (isInkasso.value && raw.status === 'renew_payment_uploaded') ops.push({ label: '维护缴费凭证', theme: 'primary', handler: () => handleRenewalVerifyVoucher(raw) })
+    if (isClerk.value && raw.status === 'renew_clerk_review') { ops.push({ label: '审核通过', theme: 'success', handler: () => handleRenewalClerkApprove(raw) }); ops.push({ label: '驳回', theme: 'danger', handler: () => handleRenewalClerkReject(raw) }) }
+    if (isClerk.value && raw.status === 'renew_insurer_review') { ops.push({ label: '批准', theme: 'success', handler: () => handleRenewalInsurerApprove(raw) }); ops.push({ label: '驳回', theme: 'danger', handler: () => handleRenewalInsurerReject(raw) }) }
+    if (isClerk.value && raw.status === 'renew_insurer_approved') ops.push({ label: '同步新保单', theme: 'primary', handler: () => handleRenewalClerkSync(raw) })
+    if (isClerk.value && raw.status === 'renew_insurer_rejected') ops.push({ label: '发起补充请求', theme: 'primary', handler: () => handleRenewalInitSupplement(raw) })
+    if (isClerk.value && raw.status === 'renew_clerk_resubmit') ops.push({ label: '提交续保申请', theme: 'primary', handler: () => handleRenewalClerkResubmit(raw) })
+    if (isClerk.value && raw.status === 'renew_payment_verified') ops.push({ label: '同步缴费凭证', theme: 'primary', handler: () => handleRenewalSyncPayment(raw) })
+    if (isCustomer.value && raw.status === 'renew_customer_supplement') ops.push({ label: '补充材料', theme: 'primary', handler: () => handleRenewalCustomerSupplement(raw) })
+    if (isCustomer.value && raw.status === 'renew_customer_supplemented') ops.push({ label: '推送平台审核', theme: 'primary', handler: () => handleRenewalCustomerPushPlatform(raw) })
+    if (isCustomer.value && raw.status === 'renew_pending_payment') ops.push({ label: '上传缴费凭证', theme: 'primary', handler: () => handleRenewalUploadVoucher(raw) })
+  } else if (rec.type === 'surrender') {
+    if (isCustomer.value && raw.status === 'sr_platform_synced') ops.push({ label: '确认退款', theme: 'primary', handler: () => handleSurrenderConfirmRefund(raw) })
+    if (isCustomer.value && raw.status === 'sr_customer_supplement') ops.push({ label: '补充材料', theme: 'primary', handler: () => handleSurrenderCustomerSupplement(raw) })
+    if (isInkasso.value && raw.status === 'sr_platform_review' && !raw?.generatedDocs?.length) ops.push({ label: '生成退保申请表', theme: 'primary', handler: () => handleSurrenderGenDocs(raw) })
+    if (isInkasso.value && raw.status === 'sr_platform_review' && raw?.generatedDocs?.length) ops.push({ label: '推送给跟单员', theme: 'primary', handler: () => handleSurrenderPushClerk(raw) })
+    if (isInkasso.value && raw.status === 'sr_supplement') ops.push({ label: '补充材料', theme: 'primary', handler: () => handleSurrenderPlatformSupplement(raw) })
+    if (isClerk.value && raw.status === 'sr_clerk_review') { ops.push({ label: '审核通过', theme: 'success', handler: () => handleSurrenderClerkApprove(raw) }); ops.push({ label: '驳回', theme: 'danger', handler: () => handleSurrenderClerkReject(raw) }) }
+    if (isClerk.value && raw.status === 'sr_insurer_review') { ops.push({ label: '批准', theme: 'success', handler: () => handleSurrenderInsurerApprove(raw) }); ops.push({ label: '驳回', theme: 'danger', handler: () => handleSurrenderInsurerReject(raw) }) }
+    if (isClerk.value && raw.status === 'sr_insurer_approved') ops.push({ label: '发起退款', theme: 'primary', handler: () => handleSurrenderInsurerPay(raw) })
+    if (isClerk.value && raw.status === 'sr_insurer_rejected') { ops.push({ label: '发起补充请求', theme: 'primary', handler: () => handleSurrenderInitSupplement(raw) }); ops.push({ label: '退保终止', theme: 'danger', handler: () => handleSurrenderRejectTerminate(raw) }) }
+  }
+  return ops
+}
 
 const statusMap = {
   draft: '已确认',
@@ -1798,36 +1736,6 @@ const columns = [
 ]
 
 const pagination = reactive({ total: 0, current: 1, pageSize: 20 })
-
-const filteredData = computed(() => {
-  const list = store.insuranceApplications || []
-  const p = searchParams.value
-  const isCust = userStore.role === 'customer'
-  return list.filter((it) => {
-    if (isCust) {
-      // Customer sees all their items except draft
-      if (it.status === 'draft') return false
-    } else {
-      // Inkasso and clerk see all items except draft
-      if (userStore.role === 'inkasso' && it.status === 'draft') return false
-      if (userStore.role === 'clerk' && it.status === 'draft') return false
-    }
-    if (it.status === 'ocr_pending') return false
-    if (p.enterpriseName && !String(it.companyName || '').includes(p.enterpriseName)) return false
-    if (p.buyerName && !String(it.buyerName || '').includes(p.buyerName)) return false
-    if (p.status && it.status !== p.status) return false
-    return true
-  })
-})
-
-const tableData = computed(() => {
-  pagination.total = filteredData.value.length
-  const start = (pagination.current - 1) * pagination.pageSize
-  return filteredData.value.slice(start, start + pagination.pageSize)
-})
-
-const activePolicyCount = computed(() => (store.insuranceApplications || []).filter(p => p.status === 'approved').length)
-const totalInsuranceAmount = computed(() => (store.insuranceApplications || []).reduce((sum, p) => sum + (Number(p.insuranceAmount) || 0), 0))
 
 // ===== Upload tab (电子保单列表) =====
 const uploadStatusMap = {
@@ -1869,49 +1777,6 @@ const uploadColumns = computed(() => {
   return base
 })
 
-const uploadFilteredData = computed(() => {
-  let list = store.externalPolicies || []
-  if (isCustomer.value) {
-    list = list.filter(p => p.customerCompany === userStore.companyName)
-  }
-  return list
-})
-
-const uploadTableData = computed(() => {
-  uploadPagination.total = uploadFilteredData.value.length
-  const start = (uploadPagination.current - 1) * uploadPagination.pageSize
-  return uploadFilteredData.value.slice(start, start + uploadPagination.pageSize)
-})
-
-const uploadTotalCount = computed(() => store.externalPolicies.length)
-const uploadPendingCount = computed(() => store.externalPolicies.filter(p =>
-  ['draft', 'platform_review', 'clerk_pending_auth', 'clerk_auth_authorized',
-   'clerk_ocr_processing', 'clerk_ocr_failed', 'clerk_platform_review', 'clerk_confirm'].includes(p.status)
-).length)
-const uploadCompletedCount = computed(() => store.externalPolicies.filter(p =>
-  p.status === 'active' || p.status === 'clerk_active'
-).length)
-
-const handleUploadPageChange = (pageInfo) => {
-  uploadPagination.current = pageInfo.current
-  uploadPagination.pageSize = pageInfo.pageSize
-}
-
-const handleViewUpload = (row) => {
-  externalDetailRow.value = row
-  externalDetailVisible.value = true
-}
-
-const handleOcrUpload = (row) => {
-  // Open OCR dialog with external policy pre-loaded
-  ocrExternalId.value = row.id
-  ocrDialogVisible.value = true
-}
-
-const handleReupload = (row) => {
-  externalUploadVisible.value = true
-}
-
 // ===== External policy computeds =====
 const customerExternalPolicies = computed(() => {
   const companyName = userStore.companyName
@@ -1937,12 +1802,15 @@ const policyStatusMap = {
   applying: '申请中',
   approved: '已确认',
   pending_review: '待确认',
+  platform_review: '平台审核中',
+  clerk_review: '跟单员审核中',
   ocr_approved: '已确认'
 }
 
 const policyColumns = [
   { colKey: 'policyNo', title: '保单号', width: 140 },
   { colKey: 'insuranceCompany', title: '保险公司', width: 100 },
+  { colKey: 'externalPolicyDisplay', title: '电子保单', width: 130, slot: 'externalPolicy' },
   { colKey: 'policyholder', title: '被保险人', ellipsis: true },
   { colKey: 'insured', title: '投保买方', ellipsis: true },
   { colKey: 'coverageAmount', title: '保险金额', align: 'right', width: 120, slot: 'coverageAmount' },
@@ -1955,6 +1823,8 @@ const policyColumns = [
 
 const policyPagination = reactive({ total: 0, current: 1, pageSize: 20 })
 
+const unifiedPolicyColumns = policyColumns
+
 const policyTableData = computed(() => {
   const list = store.policies || []
   policyPagination.total = list.length
@@ -1966,12 +1836,134 @@ const expiringPolicyCount = computed(() => (store.policies || []).filter(p => p.
 const totalCoverage = computed(() => (store.policies || []).reduce((sum, p) => sum + (Number(p.coverageAmount) || 0), 0))
 const totalPremium = computed(() => (store.policies || []).reduce((sum, p) => sum + (Number(p.premium) || 0), 0))
 
+
+// ===== Unified filter/search =====
+const policySearchParams = ref({ policyNo: '', policyholder: '', insured: '', insuranceCompany: '', status: '' })
+
+const policySearchStatusOptions = computed(() => {
+  return Object.entries(policyStatusMap).map(([value, label]) => ({ value, label }))
+})
+
+const unifiedFilteredData = computed(() => {
+  let list = store.policies || []
+  const p = policySearchParams.value
+  if (p.policyNo) list = list.filter(r => String(r.policyNo || '').includes(p.policyNo))
+  if (p.policyholder) list = list.filter(r => String(r.policyholder || '').includes(p.policyholder))
+  if (p.insured) list = list.filter(r => String(r.insured || '').includes(p.insured))
+  if (p.insuranceCompany) list = list.filter(r => String(r.insuranceCompany || '').includes(p.insuranceCompany))
+  if (p.status) list = list.filter(r => r.status === p.status)
+  return list
+})
+
+const unifiedPagination = reactive({ total: 0, current: 1, pageSize: 20 })
+
+const unifiedPolicyTableData = computed(() => {
+  unifiedPagination.total = unifiedFilteredData.value.length
+  const start = (unifiedPagination.current - 1) * unifiedPagination.pageSize
+  return unifiedFilteredData.value.slice(start, start + unifiedPagination.pageSize)
+})
+
+const handleUnifiedPageChange = (pageInfo) => {
+  unifiedPagination.current = pageInfo.current
+  unifiedPagination.pageSize = pageInfo.pageSize
+}
+
+const handlePolicySearch = () => {
+  unifiedPagination.current = 1
+}
+
+const handlePolicyReset = () => {
+  policySearchParams.value = { policyNo: '', policyholder: '', insured: '', insuranceCompany: '', status: '' }
+  unifiedPagination.current = 1
+}
+
+const handleExpandChange = (keys) => {
+  expandedRowKeys.value = keys
+}
+
+// ===== Sub-records merge =====
+const chgStatusMapForList = {
+  chg_draft: '待提交',
+  chg_platform_review: '平台审核中',
+  chg_clerk_review: '跟单员审核中',
+  chg_insurer_review: '保险公司审核中',
+  chg_insurer_approved: '保险公司已通过',
+  chg_insurer_rejected: '保险公司已驳回',
+  chg_supplement: '待补充材料',
+  chg_platform_supplemented: '平台已补充',
+  chg_customer_supplement: '补充资料完成',
+  chg_completed: '已完成'
+}
+
+const allSubRecords = computed(() => {
+  const result = []
+  for (const app of (store.insuranceApplications || [])) {
+    result.push({ type: 'insurance', policyNo: app.policyNo || '', id: app.id, status: app.status, statusMap: statusMap, applicationDate: app.createTime || '', _raw: app })
+  }
+  for (const ep of (store.externalPolicies || [])) {
+    result.push({ type: 'external', policyNo: ep.linkedPolicyNo || ep.policyNo || '', id: ep.id, status: ep.status, statusMap: uploadStatusMap, applicationDate: ep.createTime || '', _raw: ep })
+  }
+  for (const chg of (store.policyChangeApplications || [])) {
+    result.push({ type: 'change', policyNo: chg.policyNo || '', id: chg.id, status: chg.status, statusMap: chgStatusMapForList, applicationDate: chg.createTime || '', _raw: chg })
+  }
+  for (const ren of (store.renewalApplications || [])) {
+    result.push({ type: 'renewal', policyNo: ren.policyNo || '', id: ren.id, status: ren.status, statusMap: renewalStatusMap, applicationDate: ren.createTime || '', _raw: ren })
+  }
+  for (const sr of (store.surrenderApplications || [])) {
+    result.push({ type: 'surrender', policyNo: sr.policyNo || '', id: sr.id, status: sr.status, statusMap: srStatusMap, applicationDate: sr.createTime || '', _raw: sr })
+  }
+  return result.sort((a, b) => (b.applicationDate || '').localeCompare(a.applicationDate || ''))
+})
+
+const subRecordsByPolicy = computed(() => {
+  const map = {}
+  for (const rec of allSubRecords.value) {
+    const key = rec.policyNo
+    if (!map[key]) map[key] = []
+    map[key].push(rec)
+  }
+  return map
+})
+
+const handleSubRecordView = (row) => {
+  if (row.type === 'insurance') { currentRow.value = row._raw; detailVisible.value = true }
+  else if (row.type === 'external') { externalDetailRow.value = row._raw; externalDetailVisible.value = true }
+  else if (row.type === 'change') { handleChangeView(row._raw) }
+  else if (row.type === 'renewal') { handleRenewalView(row._raw) }
+  else if (row.type === 'surrender') { handleSurrenderView(row._raw) }
+}
+
+const activePolicyCount = computed(() => (store.policies || []).filter(p => p.status === 'active').length)
+
 // ===== Dialog state =====
 const detailVisible = ref(false)
 const detailMode = ref('view') // 'view' | 'apply' | 'clerk_approve'
 const currentRow = ref(null)
 const policyDetailVisible = ref(false)
 const currentPolicy = ref(null)
+
+// Change dialog state
+const chgDetailVisible = ref(false)
+const chgDetailRow = ref(null)
+const chgRejectVisible = ref(false)
+const chgRejectReason = ref('')
+const chgRejectTarget = ref(null)
+const chgSupplementVisible = ref(false)
+const chgSupplementMode = ref('')
+const chgSupplementRequest = ref('')
+const chgSupplementFiles = ref([])
+const chgInsurerApproveVisible = ref(false)
+const chgInsurerOpinion = ref('')
+const chgInsurerRejectVisible = ref(false)
+const chgInsurerRejectOpinion = ref('')
+const chgRecordVisible = ref(false)
+const chgClerkRecord = ref('')
+const chgSupplementInitVisible = ref(false)
+const chgDocPreviewVisible = ref(false)
+const chgDocPreviewTitle = ref('')
+const chgDocPreviewFileName = ref('')
+const chgDocPreviewFileSize = ref('')
+const chgDocPreviewContent = ref('')
 const currentPolicyElectronic = computed(() => {
   if (!currentPolicy.value) return null
   const epId = currentPolicy.value.externalPolicyId
@@ -1980,6 +1972,59 @@ const currentPolicyElectronic = computed(() => {
   const pn = currentPolicy.value.policyNo
   if (pn) return store.externalPolicies.find(p => p.linkedPolicyNo === pn)
   return null
+})
+
+const statusStyle = (status) => {
+  if (['paid', 'completed', 'active', 'approved', 'verified'].includes(status)) return { theme: 'success' }
+  if (['pending', 'draft', 'submitted', 'reviewing'].includes(status)) return { theme: 'warning' }
+  if (['rejected', 'cancelled', 'refund', 'failed', 'overdue'].includes(status)) return { theme: 'danger' }
+  return { theme: 'default' }
+}
+
+const policyFeeRecords = computed(() => {
+  if (!currentPolicy.value) return []
+  const pn = currentPolicy.value.policyNo
+  const records = []
+  // 1. Policy premium (receivable)
+  if (currentPolicy.value.premium) {
+    records.push({ type: '保费（应收）', amount: Number(currentPolicy.value.premium), status: currentPolicy.value.premiumPaid ? 'paid' : 'pending', statusLabel: currentPolicy.value.premiumPaid ? '已缴' : '待缴', date: currentPolicy.value.effectiveDate || '', source: '保单保费' })
+  }
+  // 2. Contract payments (received)
+  for (const pay of (store.payments || [])) {
+    if (pay.policyNo === pn) {
+      records.push({ type: '保费（实收）', amount: Number(pay.amount), status: 'paid', statusLabel: '已缴', date: pay.paidAt || '', source: '合同支付' })
+    }
+  }
+  // 3. Change service fees
+  for (const chg of (store.policyChangeApplications || [])) {
+    if (chg.policyNo === pn && chg.serviceFeePaid && chg.serviceFeeAmount) {
+      records.push({ type: '变更服务费', amount: Number(chg.serviceFeeAmount), status: 'paid', statusLabel: '已缴', date: chg.serviceFeePayTime || chg.createTime || '', source: '保单变更' })
+    }
+  }
+  // 4. Renewal premiums
+  for (const ren of (store.renewalApplications || [])) {
+    if (ren.policyNo === pn) {
+      if (ren.newPremium) {
+        records.push({ type: '续保保费', amount: Number(ren.newPremium), status: ren.status === 'renew_active' ? 'paid' : 'pending', statusLabel: ren.status === 'renew_active' ? '已缴' : '待缴', date: ren.createTime || '', source: '保单续保' })
+      }
+      if (ren.serviceFee) {
+        records.push({ type: '续保服务费', amount: Number(ren.serviceFee), status: ren.serviceFeePaid ? 'paid' : 'pending', statusLabel: ren.serviceFeePaid ? '已缴' : '待缴', date: ren.createTime || '', source: '保单续保' })
+      }
+    }
+  }
+  // 5. Surrender refunds
+  for (const sr of (store.surrenderApplications || [])) {
+    if (sr.policyNo === pn && sr.refundAmount) {
+      records.push({ type: '退保退款', amount: -Math.abs(Number(sr.refundAmount)), status: 'refund', statusLabel: '已退', date: sr.completedTime || sr.createTime || '', source: '保单退保' })
+    }
+  }
+  // 6. Surrender fees
+  for (const sr of (store.surrenderApplications || [])) {
+    if (sr.policyNo === pn && sr.surrenderFee) {
+      records.push({ type: '退保手续费', amount: Number(sr.surrenderFee), status: 'paid', statusLabel: '已扣', date: sr.completedTime || sr.createTime || '', source: '保单退保' })
+    }
+  }
+  return records.sort((a, b) => (b.date || '').localeCompare(a.date || ''))
 })
 
 
@@ -2082,6 +2127,7 @@ const externalDetailVisible = ref(false)
 const externalDetailRow = ref(null)
 const externalClerkRejectVisible = ref(false)
 const externalClerkRejectReason = ref('')
+const externalClerkRejectTarget = ref(null)
 const externalPagination = reactive({ total: 0, current: 1, pageSize: 20 })
 const externalLoading = ref(false)
 
@@ -2719,182 +2765,6 @@ const handleRenewalSaved = (data) => {
 const handleSurrenderSaved = (data) => {
   MessagePlugin.success('退保申请已提交，请等待平台审核')
 }
-// ===== Export =====
-const handleExport = () => { exportData.value = filteredData.value; exportVisible.value = true }
-
-const handleExportPolicies = () => {
-  const list = store.policies || []
-  let content = '保单号\t保险公司\t被保险人\t投保买方\t保险金额\t保费金额\t生效日期\t到期日期\t状态\n'
-  list.forEach(p => {
-    content += `${p.policyNo}\t${p.insuranceCompany}\t${p.policyholder}\t${p.insured}\t${p.coverageAmount}\t${p.premium}\t${p.effectiveDate}\t${p.expiryDate}\t${policyStatusMap[p.status] || p.status}\n`
-  })
-  const blob = new Blob(['﻿' + content], { type: 'application/vnd.ms-excel;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `保单信息_${new Date().toISOString().split('T')[0]}.xls`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-  MessagePlugin.success('保单导出成功')
-}
-
-const generateExcel = () => {
-  const headers = [
-    { key: 'id', label: '投保编号' }, { key: 'companyName', label: '企业名称' },
-    { key: 'buyerName', label: '买方名称' }, { key: 'buyerCountry', label: '买方国别' },
-    { key: 'insuranceType', label: '投保类型' }, { key: 'insuranceAmount', label: '投保金额' },
-    { key: 'status', label: '状态' }, { key: 'createTime', label: '申请日期' }
-  ]
-  let content = headers.map(h => h.label).join('\t') + '\n'
-  exportData.value.forEach(row => {
-    content += headers.map(h => {
-      let value = row[h.key]
-      if (h.key === 'status') value = statusMap[value] || value
-      if (h.key === 'insuranceAmount') value = '$' + (Number(value) || 0).toLocaleString()
-      return value || '-'
-    }).join('\t') + '\n'
-  })
-  const blob = new Blob(['﻿' + content], { type: 'application/vnd.ms-excel;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `投保信息_${new Date().toISOString().split('T')[0]}.xls`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-  exportVisible.value = false
-  MessagePlugin.success('导出成功')
-}
-
-const handleSubmitToPlatform = (row) => {
-  const res = store.submitOcrToPlatform(row.id)
-  if (!res?.ok) {
-    MessagePlugin.error(res?.message || '提交失败')
-    return
-  }
-  MessagePlugin.success('已提交至平台审核')
-}
-
-const handleReuploadExternal = (row) => {
-  externalUploadVisible.value = true
-}
-
-const handleSubmitExternal = (row) => {
-  const res = store.submitExternalPolicyForReview(row.id)
-  if (!res?.ok) {
-    MessagePlugin.error(res?.message || '提交失败')
-    return
-  }
-  MessagePlugin.success('已提交审核，等待跟单员处理')
-}
-
-const handleDeleteExternal = (row) => {
-  const res = store.deleteExternalPolicy(row.id)
-  if (!res?.ok) {
-    MessagePlugin.error(res?.message || '删除失败')
-    return
-  }
-  MessagePlugin.success('已删除')
-}
-
-const handleExternalSubmitToPlatform = (row) => {
-  const res = store.submitForPlatformReview(row.id)
-  if (!res?.ok) {
-    MessagePlugin.error(res?.message || '提交失败')
-    return
-  }
-  MessagePlugin.success('已提交平台审核')
-}
-
-const handleCustomerAuthorizeExternal = (row) => {
-  const res = store.clerkAuthorizePolicy(row.id)
-  if (!res?.ok) {
-    MessagePlugin.error(res?.message || '授权失败')
-    return
-  }
-  MessagePlugin.success('已授权，跟单员可以继续上传电子保单')
-}
-
-const handlePushToPlatformReview = (row) => {
-  if (!row.id) return
-  const pushRes = store.pushPolicyToPlatformOcr(row.id)
-  if (!pushRes?.ok) {
-    MessagePlugin.error(pushRes?.message || '推送失败')
-    return
-  }
-  MessagePlugin.success('已推送至平台审核')
-}
-
-const handlePlatformApprove = (row) => {
-  const res = store.platformApproveExternalPolicy(row.id)
-  if (!res?.ok) {
-    MessagePlugin.error(res?.message || '操作失败')
-    return
-  }
-  MessagePlugin.success('审核通过，已推送给跟单员')
-  externalDetailVisible.value = false
-}
-
-const handleResubmit = (row) => {
-  const res = store.resubmitExternalPolicy(row.id)
-  if (!res?.ok) {
-    MessagePlugin.error(res?.message || '提交失败')
-    return
-  }
-  MessagePlugin.success('已重新提交审核')
-  externalDetailVisible.value = false
-}
-
-const handleClerkApproveExternal = (row) => {
-  const res = store.approveExternalPolicy(row.id)
-  if (!res?.ok) {
-    MessagePlugin.error(res?.message || '操作失败')
-    return
-  }
-  MessagePlugin.success('已通过，外部保单已生效')
-  externalDetailVisible.value = false
-}
-
-const handleClerkApproveFailedOcr = (row) => {
-  const res = store.clerkApproveFailedOcr(row.id)
-  if (!res?.ok) {
-    MessagePlugin.error(res?.message || '操作失败')
-    return
-  }
-  MessagePlugin.success('已确认生效，电子保单记录已生成')
-}
-
-const handleClerkRejectExternal = (row) => {
-  externalDetailRow.value = row
-  externalClerkRejectReason.value = ''
-  externalClerkRejectVisible.value = true
-}
-
-const confirmExternalClerkReject = () => {
-  if (!externalClerkRejectReason.value.trim()) {
-    MessagePlugin.warning('请输入驳回原因')
-    return
-  }
-  const row = externalDetailRow.value
-  if (!row) return
-  const res = store.rejectExternalPolicy(row.id, externalClerkRejectReason.value)
-  if (!res?.ok) {
-    MessagePlugin.error(res?.message || '驳回失败')
-    return
-  }
-  MessagePlugin.success('已驳回')
-  externalClerkRejectVisible.value = false
-  externalDetailVisible.value = false
-}
-
-const handleExternalPageChange = (pageInfo) => {
-  externalPagination.current = pageInfo.current
-  externalPagination.pageSize = pageInfo.pageSize
-}
-
 // ===== Notifications (站内信) =====
 const notificationVisible = ref(false)
 const notificationList = computed(() => {
@@ -2930,45 +2800,6 @@ const renewalStatusMap = {
   renew_paid: '已缴费'
 }
 
-const paymentStatusIcon = (row) => {
-  const s = row.paymentStatus || ''
-  if (s === 'paid') return '已缴费'
-  if (row.status === 'renew_pending_payment') return '待缴费'
-  if (row.status === 'renew_payment_uploaded') return '已上传凭证'
-  if (row.status === 'renew_payment_verified') return '待同步'
-  if (row.status === 'renew_paid') return '已缴费'
-  return '-'
-}
-
-const renewalColumns = [
-  { colKey: 'id', title: '申请编号', width: 160 },
-  { colKey: 'policyNo', title: '原保单号', width: 130 },
-  { colKey: 'insuranceCompany', title: '保险公司', width: 100 },
-  { colKey: 'policyholder', title: '被保险人', ellipsis: true },
-  { colKey: 'originalEffectiveDate', title: '原起期', width: 100 },
-  { colKey: 'originalExpiryDate', title: '原止期', width: 100 },
-  { colKey: 'expectedTurnover', title: '预计营业额', align: 'right', width: 110 },
-  { colKey: 'insuranceRatio', title: '投保比例', align: 'right', width: 90 },
-  { colKey: 'status', title: '状态', width: 100, slot: 'status' },
-  { colKey: 'paymentStatus', title: '缴费', width: 90, slot: 'paymentStatus' },
-  { colKey: 'operation', title: '操作', width: 220, fixed: 'right', slot: 'operation' }
-]
-
-const renewalPagination = reactive({ total: 0, current: 1, pageSize: 20 })
-
-const renewalApps = computed(() => store.renewalApplications || [])
-
-const renewalTableData = computed(() => {
-  const list = renewalApps.value
-  renewalPagination.total = list.length
-  const start = (renewalPagination.current - 1) * renewalPagination.pageSize
-  return list.slice(start, start + renewalPagination.pageSize)
-})
-
-const handleRenewalPageChange = (pageInfo) => {
-  renewalPagination.current = pageInfo.current
-  renewalPagination.pageSize = pageInfo.pageSize
-}
 
 // Renewal detail dialog
 const renewalDetailVisible = ref(false)
@@ -3165,38 +2996,6 @@ const srStatusMap = {
   sr_business_terminated: '退保业务终止'
 }
 
-const surrenderColumns = [
-  { colKey: 'id', title: '申请编号', width: 160 },
-  { colKey: 'policyNo', title: '保单号', width: 140 },
-  { colKey: 'companyName', title: '被保险人', ellipsis: true },
-  { colKey: 'insuranceCompany', title: '保险公司', width: 100 },
-  { colKey: 'coverageAmount', title: '保险金额', align: 'right', width: 120, slot: 'coverageAmount' },
-  { colKey: 'status', title: '状态', width: 120, slot: 'status' },
-  { colKey: 'operation', title: '操作', width: 260, fixed: 'right', slot: 'operation' }
-]
-
-const surrenderPagination = reactive({ total: 0, current: 1, pageSize: 20 })
-
-const surrenderTableData = computed(() => {
-  const list = store.surrenderApplications || []
-  surrenderPagination.total = list.length
-  const start = (surrenderPagination.current - 1) * surrenderPagination.pageSize
-  return list.slice(start, start + surrenderPagination.pageSize)
-})
-
-const srTotalCount = computed(() => (store.surrenderApplications || []).length)
-const srPendingCount = computed(() => (store.surrenderApplications || []).filter(a =>
-  ['sr_platform_review', 'sr_clerk_review', 'sr_insurer_review', 'sr_insurer_rejected',
-   'sr_supplement', 'sr_customer_supplement'].includes(a.status)
-).length)
-const srCompletedCount = computed(() => (store.surrenderApplications || []).filter(a =>
-  ['sr_terminated', 'sr_business_terminated'].includes(a.status)
-).length)
-
-const handleSurrenderPageChange = (pageInfo) => {
-  surrenderPagination.current = pageInfo.current
-  surrenderPagination.pageSize = pageInfo.pageSize
-}
 
 // Surrender dialog state
 const srDetailRow = ref(null)
@@ -3432,252 +3231,278 @@ const confirmTerminate = () => {
   MessagePlugin.success('退保申请已终止')
 }
 
-// ===== Credit Limit Application tab =====
-const clAppStatusMap = {
-  cl_draft: '限额申请待提交',
-  cl_platform_review: '平台审核中',
-  cl_clerk_review: '跟单员审核中',
-  cl_insurer_review: '保险公司审核中',
-  cl_insurer_approved: '保险公司已批准',
-  cl_insurer_rejected: '保险公司已驳回',
-  cl_quota_recording: '跟单员录入配额中',
-  cl_platform_synced: '平台已同步',
-  cl_customer_confirm: '客户待确认',
-  cl_completed: '已完成'
-}
-const clAppColumns = [
-  { colKey: 'id', title: '申请编号', width: 160 },
-  { colKey: 'policyNo', title: '保单号', width: 140 },
-  { colKey: 'buyerName', title: '买方名称', ellipsis: true },
-  { colKey: 'appliedLimit', title: '申请额度', align: 'right', width: 120, slot: 'appliedLimit' },
-  { colKey: 'currency', title: '币种', width: 70 },
-  { colKey: 'status', title: '状态', width: 100, slot: 'status' },
-  { colKey: 'operation', title: '操作', width: 280, fixed: 'right', slot: 'operation' }
-]
-const clAppPagination = reactive({ total: 0, current: 1, pageSize: 20 })
-const clAppTableData = computed(() => {
-  const list = store.clApplications || []
-  clAppPagination.total = list.length
-  const start = (clAppPagination.current - 1) * clAppPagination.pageSize
-  return list.slice(start, start + clAppPagination.pageSize)
-})
-const clAppTotalCount = computed(() => (store.clApplications || []).length)
-const clAppPendingCount = computed(() => (store.clApplications || []).filter(a => ['cl_platform_review', 'cl_clerk_review', 'cl_insurer_review'].includes(a.status)).length)
-const clAppCompletedCount = computed(() => (store.clApplications || []).filter(a => ['cl_completed'].includes(a.status)).length)
-
-const handleClAppPageChange = (pageInfo) => {
-  clAppPagination.current = pageInfo.current
-  clAppPagination.pageSize = pageInfo.pageSize
+// ===== Change (chg) handlers =====
+const handleChangeView = (row) => {
+  chgDetailRow.value = row
+  chgDetailVisible.value = true
 }
 
-// Detail view
-const clAppDetailRow = ref(null)
-const clAppDetailVisible = ref(false)
-const handleClAppView = (row) => {
-  clAppDetailRow.value = row
-  clAppDetailVisible.value = true
-}
-
-// Create application
-const clAppCreateVisible = ref(false)
-const clAppCreateFormRef = ref(null)
-const clAppCreateForm = reactive({ policyNo: '', buyerName: '', appliedLimit: '', currency: 'USD', applicationReason: '' })
-const clAppCreateRules = {
-  policyNo: [{ required: true, message: '请选择保单', type: 'error' }],
-  buyerName: [{ required: true, message: '请填写买方名称', type: 'error' }],
-  appliedLimit: [{ required: true, message: '请填写申请额度', type: 'error' }]
-}
-const clAppPolicyOptions = computed(() => {
-  return (store.policies || [])
-    .filter(p => p.status === 'active' || p.status === 'effective')
-    .map(p => ({ value: p.policyNo, label: `${p.policyNo} - ${p.insured || p.policyholder || ''}` }))
-})
-const handleClAppCreate = () => {
-  clAppCreateForm.policyNo = ''
-  clAppCreateForm.buyerName = ''
-  clAppCreateForm.appliedLimit = ''
-  clAppCreateForm.currency = 'USD'
-  clAppCreateForm.applicationReason = ''
-  clAppCreateVisible.value = true
-}
-const confirmClAppCreate = () => {
-  if (!clAppCreateForm.policyNo) { MessagePlugin.warning('请选择保单'); return }
-  if (!clAppCreateForm.buyerName) { MessagePlugin.warning('请填写买方名称'); return }
-  if (!clAppCreateForm.appliedLimit) { MessagePlugin.warning('请填写申请额度'); return }
-  const res = store.createClApplication(clAppCreateForm.policyNo, { ...clAppCreateForm, appliedLimit: Number(clAppCreateForm.appliedLimit) })
-  if (!res?.ok) { MessagePlugin.error(res?.message || '创建失败'); return }
-  if (res.overLimitWarning) {
-    MessagePlugin.warning('申请额度超出保单总限额，已触发超限预警')
-  }
-  clAppCreateVisible.value = false
-  MessagePlugin.success('限额申请已创建')
-}
-
-// Submit to platform
-const handleClAppSubmit = (row) => {
-  const res = store.submitClToPlatform(row.id)
-  if (!res?.ok) { MessagePlugin.error(res?.message || '提交失败'); return }
-  MessagePlugin.success('限额申请已提交至平台审核')
-}
-
-// Generate docs (platform)
-const handleClAppGenDocs = (row) => {
-  const res = store.generateClDocuments(row.id)
+const handleChgGenerateDocs = (row) => {
+  const res = store.generateChangeDocuments(row.id, 'form')
   if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
-  MessagePlugin.success('申请文件已自动生成')
+  MessagePlugin.success('变更申请表已生成')
 }
-
-// Push to clerk (platform)
-const handleClAppPushClerk = (row) => {
-  const res = store.pushClToClerk(row.id)
-  if (!res?.ok) { MessagePlugin.error(res?.message || '推送失败'); return }
-  MessagePlugin.success('已推送跟单员审核')
-}
-
-// Clerk approve
-const handleClAppClerkApprove = (row) => {
-  const res = store.clerkApproveCl(row.id)
+const handleChgPushClerk = (row) => {
+  const res = store.pushChangeToClerk(row.id)
   if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
-  MessagePlugin.success('审核通过，已递交至保险公司核查')
+  MessagePlugin.success('已推送给跟单员')
+}
+const handleChgPushCustomerSupplement = (row) => {
+  const res = store.platformPushCustomerSupplement(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已推送客户补充')
+}
+const handleChgPlatformSupplement = (row) => {
+  const res = store.platformSupplementMaterial(row.id, {})
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('补充材料已提交')
+}
+const handleChgSubmitPlatform = (row) => {
+  const res = store.submitChangeToPlatform(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已提交平台审核')
+}
+const handleChgCustomerSupplement = (row) => {
+  const res = store.submitCustomerSupplement(row.id, { note: '客户补充材料' })
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('补充材料已提交')
+}
+const handleChgResubmitPlatform = (row) => {
+  const res = store.resubmitPlatform(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已推送平台审核')
+}
+const handleChgClerkApprove = (row) => {
+  const res = store.clerkSubmitToInsurer(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('审核通过，已推送至保险公司')
+}
+const handleChgSyncPlatform = (row) => {
+  const res = store.syncChangeToPlatform(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已同步平台')
+}
+const handleChgGenerateEndorsement = (row) => {
+  const res = store.generateEndorsement(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('批单已生成')
+}
+const handleResubmitClerk = (row) => {
+  const res = store.resubmitClerk(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已提交跟单员二次审核')
 }
 
-// Clerk reject
-const clAppClerkRejectVisible = ref(false)
-const clAppClerkRejectTarget = ref(null)
-const clAppClerkRejectReason = ref('')
-const handleClAppClerkReject = (row) => {
-  clAppClerkRejectTarget.value = row
-  clAppClerkRejectReason.value = ''
-  clAppClerkRejectVisible.value = true
+// Dialog-based handlers
+const handleChgClerkRejectOpen = (row) => {
+  chgRejectTarget.value = row
+  chgRejectReason.value = ''
+  chgRejectVisible.value = true
 }
-const confirmClAppClerkReject = () => {
-  if (!clAppClerkRejectReason.value.trim()) { MessagePlugin.warning('请填写驳回原因'); return }
-  const res = store.clerkRejectCl(clAppClerkRejectTarget.value.id, clAppClerkRejectReason.value)
+const confirmChgReject = () => {
+  if (!chgRejectReason.value.trim()) { MessagePlugin.warning('请输入驳回原因'); return }
+  const res = store.clerkRejectChange(chgRejectTarget.value.id, chgRejectReason.value)
   if (!res?.ok) { MessagePlugin.error(res?.message || '驳回失败'); return }
-  clAppClerkRejectVisible.value = false
-  MessagePlugin.success('已驳回，退回至平台')
+  MessagePlugin.success('已驳回，退回平台处理')
+  chgRejectVisible.value = false
 }
 
-// Insurer approve
-const clAppInsurerApproveVisible = ref(false)
-const clAppInsurerApproveTarget = ref(null)
-const clAppInsurerApproveFormRef = ref(null)
-const clAppInsurerApproveForm = reactive({ approvedLimit: '', approvedRate: '', effectiveDate: '', expiryDate: '', specialConditions: '', insurerOpinion: '' })
-const clAppInsurerApproveRules = {
-  approvedLimit: [{ required: true, message: '请填写批准额度', type: 'error' }]
+const handleChgInsurerApproveOpen = (row) => {
+  chgDetailRow.value = row
+  chgInsurerOpinion.value = ''
+  chgInsurerApproveVisible.value = true
 }
-const handleClAppInsurerApprove = (row) => {
-  clAppInsurerApproveTarget.value = row
-  clAppInsurerApproveForm.approvedLimit = String(row.appliedLimit || '')
-  clAppInsurerApproveForm.approvedRate = ''
-  clAppInsurerApproveForm.effectiveDate = ''
-  clAppInsurerApproveForm.expiryDate = ''
-  clAppInsurerApproveForm.specialConditions = ''
-  clAppInsurerApproveForm.insurerOpinion = ''
-  clAppInsurerApproveVisible.value = true
-}
-const confirmClAppInsurerApprove = () => {
-  if (!clAppInsurerApproveForm.approvedLimit) { MessagePlugin.warning('请填写批准额度'); return }
-  const res = store.insurerApproveCl(clAppInsurerApproveTarget.value.id, { ...clAppInsurerApproveForm, approvedLimit: Number(clAppInsurerApproveForm.approvedLimit), approvedRate: Number(clAppInsurerApproveForm.approvedRate || 0) })
+const confirmChgInsurerApprove = () => {
+  if (!chgDetailRow.value) return
+  const res = store.insurerApproveChange(chgDetailRow.value.id, { opinion: chgInsurerOpinion.value })
   if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
-  clAppInsurerApproveVisible.value = false
-  MessagePlugin.success('保险公司已批准限额申请')
+  const syncRes = store.syncChangeToPlatform(chgDetailRow.value.id)
+  if (!syncRes?.ok) { MessagePlugin.error(syncRes?.message || '同步失败'); return }
+  store.generateEndorsement(chgDetailRow.value.id)
+  MessagePlugin.success('保险公司已批准，批单已生成并同步给平台')
+  chgInsurerApproveVisible.value = false
 }
 
-// Insurer reject
-const clAppInsurerRejectVisible = ref(false)
-const clAppInsurerRejectTarget = ref(null)
-const clAppInsurerRejectFormRef = ref(null)
-const clAppInsurerRejectForm = reactive({ rejectType: 'credit_issue', rejectReason: '' })
-const clAppInsurerRejectRules = {
-  rejectReason: [{ required: true, message: '请填写驳回原因', type: 'error' }]
+const handleChgInsurerRejectOpen = (row) => {
+  chgDetailRow.value = row
+  chgInsurerRejectOpinion.value = ''
+  chgInsurerRejectVisible.value = true
 }
-const handleClAppInsurerReject = (row) => {
-  clAppInsurerRejectTarget.value = row
-  clAppInsurerRejectForm.rejectType = 'credit_issue'
-  clAppInsurerRejectForm.rejectReason = ''
-  clAppInsurerRejectVisible.value = true
-}
-const handleClAppRefuseCoverage = (row) => {
-  clAppInsurerRejectTarget.value = row
-  clAppInsurerRejectForm.rejectType = 'refuse_coverage'
-  clAppInsurerRejectForm.rejectReason = ''
-  clAppInsurerRejectVisible.value = true
-}
-const confirmClAppInsurerReject = () => {
-  if (!clAppInsurerRejectForm.rejectReason.trim()) { MessagePlugin.warning('请填写驳回原因'); return }
-  const res = store.insurerRejectCl(clAppInsurerRejectTarget.value.id, { ...clAppInsurerRejectForm })
+const confirmChgInsurerReject = () => {
+  if (!chgInsurerRejectOpinion.value.trim()) { MessagePlugin.warning('请输入审批意见'); return }
+  if (!chgDetailRow.value) return
+  const res = store.insurerRejectChange(chgDetailRow.value.id, chgInsurerRejectOpinion.value)
   if (!res?.ok) { MessagePlugin.error(res?.message || '驳回失败'); return }
-  clAppInsurerRejectVisible.value = false
-  MessagePlugin.success('保险公司已驳回限额申请')
+  MessagePlugin.success('保险公司已驳回变更申请')
+  chgInsurerRejectVisible.value = false
 }
 
-// Clerk record quota
-const clAppQuotaVisible = ref(false)
-const clAppQuotaTarget = ref(null)
-const clAppRecordedQuota = ref('')
-const handleClAppRecordQuota = (row) => {
-  clAppQuotaTarget.value = row
-  clAppRecordedQuota.value = String(row.approvedLimit || row.appliedLimit || '')
-  clAppQuotaVisible.value = true
+const handleChgClerkRecordOpen = (row) => {
+  chgDetailRow.value = row
+  chgClerkRecord.value = ''
+  chgRecordVisible.value = true
 }
-const confirmClAppRecordQuota = () => {
-  if (!clAppRecordedQuota.value) { MessagePlugin.warning('请录入配额'); return }
-  const res = store.clerkRecordQuota(clAppQuotaTarget.value.id, { recordedQuota: Number(clAppRecordedQuota.value) })
+const confirmChgRecord = () => {
+  if (!chgClerkRecord.value.trim()) { MessagePlugin.warning('请输入变更记录'); return }
+  const res = store.clerkUpdateRecord(chgDetailRow.value?.id, { record: chgClerkRecord.value })
   if (!res?.ok) { MessagePlugin.error(res?.message || '录入失败'); return }
-  clAppQuotaVisible.value = false
-  MessagePlugin.success('配额已录入')
+  MessagePlugin.success('变更记录已录入')
+  chgRecordVisible.value = false
 }
 
-// Clerk sync to platform
-const clAppSyncVisible = ref(false)
-const clAppSyncTarget = ref(null)
-const clAppSyncRecord = ref('')
-const handleClAppSync = (row) => {
-  clAppSyncTarget.value = row
-  clAppSyncRecord.value = '配额已核对，同步至平台'
-  clAppSyncVisible.value = true
+const handleChgCustomerSupplementOpen = (row) => {
+  chgSupplementMode.value = 'customer'
+  chgSupplementRequest.value = ''
+  chgSupplementFiles.value = []
+  chgDetailRow.value = row
+  chgSupplementVisible.value = true
 }
-const confirmClAppSync = () => {
-  const res = store.clerkSyncToPlatform(clAppSyncTarget.value.id, { syncRecord: clAppSyncRecord.value })
-  if (!res?.ok) { MessagePlugin.error(res?.message || '同步失败'); return }
-  clAppSyncVisible.value = false
-  MessagePlugin.success('配额已同步至平台')
+const confirmChgSupplement = () => {
+  if (chgSupplementMode.value === 'customer') {
+    const res = store.submitCustomerSupplement(chgDetailRow.value?.id, { note: chgSupplementRequest.value, files: chgSupplementFiles.value })
+    if (!res?.ok) { MessagePlugin.error(res?.message || '提交失败'); return }
+    MessagePlugin.success('补充材料已提交')
+  } else if (chgSupplementMode.value === 'platform') {
+    const res = store.platformSupplementMaterial(chgDetailRow.value?.id, { supplementNote: chgSupplementRequest.value })
+    if (!res?.ok) { MessagePlugin.error(res?.message || '提交失败'); return }
+    MessagePlugin.success('材料已补充')
+  }
+  chgSupplementVisible.value = false
 }
 
-// Platform confirm update
-const handleClAppPlatformConfirm = (row) => {
-  const res = store.platformConfirmUpdate(row.id)
+const confirmChgSupplementInit = () => {
+  if (!chgSupplementRequest.value.trim()) { MessagePlugin.warning('请输入补充要求'); return }
+  const res = store.initiateSupplement(chgDetailRow.value?.id, chgSupplementRequest.value)
   if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
-  MessagePlugin.success('限额数据已更新，新额度已生效')
+  MessagePlugin.success('已发起补充材料请求')
+  chgSupplementInitVisible.value = false
 }
 
-// Platform push reject to customer
-const handleClAppPushReject = (row) => {
-  const res = store.platformPushClReject(row.id)
-  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
-  MessagePlugin.success('驳回结果已推送客户')
+// Doc preview
+const handleChgDocPreview = (row, type) => {
+  if (type === 'change_form') {
+    const file = row.generatedChangeForm?.[0]
+    chgDocPreviewTitle.value = '变更申请表预览'
+    chgDocPreviewFileName.value = file?.name || '变更申请表.pdf'
+    chgDocPreviewFileSize.value = file?.size || '-'
+    chgDocPreviewContent.value = generateChangeFormPreview(row)
+  } else if (type === 'checklist') {
+    const file = row.generatedChecklist?.[0]
+    chgDocPreviewTitle.value = '变更材料清单预览'
+    chgDocPreviewFileName.value = file?.name || '变更材料清单.pdf'
+    chgDocPreviewFileSize.value = file?.size || '-'
+    chgDocPreviewContent.value = generateChecklistPreview(row)
+  }
+  chgDocPreviewVisible.value = true
 }
 
-// Clerk confirm reject
-const handleClAppClerkConfirmReject = (row) => {
-  const res = store.clerkConfirmReject(row.id)
-  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
-  MessagePlugin.success('已确认驳回结果')
+const generateChangeFormPreview = (row) => {
+  return `
+    <div style="padding:24px;font-family:'Microsoft YaHei',sans-serif;">
+      <h2 style="text-align:center;margin-bottom:24px;font-size:18px;">保单变更申请书</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;width:120px;background:#f8f9fa;font-weight:600;">申请编号</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.id || '-'}</td></tr>
+        <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">保单号</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.policyNo || '-'}</td></tr>
+        <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">变更类型</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.changeTypeName || '-'}</td></tr>
+        <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">变更原因</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.changeReason || '-'}</td></tr>
+        <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">变更前内容</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.beforeContent || '-'}</td></tr>
+        <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">变更后内容</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.afterContent || '-'}</td></tr>
+        <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">生效日期</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.effectiveDate || '-'}</td></tr>
+        <tr><td style="padding:8px 12px;border:1px solid #d0d5dd;background:#f8f9fa;font-weight:600;">申请时间</td><td style="padding:8px 12px;border:1px solid #d0d5dd;">${row.createTime || '-'}</td></tr>
+      </table>
+      <div style="margin-top:16px;padding:12px;background:#fff8e6;border:1px solid #fef3c7;border-radius:4px;font-size:12px;color:#92400e;">
+        提示：此文件为系统生成的预览版本，仅供查看。实际文件以PDF格式为准。
+      </div>
+    </div>
+  `
 }
 
-// Customer confirm reject sync
-const handleClAppCustomerConfirmReject = (row) => {
-  const res = store.customerConfirmClReject(row.id)
-  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
-  MessagePlugin.success('已确认同步，流程结束')
+const generateChecklistPreview = (row) => {
+  const items = [
+    { name: '保单变更申请书', required: true, status: '已提交' },
+    { name: '变更事项说明', required: true, status: row.changeReason ? '已提交' : '待提交' },
+    { name: '相关证明材料', required: false, status: row.supportingDocs?.length > 0 ? '已提交' : '待提交' }
+  ]
+  const itemsHtml = items.map((item, idx) => `
+    <tr>
+      <td style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;">${idx + 1}</td>
+      <td style="padding:8px 12px;border:1px solid #d0d5dd;">${item.name}</td>
+      <td style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;">${item.required ? '<span style="color:#dc2626;">*</span>' : '-'}</td>
+      <td style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;"><span style="color:${item.status === '已提交' ? '#00a870' : '#f59e0b'};">${item.status}</span></td>
+    </tr>
+  `).join('')
+  return `
+    <div style="padding:24px;font-family:'Microsoft YaHei',sans-serif;">
+      <h2 style="text-align:center;margin-bottom:24px;font-size:18px;">变更材料清单</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f8f9fa;">
+            <th style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;width:40px;">序号</th>
+            <th style="padding:8px 12px;border:1px solid #d0d5dd;text-align:left;">材料名称</th>
+            <th style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;width:60px;">必填</th>
+            <th style="padding:8px 12px;border:1px solid #d0d5dd;text-align:center;width:80px;">状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+      <div style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;font-size:12px;color:#166534;">
+        共 ${items.length} 项材料，已提交 ${items.filter(i => i.status === '已提交').length} 项
+      </div>
+    </div>
+  `
 }
+
+// ===== External policy handlers =====
+const handleOcrUpload = (row) => {
+  ocrExternalId.value = row.id
+  ocrDialogVisible.value = true
+}
+const handleSubmitToPlatformReview = (row) => {
+  const res = store.submitForPlatformReview(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已提交平台审核')
+  externalDetailVisible.value = false
+}
+const handleCustomerAuthorizeExternal = (row) => {
+  const res = store.submitExternalPolicyForReview(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已确认授权')
+}
+const handleClerkApproveExternal = (row) => {
+  const res = store.approveExternalPolicy(row.id)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('审核通过')
+}
+const handleClerkRejectExternal = (row) => {
+  externalClerkRejectTarget.value = row
+  externalClerkRejectReason.value = ''
+  externalClerkRejectVisible.value = true
+}
+const confirmExternalClerkReject = () => {
+  const row = externalClerkRejectTarget.value
+  if (!row) { MessagePlugin.warning('请选择要驳回的记录'); return }
+  const reason = externalClerkRejectReason.value?.trim()
+  if (!reason) { MessagePlugin.warning('请填写驳回原因'); return }
+  const res = store.rejectExternalPolicy(row.id, reason)
+  if (!res?.ok) { MessagePlugin.error(res?.message || '操作失败'); return }
+  MessagePlugin.success('已驳回')
+  externalClerkRejectVisible.value = false
+  externalDetailVisible.value = false
+}
+
+// ===== Surrogate handlers =====
+const handleSurrenderTerminate = handleSurrenderRejectTerminate
+const handleSurrenderInitiatePayment = handleSurrenderInsurerPay
 
 onMounted(() => { store.ensureSeeded() })
 </script>
 
 <style lang="scss" scoped>
 .status-tabs { margin-bottom: 16px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.header-actions { display: flex; align-items: center; gap: 8px; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .mb-16 { margin-bottom: 16px; }
 .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -3796,6 +3621,15 @@ onMounted(() => { store.ensureSeeded() })
   font-weight: 500;
 }
 .pd-number { font-weight: 700; color: #0052d9; font-family: 'SF Mono', monospace; }
+.pd-fee-table { width:100%; border:1px solid #eef2f6; border-radius:8px; overflow:hidden; }
+.pd-fee-header,.pd-fee-row { display:grid; grid-template-columns:120px 1fr 80px 1fr 1fr; gap:8px; padding:8px 12px; align-items:center; font-size:13px; }
+.pd-fee-header { background:#f8fafc; font-weight:600; color:#64748b; }
+.pd-fee-row { border-top:1px solid #f1f5f9; }
+.pd-fee-col.type { font-weight:500; }
+.pd-fee-col.amount { font-family:'SF Mono',monospace; text-align:right; }
+.pd-fee-col.date { color:#64748b; }
+.pd-fee-col.source { color:#64748b; }
+.pd-empty-tip { text-align:center; padding:24px 0; color:#94a3b8; font-size:13px; }
 
 .modal-section-title {
   font-size: 15px;
@@ -4304,4 +4138,49 @@ onMounted(() => { store.ensureSeeded() })
 .supplement-entry-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 4px; }
 .supplement-entry-row .detail-label { white-space: nowrap; }
 .supplement-entry-row .detail-value { text-align: left; font-weight: 400; }
+
+/* ===== Expanded sub-records in policy list ===== */
+.expanded-sub-records {
+  padding: 8px 24px;
+  background: #fafbfc;
+}
+.sub-records-list {
+  display: flex;
+  flex-direction: column;
+}
+.sr-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+}
+.sr-ops {
+  display: inline-flex;
+  gap: 8px;
+}
+.sr-row:last-child {
+  border-bottom: none;
+}
+.sr-type {
+  min-width: 56px;
+}
+.sr-id {
+  color: #333;
+  min-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sr-date {
+  color: #999;
+  min-width: 100px;
+}
+.sr-empty {
+  padding: 16px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+}
 </style>

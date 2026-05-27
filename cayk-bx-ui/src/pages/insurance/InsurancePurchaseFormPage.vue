@@ -20,32 +20,6 @@
       </div>
     </div>
 
-    <t-dialog v-model:visible="previewVisible" :header="previewFile?.name || '文件预览'" width="800px" :footer="false">
-      <div class="file-preview-modal">
-        <div class="preview-content" v-if="previewFile">
-          <div class="preview-info">
-            <div class="info-item">
-              <span class="info-label">文件名称：</span>
-              <span class="info-value">{{ previewFile.name }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">文件大小：</span>
-              <span class="info-value">{{ formatFileSize(previewFile.size) }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">文件类型：</span>
-              <span class="info-value">{{ previewFile.type || 'PDF' }}</span>
-            </div>
-          </div>
-          <div class="preview-placeholder">
-            <div class="file-icon">📄</div>
-            <div class="file-name">{{ previewFile.name }}</div>
-            <div class="file-tip">PDF文件预览</div>
-          </div>
-        </div>
-      </div>
-    </t-dialog>
-
     <!-- 投保流程看板 - 嵌入详情页 -->
     <div v-if="mode === 'detail' && detailData" class="process-flow-section">
       <div class="process-flow-header">
@@ -235,14 +209,6 @@
         </t-tab-panel>
         <t-tab-panel value="trade" label="贸易基础信息">
           <detail-panel :data="detailData" :columns="tradeColumns" title="贸易基础信息" />
-        </t-tab-panel>
-        <t-tab-panel value="policy" label="保单数字化信息">
-          <detail-panel v-if="detailData" :data="detailData" :columns="policyBasicColumns" title="基础信息" />
-          <detail-panel v-if="detailData" :data="detailData" :columns="policyLimitColumns" title="责任限额" />
-          <detail-panel v-if="detailData" :data="detailData" :columns="policyDeclareColumns" title="申报规则" />
-          <detail-panel v-if="detailData" :data="detailData" :columns="policyFeeColumns" title="费用管理" />
-          <detail-panel v-if="detailData" :data="detailData" :columns="policyFileColumns" title="保单文件" />
-          <empty-state v-if="!detailData" description="暂无保单数字化数据" />
         </t-tab-panel>
       </t-tabs>
     </t-card>
@@ -790,128 +756,6 @@
                 </t-form-item>
               </div>
             </div>
-
-            <div id="section-7" class="form-section">
-              <div class="section-header">
-                <span class="section-num">7</span>
-                <span class="section-title">保单数字化信息</span>
-              </div>
-              <div class="section-title-sub">基础信息</div>
-              <div class="form-grid">
-                <t-form-item label="保险单号" name="policyNo">
-                <t-input v-model="formData.policyNo" placeholder="保单签发后自动生成" />
-              </t-form-item>
-              <t-form-item label="保险公司名称" name="insuranceCompanyName">
-                <t-input v-model="formData.insuranceCompanyName" placeholder="请输入保险公司名称" />
-              </t-form-item>
-              <t-form-item label="保险人名称" name="insurerName">
-                <t-input v-model="formData.insurerName" placeholder="请输入保险人名称" />
-              </t-form-item>
-              <t-form-item label="被保险人名称" name="insuredName">
-                <t-input v-model="formData.insuredName" placeholder="需与贸易项下卖方信息一致" />
-              </t-form-item>
-              <t-form-item label="受益人名称" name="beneficiaryName">
-                <t-input v-model="formData.beneficiaryName" placeholder="请输入受益人名称" />
-              </t-form-item>
-              <t-form-item label="保险起止期" name="policyPeriodRange" class="form-item-full">
-                <t-date-range-picker v-model="formData.policyPeriodRange" placeholder="请选择保险起止期" />
-              </t-form-item>
-              <t-form-item label="保险期间" name="policyPeriod">
-                <t-input v-model="formData.policyPeriod" placeholder="如12个月" />
-              </t-form-item>
-              <t-form-item label="续保标识" name="renewalFlag">
-                <t-select v-model="formData.renewalFlag" placeholder="请选择" clearable>
-                  <t-option value="是" label="是" />
-                  <t-option value="否" label="否" />
-                </t-select>
-              </t-form-item>
-              <t-form-item label="国家风险类别版本" name="countryRiskVersion">
-                <t-input v-model="formData.countryRiskVersion" placeholder="请输入国家风险类别版本" />
-              </t-form-item>
-              <t-form-item label="条款版本" name="clauseVersion">
-                <t-input v-model="formData.clauseVersion" placeholder="请输入条款版本" />
-              </t-form-item>
-              <t-form-item label="约定保险范围" name="agreedCoverageScope" class="form-item-full">
-                <t-input v-model="formData.agreedCoverageScope" placeholder="请输入约定保险范围" />
-              </t-form-item>
-              <t-form-item label="业务类型" name="tradeBusinessType">
-                <t-select v-model="formData.tradeBusinessType" placeholder="请选择业务类型" clearable>
-                  <t-option value="服务贸易" label="服务贸易" />
-                  <t-option value="货物贸易" label="货物贸易" />
-                </t-select>
-              </t-form-item>
-            </div>
-
-            <div class="section-title">责任限额</div>
-            <div class="form-grid">
-              <t-form-item label="最高赔偿限额" name="maxCompensationLimit">
-                <t-input-number v-model="formData.maxCompensationLimit" placeholder="请输入最高赔偿限额" :min="0" />
-              </t-form-item>
-              <t-form-item label="买方信用限额" name="buyerCreditLimit">
-                <t-input-number v-model="formData.buyerCreditLimit" placeholder="请输入买方信用限额" :min="0" />
-              </t-form-item>
-              <t-form-item label="承保风险及赔偿比例" name="coveredRisks" class="form-item-full">
-                <t-textarea v-model="formData.coveredRisks" placeholder="如：商业风险—买方破产或无力偿付债务；商业风险—买方拖欠；政治风险" :autosize="{ minRows: 2, maxRows: 4 }" />
-              </t-form-item>
-              <t-form-item label="限额闲置期（天）" name="limitIdlePeriod">
-                <t-input-number v-model="formData.limitIdlePeriod" placeholder="届满前30日提醒" :min="0" />
-              </t-form-item>
-              <t-form-item label="自行掌握限额" name="selfControlledLimit" class="form-item-full">
-                <t-textarea v-model="formData.selfControlledLimit" placeholder="条件、限额要求、申报方式、赔付基数、赔偿比例等" :autosize="{ minRows: 2, maxRows: 4 }" />
-              </t-form-item>
-              <t-form-item label="免赔额" name="deductible">
-                <t-input-number v-model="formData.deductible" placeholder="请输入免赔额" :min="0" />
-              </t-form-item>
-            </div>
-
-            <div class="section-title">申报规则</div>
-            <div class="form-grid">
-              <t-form-item label="申报方式" name="declarationMethod">
-                <t-input v-model="formData.declarationMethod" placeholder="请输入申报方式" />
-              </t-form-item>
-              <t-form-item label="申报周期" name="declarationCycle">
-                <t-input v-model="formData.declarationCycle" placeholder="月度/季度" />
-              </t-form-item>
-              <t-form-item label="申报截至日期" name="declarationDeadline">
-                <t-input v-model="formData.declarationDeadline" placeholder="如次月15日" />
-              </t-form-item>
-            </div>
-
-            <div class="section-title">费用管理</div>
-            <div class="form-grid">
-              <t-form-item label="保险费率（%）" name="premiumRate">
-                <t-input-number v-model="formData.premiumRate" placeholder="请输入费率" :min="0" :max="100" />
-              </t-form-item>
-              <t-form-item label="缴费期限" name="premiumPaymentDeadline">
-                <t-input v-model="formData.premiumPaymentDeadline" placeholder="如保险起期前30日" />
-              </t-form-item>
-              <t-form-item label="缴费方式" name="premiumPaymentMethod">
-                <t-select v-model="formData.premiumPaymentMethod" placeholder="请选择缴费方式" clearable>
-                  <t-option value="一次性" label="一次性" />
-                  <t-option value="分期" label="分期" />
-                </t-select>
-              </t-form-item>
-              <t-form-item label="保费" name="premium">
-                <t-input-number v-model="formData.premium" placeholder="自动计算应缴保费" :min="0" />
-              </t-form-item>
-              <t-form-item label="退保费用" name="surrenderFee">
-                <t-input-number v-model="formData.surrenderFee" placeholder="退保时按未到期天数比例计算" :min="0" />
-              </t-form-item>
-              <t-form-item label="赔款追回款项支付对象" name="recoveryPayee">
-                <t-input v-model="formData.recoveryPayee" placeholder="请输入赔款追回款项支付对象" />
-              </t-form-item>
-            </div>
-
-            <div class="section-title">保单文件</div>
-            <div class="form-grid">
-              <t-form-item label="保单文件" name="policyFile" class="form-item-full">
-                <t-upload v-model="formData.policyFile" action="https://demo.com/upload" />
-              </t-form-item>
-              <t-form-item label="批单文件" name="endorsementFile" class="form-item-full">
-                <t-upload v-model="formData.endorsementFile" action="https://demo.com/upload" />
-              </t-form-item>
-            </div>
-            </div>
           </t-form>
         </t-card>
       </div>
@@ -945,8 +789,7 @@ const formSections = [
   '投保核心需求',
   '买方信息',
   '贸易基础信息',
-  '投保声明',
-  '保单数字化信息'
+  '投保声明'
 ]
 
 const scrollToSection = (index) => {
@@ -961,7 +804,7 @@ onMounted(() => {
   const content = document.querySelector('.scroll-content')
   if (content) {
     content.addEventListener('scroll', () => {
-      for (let i = 0; i < 7; i++) {
+      for (let i = 0; i < 6; i++) {
         const section = document.getElementById(`section-${i}`)
         if (section) {
           const rect = section.getBoundingClientRect()
@@ -1124,40 +967,6 @@ const formData = reactive({
   declarationSignature: '',
   declarationDate: '',
   companySeal: null,
-  // 保单数字化信息 - 基础信息
-  policyNo: '',
-  insuranceCompanyName: '',
-  insurerName: '',
-  insuredName: '',
-  beneficiaryName: '',
-  policyPeriodRange: [],
-  policyPeriod: '',
-  renewalFlag: '',
-  countryRiskVersion: '',
-  clauseVersion: '',
-  agreedCoverageScope: '',
-  tradeBusinessType: '',
-  // 保单数字化信息 - 责任限额
-  maxCompensationLimit: null,
-  buyerCreditLimit: null,
-  coveredRisks: '',
-  limitIdlePeriod: null,
-  selfControlledLimit: '',
-  deductible: null,
-  // 保单数字化信息 - 申报规则
-  declarationMethod: '',
-  declarationCycle: '',
-  declarationDeadline: '',
-  // 保单数字化信息 - 费用管理
-  premiumRate: null,
-  premiumPaymentDeadline: '',
-  premiumPaymentMethod: '',
-  premium: null,
-  surrenderFee: null,
-  recoveryPayee: '',
-  // 保单数字化信息 - 保单文件
-  policyFile: null,
-  endorsementFile: null
 })
 
 const tempCountry = ref('')
@@ -1319,36 +1128,7 @@ const rules = {
   authorizationDocument: [],
   declarationSignature: [],
   declarationDate: [],
-  companySeal: [],
-  policyNo: [],
-  insuranceCompanyName: [],
-  insurerName: [],
-  insuredName: [],
-  beneficiaryName: [],
-  policyPeriodRange: [],
-  policyPeriod: [],
-  renewalFlag: [],
-  countryRiskVersion: [],
-  clauseVersion: [],
-  agreedCoverageScope: [],
-  tradeBusinessType: [],
-  maxCompensationLimit: [],
-  buyerCreditLimit: [],
-  coveredRisks: [],
-  limitIdlePeriod: [],
-  selfControlledLimit: [],
-  deductible: [],
-  declarationMethod: [],
-  declarationCycle: [],
-  declarationDeadline: [],
-  premiumRate: [],
-  premiumPaymentDeadline: [],
-  premiumPaymentMethod: [],
-  premium: [],
-  surrenderFee: [],
-  recoveryPayee: [],
-  policyFile: [],
-  endorsementFile: []
+  companySeal: []
 }
 
 const detailData = computed(() => {
@@ -1444,114 +1224,33 @@ const tradeColumns = [
   { label: '含物权保留条款', key: 'hasTitleRetentionClause' }
 ]
 
-const policyBasicColumns = [
-  { label: '保险单号', key: 'policyNo' },
-  { label: '保险公司名称', key: 'insuranceCompanyName' },
-  { label: '保险人名称', key: 'insurerName' },
-  { label: '被保险人名称', key: 'insuredName' },
-  { label: '受益人名称', key: 'beneficiaryName' },
-  { label: '保险起期', key: 'policyStartDate' },
-  { label: '保险止期', key: 'policyEndDate' },
-  { label: '保险期间', key: 'policyPeriod' },
-  { label: '续保标识', key: 'renewalFlag' },
-  { label: '投保金额', key: 'coverageAmount', formatter: (v, row) => `${row.insuranceCurrency || 'USD'} ${Number(v || 0).toLocaleString()}` },
-  { label: '国家风险类别版本', key: 'countryRiskVersion' },
-  { label: '条款版本', key: 'clauseVersion' },
-  { label: '约定保险范围', key: 'agreedCoverageScope' },
-  { label: '业务类型', key: 'tradeBusinessType' }
-]
-
-const policyLimitColumns = [
-  { label: '最高赔偿限额', key: 'maxCompensationLimit', formatter: (v) => v ? `USD ${Number(v).toLocaleString()}` : '-' },
-  { label: '买方信用限额', key: 'buyerCreditLimit', formatter: (v) => v ? `USD ${Number(v).toLocaleString()}` : '-' },
-  { label: '承保风险及赔偿比例', key: 'coveredRisks' },
-  { label: '限额闲置期（天）', key: 'limitIdlePeriod', formatter: (v) => v ? `${v}天` : '-' },
-  { label: '自行掌握限额', key: 'selfControlledLimit' },
-  { label: '免赔额', key: 'deductible', formatter: (v) => v ? `USD ${Number(v).toLocaleString()}` : '-' }
-]
-
-const policyDeclareColumns = [
-  { label: '申报方式', key: 'declarationMethod' },
-  { label: '申报周期', key: 'declarationCycle' },
-  { label: '申报截至日期', key: 'declarationDeadline' }
-]
-
-const policyFeeColumns = [
-  { label: '保险费率', key: 'premiumRate', formatter: (v) => v ? `${v}%` : '-' },
-  { label: '缴费期限', key: 'premiumPaymentDeadline' },
-  { label: '缴费方式', key: 'premiumPaymentMethod' },
-  { label: '保费', key: 'premium', formatter: (v) => v ? `USD ${Number(v).toLocaleString()}` : '-' },
-  { label: '退保费用', key: 'surrenderFee', formatter: (v) => v ? `USD ${Number(v).toLocaleString()}` : '-' },
-  { label: '赔款追回款项支付对象', key: 'recoveryPayee' }
-]
-
-const previewFile = ref(null)
-const previewVisible = ref(false)
-
-const handlePreviewFile = (file) => {
-  previewFile.value = file
-  previewVisible.value = true
-}
-
-const formatFileSize = (size) => {
-  if (!size) return '-'
-  if (size < 1024) return size + ' B'
-  if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB'
-  return (size / (1024 * 1024)).toFixed(2) + ' MB'
-}
-
-const policyFileColumns = [
-  { label: '保单文件', key: 'policyFile', formatter: (v) => {
-    if (Array.isArray(v) && v.length > 0) {
-      return v.map((f, idx) => 
-        `<span class="file-preview" @click="handlePreviewFile(${JSON.stringify(f).replace(/"/g, '&quot;')})">${f.name || `文件${idx + 1}`} <span class="preview-icon">👁</span></span>`
-      ).join('; ')
-    }
-    return '-'
-  }},
-  { label: '批单文件', key: 'endorsementFile', formatter: (v) => {
-    if (Array.isArray(v) && v.length > 0) {
-      return v.map((f, idx) => 
-        `<span class="file-preview" @click="handlePreviewFile(${JSON.stringify(f).replace(/"/g, '&quot;')})">${f.name || `文件${idx + 1}`} <span class="preview-icon">👁</span></span>`
-      ).join('; ')
-    }
-    return '-'
-  }}
-]
+// policy columns removed
 
 const processSteps = [
-  { label: '提交投保申请', role: '客户', roleKey: 'customer' },
-  { label: '生成投保资料', role: '长安银科', roleKey: 'clerk' },
-  { label: '资信调查', role: '保险公司', roleKey: 'insurer' },
-  { label: '信用限额审批', role: '保险公司', roleKey: 'insurer' },
-  { label: '核保出单', role: '跟单员', roleKey: 'clerk' },
-  { label: '缴费生效', role: '客户', roleKey: 'customer' }
+  { label: '投保申请', role: '客户', roleKey: 'customer' },
+  { label: '跟单员审核', role: '跟单员', roleKey: 'clerk' },
+  { label: '服务确认', role: '客户/长安银科', roleKey: 'customer' },
+  { label: '资信核保', role: '长安银科', roleKey: 'clerk' },
+  { label: '保费支付', role: '客户', roleKey: 'customer' },
+  { label: '保单生效', role: '长安银科', roleKey: 'inkasso' }
 ]
 
 const statusStepMap = {
   draft: 0,
-  pending_submit: 0,
-  pending_material: 1,
-  pending_review: 1,
-  clerk_review: 2,
-  ocr_pending: 1,
-  ocr_clerk_review: 1,
-  contract_signing: 2,
+  rejected: 0,
+  clerk_review: 1,
+  contract_signing: 1,
   inkasso_signed: 2,
   contract_signed: 2,
   service_fee_paid: 2,
-  credit_investigating: 2,
+  credit_investigating: 3,
   limit_approving: 3,
-  underwriting: 2,
-  uw_completed: 4,
-  platform_synced: 5,
-  premium_confirmed: 5,
-  payment_uploaded: 5,
-  pending_payment: 5,
-  approved: 2,
-  completed: 6,
-  active: 6,
-  rejected: 0
+  underwriting: 3,
+  uw_completed: 3,
+  platform_synced: 4,
+  premium_confirmed: 4,
+  payment_uploaded: 4,
+  active: 5
 }
 
 const getCurrentStepIndex = () => {
@@ -1582,40 +1281,46 @@ const getStepTagTheme = (idx) => {
 }
 
 const stepActions = [
-  // Step 0: 提交投保申请
+  // Step 0: 投保申请
   {
     role: '客户',
     roleKey: 'customer',
-    description: '填写完整的投保申请信息，上传企业资质文件（营业执照、对外贸易经营者备案登记表），确认投保声明并签字提交',
-    isActiveFor: ['draft', 'pending_submit']
+    description: '填写完整的投保申请信息，上传企业资质文件，确认投保声明并签字提交',
+    isActiveFor: ['draft', 'rejected']
   },
-  // Step 1: 生成投保资料
-  {
-    role: '系统',
-    roleKey: 'system',
-    description: '系统根据投保信息自动生成投保资料，供下载和预览',
-    isActiveFor: ['pending_review', 'pending_material', 'ocr_pending']
-  },
+  // Step 1: 跟单员审核
   {
     role: '跟单员',
     roleKey: 'clerk',
-    description: '审核客户提交的投保资料是否完整、准确，核对营业执照、备案登记表、授权文件等附件',
-    isActiveFor: ['clerk_review', 'ocr_clerk_review']
+    description: '审核客户提交的投保资料是否完整、准确，核对自动生成的投保申请书和买方信息采集表',
+    isActiveFor: ['clerk_review', 'contract_signing']
   },
-  // Step 2: 资信调查
+  {
+    role: '长安银科',
+    roleKey: 'inkasso',
+    description: '在线签署短期出口信用保险合同',
+    isActiveFor: ['contract_signing']
+  },
+  // Step 2: 服务确认
+  {
+    role: '客户',
+    roleKey: 'customer',
+    description: '确认并签署合同条款',
+    isActiveFor: ['inkasso_signed']
+  },
+  {
+    role: '客户',
+    roleKey: 'customer',
+    description: '合同已签署，请支付平台服务费',
+    isActiveFor: ['contract_signed', 'service_fee_paid']
+  },
+  // Step 3: 资信核保
   {
     role: '长安银科',
     roleKey: 'inkasso',
     description: '对买方进行资信调查，包括信用评级、财务状况分析、历史交易记录核查',
     isActiveFor: ['credit_investigating']
   },
-  {
-    role: '保险公司',
-    roleKey: 'insurer',
-    description: '配合长安银科提供买方资信数据支持（跟单员协调对接）',
-    isActiveFor: ['credit_investigating']
-  },
-  // Step 4: 信用限额审批
   {
     role: '长安银科',
     roleKey: 'inkasso',
@@ -1628,11 +1333,10 @@ const stepActions = [
     description: '审批信用限额申请，确认承保条件（由跟单员对接保险公司）',
     isActiveFor: ['limit_approving']
   },
-  // Step 5: 核保出单
   {
     role: '保险公司',
     roleKey: 'insurer',
-    description: '保险公司核保并签发保单（跟单员全程配合，跟进出单进度并上传保单文件）',
+    description: '保险公司核保并签发保单（跟单员全程配合）',
     isActiveFor: ['underwriting']
   },
   {
@@ -1647,7 +1351,7 @@ const stepActions = [
     description: '保险公司核保已完成，跟单员同步保单信息至平台',
     isActiveFor: ['uw_completed']
   },
-  // Step 6: 缴费生效
+  // Step 4: 保费支付
   {
     role: '客户',
     roleKey: 'customer',
@@ -1666,20 +1370,14 @@ const stepActions = [
     description: '确认保费到账，更新保单状态为生效',
     isActiveFor: ['payment_uploaded']
   },
-  {
-    role: '客户',
-    roleKey: 'customer',
-    description: '确认保单信息并缴纳保费，上传支付凭证',
-    isActiveFor: ['pending_payment']
-  },
+  // Step 5: 保单生效
   {
     role: '长安银科',
     roleKey: 'inkasso',
-    description: '确认保费到账，更新保单状态为生效',
-    isActiveFor: ['pending_payment']
+    description: '确认保费已到账，保单正式生效',
+    isActiveFor: ['active']
   }
 ]
-
 const getCurrentStepActions = () => {
   const app = detailData.value
   if (!app) return []
@@ -1705,11 +1403,11 @@ const getCurrentStepActions = () => {
 const getStepDefaultDesc = (idx) => {
   const descs = [
     '请填写完整投保信息并提交申请',
-    '系统正在生成投保资料',
-    '长安银科正在进行资信调查',
-    '信用限额审批处理中',
-    '保险公司核保出单中',
-    '缴费生效处理中'
+    '跟单员正在审核投保资料',
+    '双方在线签署短期出口信用保险合同',
+    '资信调查、信用限额审批及核保出单处理中',
+    '确认保费金额并完成支付',
+    '保单正式生效'
   ]
   return descs[idx] || '处理中'
 }
@@ -1825,106 +1523,66 @@ const timelineSteps = computed(() => {
 
   const baseSteps = [
     {
-      stepName: '提交投保申请',
+      stepName: '投保申请',
       operator: contactName,
       role: '客户',
       startTime: createTime,
       endTime: createTime,
-      description: '填写完整的投保信息并提交投保申请',
-      files: [{ name: '投保信息申请表' }],
+      description: '填写完整的投保信息并提交投保申请，系统自动生成投保申请书和买方信息采集表',
+      files: [{ name: '投保信息申请表' }, { name: '投保申请书' }, { name: '买方信息采集表' }],
       needReview: false,
       reviews: getReviewByStep(0),
       reviewStatus: null,
       reviewComment: null
     },
     {
-      stepName: '生成投保资料',
-      operator: '长安银科',
-      role: '长安银科',
+      stepName: '跟单员审核',
+      operator: '跟单员',
+      role: '跟单员',
       startTime: isAdvanced ? createTime : '待处理',
       endTime: isAdvanced ? updateTime : '待处理',
-      description: '系统根据投保信息自动生成投保资料',
-      files: [
-        {
-          name: '投保申请书',
-          url: true,
-          checked: true,
-          preview: () => {
-            const wb = generatePolicyApplicationXlsx(app, {})
-            showTablePreview(wb, '投保申请书 - 预览',
-              `投保申请书_${app.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`)
-          }
-        },
-        {
-          name: '买方信息采集表',
-          url: true,
-          checked: true,
-          preview: () => {
-            const wb = generateBuyerInfoXlsx(app)
-            showTablePreview(wb, '买方信息采集表 - 预览',
-              `买方信息采集表_${app.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`)
-          }
-        }
-      ],
+      description: '审核客户提交的投保资料是否完整、准确，核对自动生成的投保申请书和采集表',
+      files: [{ name: '投保申请书' }, { name: '买方信息采集表' }],
+      needReview: true
+    },
+    {
+      stepName: '服务确认',
+      operator: '长安银科 / 客户',
+      role: '客户/长安银科',
+      startTime: isAdvanced ? updateTime : '待处理',
+      endTime: isAdvanced ? updateTime : '待处理',
+      description: '在线签署短期出口信用保险合同，双方确认合同条款后支付平台服务费',
+      files: [{ name: '短期出口信用保险合同' }],
       needReview: false
     },
     {
-      stepName: '资信调查',
-      operator: '长安银科风险部',
+      stepName: '资信核保',
+      operator: '长安银科 / 保险公司',
       role: '长安银科',
       startTime: isAdvanced ? updateTime : '待处理',
       endTime: isAdvanced ? updateTime : '待处理',
-      description: '对买方进行信用评级和资信核查，分析财务状况和历史交易记录',
-      files: [{ name: '买方资信调查报告' }],
+      description: '对买方进行资信调查，评估信用限额，核保出单确认承保条件及保费',
+      files: [{ name: '资信调查报告' }, { name: '信用限额审批单' }],
       needReview: true
     },
     {
-      stepName: '信用限额审批',
-      operator: '保险公司核保部',
-      role: '保险公司',
-      startTime: isAdvanced ? updateTime : '待处理',
-      endTime: isAdvanced ? updateTime : '待处理',
-      description: '审核信用限额申请，确认承保条件及赔付比例',
-      files: [{ name: '信用限额审批单' }],
-      needReview: true
-    },
-    {
-      stepName: '核保出单',
-      operator: '保险公司（跟单员配合）',
-      role: '保险公司',
-      startTime: isAdvanced ? updateTime : '待处理',
-      endTime: isAdvanced ? updateTime : '待处理',
-      description: '核保通过，签发保单并生成投保资料',
-      files: [
-        {
-          name: '投保申请书',
-          url: true,
-          preview: () => {
-            const wb = generatePolicyApplicationXlsx(app, {})
-            showTablePreview(wb, '投保申请书 - 预览',
-              `投保申请书_${app.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`)
-          }
-        },
-        {
-          name: '买方信息采集表',
-          url: true,
-          preview: () => {
-            const wb = generateBuyerInfoXlsx(app)
-            showTablePreview(wb, '买方信息采集表 - 预览',
-              `买方信息采集表_${app.id || ''}_${new Date().toISOString().split('T')[0]}.xlsx`)
-          }
-        }
-      ],
-      needReview: true
-    },
-    {
-      stepName: '缴费生效',
+      stepName: '保费支付',
       operator: contactName,
       role: '客户',
-      startTime: status === 'completed' ? updateTime : '待处理',
-      endTime: status === 'completed' ? updateTime : '待处理',
-      description: '确认保单信息并缴纳保费，上传支付凭证后保单生效',
-      files: [{ name: '支付凭证' }],
+      startTime: isAdvanced ? updateTime : '待处理',
+      endTime: isAdvanced ? updateTime : '待处理',
+      description: '确认保费金额，缴纳保费并上传支付凭证',
+      files: [{ name: '保费明细单' }],
+      needReview: false
+    },
+    {
+      stepName: '保单生效',
+      operator: '长安银科',
+      role: '长安银科',
+      startTime: status === 'active' ? updateTime : '待处理',
+      endTime: status === 'active' ? updateTime : '待处理',
+      description: '确认保费到账，保单正式生效',
+      files: [{ name: '电子保单' }],
       needReview: false
     }
   ]
@@ -2043,36 +1701,6 @@ const initForm = () => {
     declarationSignature: row.declarationSignature || '',
     declarationDate: row.declarationDate || '',
     companySeal: row.companySeal ?? null,
-    // 保单数字化信息
-    policyNo: row.policyNo || '',
-    insuranceCompanyName: row.insuranceCompanyName || '',
-    insurerName: row.insurerName || '',
-    insuredName: row.insuredName || '',
-    beneficiaryName: row.beneficiaryName || '',
-    policyPeriodRange: row.policyStartDate && row.policyEndDate ? [row.policyStartDate, row.policyEndDate] : [],
-    policyPeriod: row.policyPeriod || '',
-    renewalFlag: row.renewalFlag || '',
-    countryRiskVersion: row.countryRiskVersion || '',
-    clauseVersion: row.clauseVersion || '',
-    agreedCoverageScope: row.agreedCoverageScope || '',
-    tradeBusinessType: row.tradeBusinessType || '',
-    maxCompensationLimit: row.maxCompensationLimit ?? null,
-    buyerCreditLimit: row.buyerCreditLimit ?? null,
-    coveredRisks: row.coveredRisks || '',
-    limitIdlePeriod: row.limitIdlePeriod ?? null,
-    selfControlledLimit: row.selfControlledLimit || '',
-    deductible: row.deductible ?? null,
-    declarationMethod: row.declarationMethod || '',
-    declarationCycle: row.declarationCycle || '',
-    declarationDeadline: row.declarationDeadline || '',
-    premiumRate: row.premiumRate ?? null,
-    premiumPaymentDeadline: row.premiumPaymentDeadline || '',
-    premiumPaymentMethod: row.premiumPaymentMethod || '',
-    premium: row.premium ?? null,
-    surrenderFee: row.surrenderFee ?? null,
-    recoveryPayee: row.recoveryPayee || '',
-    policyFile: row.policyFile ?? null,
-    endorsementFile: row.endorsementFile ?? null
   })
 }
 
@@ -2098,11 +1726,7 @@ const handleSave = () => {
 const handleSubmit = () => {
   const saved = store.createOrUpdateInsuranceApplication({ ...formData, id: formData.id || undefined })
   MessagePlugin.success('投保申请已创建')
-  if (saved?.id) {
-    router.push(`/insurance/purchase/${saved.id}`)
-  } else {
-    router.push('/insurance/purchase')
-  }
+  router.push('/insurance/purchase')
 }
 
 onMounted(() => {

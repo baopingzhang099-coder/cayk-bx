@@ -116,10 +116,11 @@ const allMenuItems = [
   { key: 'insurance',
     title: '保险购买',
     icon: 'document-popular',
-    roles: ['customer', 'inkasso'],
+    roles: ['customer', 'inkasso', 'clerk'],
     children: [
-      { key: 'insurance-purchase', title: '投保信息管理', path: '/insurance/purchase', roles: ['customer', 'inkasso'], icon: 'clipboard' },
-      { key: 'insurance-report', title: '投保数据报表', path: '/insurance/report', roles: ['customer', 'inkasso'], icon: 'chart' },
+      { key: 'insurance-purchase', title: '投保信息管理', path: '/insurance/purchase', roles: ['customer', 'inkasso', 'clerk'], icon: 'clipboard' },
+      { key: 'insurance-purchase-process', title: '投保流程管理', path: '/insurance/purchase-process', roles: ['customer', 'inkasso', 'clerk'], icon: 'fork' },
+      { key: 'insurance-report', title: '投保数据报表', path: '/insurance/report', roles: ['customer', 'inkasso', 'clerk'], icon: 'chart' },
     ]
   },
   { 
@@ -128,11 +129,10 @@ const allMenuItems = [
     icon: 'file', 
     children: [
       { key: 'policy-list', title: '保单信息管理', path: '/policy/list', roles: ['customer', 'inkasso', 'clerk'], icon: 'file' },
-      { key: 'policy-trade', title: '贸易信息管理', path: '/policy/trade', roles: ['inkasso', 'clerk'], icon: 'truck' },
+      { key: 'policy-trade', title: '贸易信息管理', path: '/policy/trade', roles: ['inkasso'], icon: 'truck' },
       { key: 'policy-limit', title: '信用限额管理', path: '/policy/limit', roles: ['customer', 'inkasso', 'clerk'], icon: 'credit-card' },
       { key: 'policy-shipment', title: '出运申报管理', path: '/policy/shipment', roles: ['customer', 'inkasso', 'clerk'], icon: 'airplane' },
-      { key: 'policy-process', title: '保单流程管理', path: '/policy/process', roles: ['inkasso', 'clerk'], icon: 'fork' },
-      { key: 'policy-change', title: '保单变更管理', path: '/policy/change', roles: ['customer', 'inkasso', 'clerk'], icon: 'edit-1' },
+      { key: 'policy-process', title: '保单流程管理', path: '/policy/process', roles: ['customer', 'inkasso', 'clerk'], icon: 'fork' },
       { key: 'policy-performance', title: '保单履约报表', path: '/policy/performance', roles: ['inkasso'], icon: 'chart' }
     ]
   },
@@ -185,6 +185,7 @@ const filteredMenuItems = computed(() => {
 const menuConfig = {
   'insurance-questionnaire': { parent: '保险购买', current: '客户投保问卷' },
   'insurance-purchase': { parent: '保险购买', current: '投保信息管理' },
+  'insurance-purchase-process': { parent: '保险购买', current: '投保流程管理' },
   'insurance-report': { parent: '保险购买', current: '投保数据报表' },
   'policy-list': { parent: '保单管理', current: '保单信息管理' },
   'policy-trade': { parent: '保单管理', current: '贸易信息管理' },
@@ -192,7 +193,6 @@ const menuConfig = {
   'policy-shipment': { parent: '保单管理', current: '出运申报管理' },
   'policy-process': { parent: '保单管理', current: '保单流程管理' },
   'policy-performance': { parent: '保单管理', current: '保单履约报表' },
-  'policy-change': { parent: '保单管理', current: '保单变更管理' },
   'claim-list': { parent: '保险理赔', current: '理赔信息管理' },
   'claim-process': { parent: '保险理赔', current: '理赔流程管理' },
   'claim-report': { parent: '保险理赔', current: '理赔报表管理' },

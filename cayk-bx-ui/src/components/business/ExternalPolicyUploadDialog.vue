@@ -109,7 +109,7 @@ const handleUpload = () => {
     })
     uploading.value = false
     if (res?.ok) {
-      MessagePlugin.success('上传成功，等待平台OCR识别处理')
+      MessagePlugin.success('上传成功，请提交平台审核')
       emit('upload-success', res.data)
       dialogVisible.value = false
     } else {

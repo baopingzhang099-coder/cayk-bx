@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia'
+import * as XLSX from 'xlsx'
+import { generatePolicyApplicationXlsx, generateBuyerInfoXlsx } from '@/utils/templateFiller'
 
 const pad = (n) => String(n).padStart(2, '0')
 
@@ -194,8 +196,9 @@ export const useBusinessStore = defineStore('business', {
       saveStateToStorage(this.$state)
     },
     ensureSeeded() {
+      // 清除旧的localStorage缓存，避免旧mock数据恢复
+      localStorage.removeItem(STORAGE_KEY)
       if (this.insuranceApplications.length > 0) return
-      // 尝试从localStorage恢复
       const saved = loadStateFromStorage()
       if (saved) {
         this.insuranceApplications = saved.insuranceApplications || []
@@ -220,583 +223,10 @@ export const useBusinessStore = defineStore('business', {
       this.renewalApplications = []
       this.surrenderApplications = []
       this.clApplications = []
-      // Seed a renewal application at renew_active state for testing payment flow
-      const now = new Date()
-      this.renewalApplications.push({
-        id: 'RN_SEED_ACTIVE',
-        policyNo: 'POL20260426000000',
-        insuranceCompany: '人保财险',
-        policyholder: '深圳电子科技有限公司',
-        insured: 'TechBuyer Co., Ltd',
-        coverageAmount: 5000000,
-        premium: 5500,
-        originalEffectiveDate: '2025-04-26',
-        originalExpiryDate: '2026-04-25',
-        newStartDate: '2026-04-26',
-        newEndDate: '2027-04-25',
-        expectedTurnover: 6000000,
-        insuranceRatio: 80,
-        lastYearDeclaredTotal: 4800000,
-        lastYearClaimTotal: 35000,
-        lossRatio: 0.73,
-        limitUtilization: 64,
-        renewalRate: 0.0011,
-        buyerList: 'TechBuyer Co., Ltd\nGlobal Parts Inc.\nEuroDistributor GmbH',
-        status: 'renew_active',
-        newPolicyNo: 'POL20260426000001',
-        newPolicyStartDate: '2026-04-26',
-        newPolicyEndDate: '2027-04-25',
-        newPremium: 5500,
-        newCoverageAmount: 5000000,
-        serviceFee: 1500,
-        totalAmount: 7000,
-        insurerDecision: 'approved',
-        insurerOpinion: '核保通过',
-        insurerReviewTime: '2026-04-27 10:30:00',
-        clerkSyncTime: '2026-04-27 14:00:00',
-        inkassoSyncTime: '2026-04-27 14:00:00',
-        activeTime: '2026-04-27 14:00:00',
-        createTime: '2026-04-26 09:00:00',
-        submitTime: '2026-04-26 09:00:00',
-        updateTime: '2026-04-27 14:00:00',
-        generatedApplicationForm: [
-          { name: '续保申请书_POL20260426000000.pdf', size: '0.3 MB', generatedAt: '2026-04-26 10:00:00' }
-        ],
-        generatedMaterials: [
-          { name: '上年度出运汇总.xlsx', size: '0.5 MB', generatedAt: '2026-04-26 10:00:00' }
-        ]
-      })
-      // Seed policies for demo/testing
-      this.policies = [
-        {
-          id: 'P_SEED_ACTIVE_1',
-          policyNo: 'POL20260426000000',
-          insuranceCompany: '人保财险',
-          policyholder: '深圳电子科技有限公司',
-          insured: 'TechBuyer Co., Ltd',
-          coverageAmount: 5000000,
-          premium: 5500,
-          effectiveDate: '2025-04-26',
-          expiryDate: '2026-04-25',
-          usedQuota: 1200000,
-          remainingQuota: 3800000,
-          currency: 'USD',
-          status: 'active',
-          statusName: '有效',
-          businessType: 'goods',
-          renewalFlag: 'yes'
-        },
-        {
-          id: 'P_SEED_ACTIVE_2',
-          policyNo: 'POL20260315000001',
-          insuranceCompany: '太平洋保险',
-          policyholder: '上海进出口贸易有限公司',
-          insured: 'EuroDistributor GmbH',
-          coverageAmount: 3000000,
-          premium: 3500,
-          effectiveDate: '2025-03-15',
-          expiryDate: '2026-03-14',
-          usedQuota: 800000,
-          remainingQuota: 2200000,
-          currency: 'USD',
-          status: 'active',
-          statusName: '有效',
-          businessType: 'goods',
-          renewalFlag: 'no'
-        }
-      ]
-      // Seed surrender applications for demo
-      this.surrenderApplications = [
-        {
-          id: 'SR_SEED_PLATFORM',
-          policyNo: 'POL20260426000000',
-          companyName: '深圳电子科技有限公司',
-          insured: 'TechBuyer Co., Ltd',
-          insuranceCompany: '人保财险',
-          coverageAmount: 5000000,
-          premium: 5500,
-          effectiveDate: '2025-04-26',
-          expiryDate: '2026-04-25',
-          currency: 'USD',
-          surrenderReason: '业务调整，不再需要出口信用保险覆盖',
-          applicationDate: '2026-05-25',
-          effectiveDate: '',
-          surrenderApplication: [{ name: '退保申请书_POL20260426000000.pdf', size: '0.3 MB' }],
-          originalPolicy: [],
-          legalPersonId: [],
-          paymentReceipt: [],
-          otherDocuments: [],
-          generatedSurrenderForm: [],
-          generatedSurrenderChecklist: [],
-          activeMonths: 13,
-          shortTermRate: 0,
-          refundAmount: 0,
-          netRefundAmount: 0,
-          insurerPaymentTime: '',
-          insurerPaymentRef: '',
-          clerkSyncRecord: '',
-          clerkSyncTime: '',
-          rejectReason: '',
-          supplementHistory: [],
-          trackingStatus: '',
-          trackingStartTime: '',
-          status: 'sr_platform_review',
-          createTime: '2026-05-25 09:00:00',
-          updateTime: '2026-05-25 09:00:00',
-          submitTime: '2026-05-25 09:00:00',
-          platformReviewTime: '',
-          clerkReviewTime: '',
-          insurerReviewTime: '',
-          completedTime: '',
-          terminatedTime: ''
-        },
-        {
-          id: 'SR_SEED_TERMINATED',
-          policyNo: 'POL20260315000001',
-          companyName: '上海进出口贸易有限公司',
-          insured: 'EuroDistributor GmbH',
-          insuranceCompany: '太平洋保险',
-          coverageAmount: 3000000,
-          premium: 3500,
-          effectiveDate: '2025-03-15',
-          expiryDate: '2026-03-14',
-          currency: 'USD',
-          surrenderReason: '保单到期不再续保',
-          applicationDate: '2026-02-20',
-          effectiveDate: '2026-03-14',
-          surrenderApplication: [{ name: '退保申请书_POL20260315000001.pdf', size: '0.3 MB' }],
-          originalPolicy: [],
-          legalPersonId: [],
-          paymentReceipt: [],
-          otherDocuments: [],
-          generatedSurrenderForm: [{ name: '退保申请表_POL20260315000001.pdf', size: '0.4 MB' }],
-          generatedSurrenderChecklist: [{ name: '退保材料清单_POL20260315000001.pdf', size: '0.2 MB' }],
-          activeMonths: 12,
-          shortTermRate: 45,
-          refundAmount: 1575,
-          netRefundAmount: 1425,
-          insurerPaymentTime: '2026-03-01 14:00:00',
-          insurerPaymentRef: 'INS-PAY-20260301-001',
-          clerkSyncRecord: '退保金额已核对，已同步至平台',
-          clerkSyncTime: '2026-03-02 10:00:00',
-          rejectReason: '',
-          supplementHistory: [],
-          trackingStatus: 'monthly',
-          trackingStartTime: '2026-03-15 09:00:00',
-          status: 'sr_terminated',
-          createTime: '2026-02-20 08:30:00',
-          updateTime: '2026-03-15 09:00:00',
-          submitTime: '2026-02-20 08:30:00',
-          platformReviewTime: '2026-02-21 09:00:00',
-          clerkReviewTime: '2026-02-22 10:00:00',
-          insurerReviewTime: '2026-02-25 11:00:00',
-          completedTime: '2026-03-02 10:00:00',
-          terminatedTime: '2026-03-15 09:00:00'
-        }
-      ]
-      // Seed a credit limit application at cl_platform_review for testing
-      this.clApplications.push({
-        id: 'CLA_SEED_PLATFORM',
-        policyNo: 'POL20260426000000',
-        policyId: 'seed_policy_001',
-        buyerName: 'TechBuyer Co., Ltd',
-        policyTotalLimit: 5000000,
-        existingCreditTotal: 2000000,
-        appliedLimit: 1500000,
-        currency: 'USD',
-        applicationDate: '2026-05-20',
-        applicationReason: '业务增长，需要增加买方信用额度',
-        creditQueryResult: {
-          buyerCreditRating: 'AA',
-          buyerCreditLimit: 2000000,
-          historicalDefaultRate: 1.2,
-          queryTime: '2026-05-20 09:30:00'
-        },
-        overLimitWarning: false,
-        overLimitMessage: '',
-        generatedApplicationForm: [{ name: '限额申请表_POL20260426000000.pdf', size: '0.3 MB' }],
-        generatedCreditReport: [{ name: '买方资信报告_TechBuyer.pdf', size: '1.2 MB' }],
-        generatedChecklist: [{ name: '材料清单_CLA_SEED_PLATFORM.pdf', size: '0.2 MB' }],
-        insurerDecision: '', insurerOpinion: '', rejectType: '', rejectReason: '',
-        approvedLimit: 0, approvedRate: 0,
-        effectiveDate: '', expiryDate: '',
-        specialConditions: '', insurerReviewTime: '',
-        recordedQuota: 0, recordedTime: '',
-        syncRecord: '', syncTime: '', platformUpdateTime: '',
-        rejectNotifiedClerk: false, rejectNotifiedPlatform: false, rejectNotifiedCustomer: false,
-        status: 'cl_platform_review',
-        createTime: '2026-05-20 09:00:00',
-        updateTime: '2026-05-20 09:30:00',
-        submitTime: '2026-05-20 09:05:00',
-        platformReviewTime: '2026-05-20 09:30:00',
-        clerkReviewTime: '', insurerReviewTime: '', completedTime: ''
-      })
-      // Seed a credit limit application at cl_draft for customer testing
-      this.clApplications.push({
-        id: 'CLA_SEED_DRAFT',
-        policyNo: 'POL20260426000000',
-        policyId: 'seed_policy_001',
-        buyerName: '新买方测试有限公司',
-        policyTotalLimit: 5000000,
-        existingCreditTotal: 2000000,
-        appliedLimit: 800000,
-        currency: 'USD',
-        applicationDate: '2026-05-26',
-        applicationReason: '开拓新买方市场',
-        creditQueryResult: {
-          buyerCreditRating: 'A',
-          buyerCreditLimit: 1200000,
-          historicalDefaultRate: 2.5,
-          queryTime: '2026-05-26 08:30:00'
-        },
-        overLimitWarning: false,
-        overLimitMessage: '',
-        generatedApplicationForm: [],
-        generatedCreditReport: [],
-        generatedChecklist: [],
-        insurerDecision: '', insurerOpinion: '', rejectType: '', rejectReason: '',
-        approvedLimit: 0, approvedRate: 0,
-        effectiveDate: '', expiryDate: '',
-        specialConditions: '', insurerReviewTime: '',
-        recordedQuota: 0, recordedTime: '',
-        syncRecord: '', syncTime: '', platformUpdateTime: '',
-        rejectNotifiedClerk: false, rejectNotifiedPlatform: false, rejectNotifiedCustomer: false,
-        status: 'cl_draft',
-        createTime: '2026-05-26 08:00:00',
-        updateTime: '2026-05-26 08:30:00',
-        submitTime: '', platformReviewTime: '',
-        clerkReviewTime: '', insurerReviewTime: '', completedTime: ''
-      })
-      // Seed a completed credit limit application
-      this.clApplications.push({
-        id: 'CLA_SEED_COMPLETED',
-        policyNo: 'POL20260426000000',
-        policyId: 'seed_policy_001',
-        buyerName: 'Global Trade Inc.',
-        policyTotalLimit: 5000000,
-        existingCreditTotal: 2000000,
-        appliedLimit: 1000000,
-        currency: 'USD',
-        applicationDate: '2026-05-10',
-        applicationReason: '年度额度续期',
-        creditQueryResult: {
-          buyerCreditRating: 'AAA',
-          buyerCreditLimit: 2000000,
-          historicalDefaultRate: 0.5,
-          queryTime: '2026-05-10 09:00:00'
-        },
-        overLimitWarning: false,
-        overLimitMessage: '',
-        generatedApplicationForm: [{ name: '限额申请表_POL20260426000000.pdf', size: '0.3 MB' }],
-        generatedCreditReport: [{ name: '买方资信报告_Global Trade.pdf', size: '1.2 MB' }],
-        generatedChecklist: [{ name: '材料清单_CLA_SEED_COMPLETED.pdf', size: '0.2 MB' }],
-        insurerDecision: 'approved',
-        insurerOpinion: '买方信用良好，建议批准',
-        rejectType: '', rejectReason: '',
-        approvedLimit: 1000000, approvedRate: 100,
-        effectiveDate: '2026-05-15', expiryDate: '2027-05-14',
-        specialConditions: '需每季度重新评估买方信用',
-        insurerReviewTime: '2026-05-12 14:00:00',
-        recordedQuota: 1000000, recordedTime: '2026-05-13 09:00:00',
-        syncRecord: '配额已核对，同步至平台', syncTime: '2026-05-13 10:00:00',
-        platformUpdateTime: '2026-05-13 11:00:00',
-        rejectNotifiedClerk: false, rejectNotifiedPlatform: false, rejectNotifiedCustomer: false,
-        status: 'cl_completed',
-        createTime: '2026-05-10 08:30:00',
-        updateTime: '2026-05-13 11:00:00',
-        submitTime: '2026-05-10 09:00:00',
-        platformReviewTime: '2026-05-10 10:00:00',
-        clerkReviewTime: '2026-05-11 09:00:00',
-        insurerReviewTime: '2026-05-12 14:00:00',
-        completedTime: '2026-05-13 11:00:00'
-      })
       this.insuranceApplications = []
-      this.creditLimits = []
-      this.shipments = [
-        {
-          id: 'SD_SEED_1',
-          declarationNo: 'SD202605260001',
-          buyerName: 'TechBuyer Co., Ltd',
-          relatedPolicyNo: 'POL20260426000000',
-          shipmentDate: '2026-05-20',
-          destinationPort: 'Los Angeles',
-          shipmentAmount: 150000,
-          currency: 'USD',
-          declarationType: 'single',
-          declarationTypeName: '逐笔申报',
-          paymentTerms: 'OA',
-          transportType: 'sea',
-          billOfLadingNo: 'BL20260520001',
-          goodsDescription: '电子元器件',
-          invoiceNo: 'INV202605001',
-          invoiceAmount: 150000,
-          invoiceDate: '2026-05-18',
-          paymentDueDate: '2026-07-20',
-          commercialInvoice: [{ name: '商业发票_INV202605001.pdf', size: '0.2 MB' }],
-          billOfLading: [{ name: '提单_BL20260520001.pdf', size: '0.3 MB' }],
-          customsDeclaration: [],
-          receiptProof: [],
-          deadline: '2026-06-05',
-          status: 'sd_clerk_pending',
-          statusName: '待跟单员处理',
-          isOverdue: false,
-          isDueSoon: false,
-          financingStatus: 'not_financed',
-          financeMarked: false,
-          generatedDocs: [
-            { name: '出运申报单_SD202605260001.pdf', size: '0.3 MB', type: 'declaration_form', generatedAt: '2026-05-26 10:00:00' },
-            { name: '商业发票清单_SD202605260001.pdf', size: '0.5 MB', type: 'invoice_list', generatedAt: '2026-05-26 10:00:00' },
-            { name: '限额使用报告_SD202605260001.pdf', size: '0.2 MB', type: 'limit_report', generatedAt: '2026-05-26 10:00:00' },
-            { name: '出运申报汇总表_SD202605260001.xlsx', size: '0.4 MB', type: 'summary_sheet', generatedAt: '2026-05-26 10:00:00' }
-          ],
-          pushTime: '2026-05-26 10:05:00',
-          createTime: '2026-05-26 09:00:00',
-          updateTime: '2026-05-26 10:05:00'
-        },
-        {
-          id: 'SD_SEED_2',
-          declarationNo: 'SD202605260002',
-          buyerName: 'EuroDistributor GmbH',
-          relatedPolicyNo: 'POL20260315000001',
-          shipmentDate: '2026-05-22',
-          destinationPort: 'Hamburg',
-          shipmentAmount: 280000,
-          currency: 'USD',
-          declarationType: 'single',
-          declarationTypeName: '逐笔申报',
-          paymentTerms: 'TT60',
-          transportType: 'sea',
-          billOfLadingNo: 'BL20260522002',
-          goodsDescription: '机械设备',
-          invoiceNo: 'INV202605002',
-          invoiceAmount: 280000,
-          invoiceDate: '2026-05-20',
-          paymentDueDate: '2026-07-22',
-          commercialInvoice: [{ name: '商业发票_INV202605002.pdf', size: '0.3 MB' }],
-          billOfLading: [{ name: '提单_BL20260522002.pdf', size: '0.4 MB' }],
-          customsDeclaration: [],
-          receiptProof: [],
-          deadline: '2026-06-05',
-          status: 'pending_premium',
-          statusName: '待支付保费',
-          limitImpactChecked: true,
-          limitOkAfterSync: true,
-          isOverdue: false,
-          isDueSoon: false,
-          financingStatus: 'financed',
-          financeMarked: true,
-          financeContractNo: 'RWA202605001',
-          generatedDocs: [
-            { name: '出运申报单_SD202605260002.pdf', size: '0.3 MB', type: 'declaration_form', generatedAt: '2026-05-26 10:00:00' },
-            { name: '商业发票清单_SD202605260002.pdf', size: '0.5 MB', type: 'invoice_list', generatedAt: '2026-05-26 10:00:00' },
-            { name: '限额使用报告_SD202605260002.pdf', size: '0.2 MB', type: 'limit_report', generatedAt: '2026-05-26 10:00:00' },
-            { name: '出运申报汇总表_SD202605260002.xlsx', size: '0.4 MB', type: 'summary_sheet', generatedAt: '2026-05-26 10:00:00' },
-            { name: '融资状态确认函_SD202605260002.pdf', size: '0.2 MB', type: 'finance_cert', generatedAt: '2026-05-26 10:00:00' }
-          ],
-          pushTime: '2026-05-26 10:05:00',
-          clerkSubmitTime: '2026-05-26 14:00:00',
-          insurerOpinion: '审批通过',
-          insurerRefNo: 'INS20260526001',
-          insurerDecision: 'approved',
-          insurerReviewTime: '2026-05-26 16:30:00',
-          createTime: '2026-05-26 09:00:00',
-          updateTime: '2026-05-26 16:30:00'
-        },
-        {
-          id: 'SD_SEED_3',
-          declarationNo: 'SD202605250003',
-          buyerName: 'TechBuyer Co., Ltd',
-          relatedPolicyNo: 'POL20260426000000',
-          shipmentDate: '2026-05-18',
-          destinationPort: 'New York',
-          shipmentAmount: 95000,
-          currency: 'USD',
-          declarationType: 'single',
-          declarationTypeName: '逐笔申报',
-          paymentTerms: 'OA',
-          transportType: 'sea',
-          billOfLadingNo: 'BL20260518003',
-          goodsDescription: '消费电子产品',
-          invoiceNo: 'INV202605003',
-          invoiceAmount: 95000,
-          invoiceDate: '2026-05-16',
-          paymentDueDate: '2026-07-18',
-          commercialInvoice: [],
-          billOfLading: [{ name: '提单_BL20260518003.pdf', size: '0.3 MB' }],
-          customsDeclaration: [],
-          receiptProof: [],
-          deadline: '2026-06-01',
-          status: 'declared',
-          statusName: '已申报',
-          isOverdue: false,
-          isDueSoon: true,
-          financingStatus: 'unchecked',
-          financeMarked: false,
-          generatedDocs: [],
-          docsDownloaded: false,
-          createTime: '2026-05-25 09:00:00',
-          updateTime: '2026-05-25 09:00:00'
-        }
-      ]
-      this.clerkList = [
-        { id: 'C001', name: '李明', department: '跟单部', role: 'clerk', permissions: ['claim:process', 'doc:review', 'shipment:process'], status: 'active', email: 'liming@cayk.com', phone: '13800138001' },
-        { id: 'C002', name: '王芳', department: '跟单部', role: 'clerk', permissions: ['claim:process', 'doc:review', 'shipment:process'], status: 'active', email: 'wangfang@cayk.com', phone: '13800138002' },
-        { id: 'C003', name: '张强', department: '风控部', role: 'clerk', permissions: ['claim:audit', 'limit:review'], status: 'active', email: 'zhangqiang@cayk.com', phone: '13800138003' }
-      ]
-      this.claims = [
-        {
-          id: 'CL_SEED_1',
-          claimNo: 'CL202605260001',
-          relatedPolicyNo: 'POL20260315000001',
-          insuranceCompany: '中国信保',
-          buyerName: 'TechImport GmbH',
-          claimType: 'arrears',
-          claimTypeName: '拖欠',
-          lossDescription: '买方因资金周转问题拖欠货款，逾期60天未支付',
-          estimatedLossAmount: 150000,
-          lossDate: '2026-05-01',
-          lossCurrency: 'USD',
-          lossLocation: '德国·汉堡',
-          currentStep: 1,
-          currentStepName: '报案提交',
-          warningLevel: 'warning',
-          clerkId: null,
-          clerkName: null,
-          delegationAgreement: [],
-          serviceFeePaid: false,
-          serviceFeeVoucher: [],
-          deductible: null,
-          claimDecision: null,
-          calculatedLoss: null,
-          claimAmount: null,
-          payoutVoucher: [],
-          rwaSyncStatus: 'pending',
-          evidenceMaterials: [{ name: '贸易合同.pdf', size: '0.5 MB' }],
-          relevantDocuments: [{ name: '报案材料.pdf', size: '0.3 MB' }],
-          status: 'pending',
-          statusName: '待接收报案',
-          docStatus: 'pending',
-          docReviewComment: '',
-          supplementCount: 0,
-          preparedDocs: [],
-          supplementedDocs: [],
-          clerkConfirmed: false,
-          lossNotified: false,
-          lossNotifiedTime: null,
-          insurerNotified: false,
-          insurerNotifiedTime: null,
-          createTime: '2026-05-26 09:30:00',
-          updateTime: '2026-05-26 09:30:00'
-        },
-        {
-          id: 'CL_SEED_2',
-          claimNo: 'CL202605250001',
-          relatedPolicyNo: 'POL20260315000001',
-          insuranceCompany: '中国信保',
-          buyerName: 'EuroDistributor GmbH',
-          claimType: 'bankruptcy',
-          claimTypeName: '破产',
-          lossDescription: '买方申请破产保护，应收货款无法回收',
-          estimatedLossAmount: 280000,
-          lossDate: '2026-05-10',
-          lossCurrency: 'USD',
-          lossLocation: '德国·法兰克福',
-          currentStep: 2,
-          currentStepName: '资料准备',
-          warningLevel: 'safe',
-          clerkId: 'C001',
-          clerkName: '李明',
-          delegationAgreement: [],
-          serviceFeePaid: false,
-          serviceFeeVoucher: [],
-          deductible: null,
-          claimDecision: null,
-          calculatedLoss: null,
-          claimAmount: null,
-          payoutVoucher: [],
-          rwaSyncStatus: 'pending',
-          evidenceMaterials: [{ name: '贸易合同.pdf' }, { name: '商业发票_INV202604001.pdf' }],
-          relevantDocuments: [{ name: '破产公告.pdf' }, { name: '债权申报材料.pdf' }],
-          status: 'assigned',
-          statusName: '待接单',
-          docStatus: 'prepared',
-          docReviewComment: '',
-          supplementCount: 0,
-          preparedDocs: [
-            { name: '出险通知书.pdf', category: 'appNotice' },
-            { name: '索赔申请书.pdf', category: 'claimForm' },
-            { name: '授权委托书.pdf', category: 'authorization' },
-            { name: '贸易合同.pdf', category: 'tradeContract' },
-            { name: '商业发票.pdf', category: 'invoice' }
-          ],
-          supplementedDocs: [],
-          clerkConfirmed: false,
-          lossNotified: false,
-          lossNotifiedTime: null,
-          insurerNotified: false,
-          insurerNotifiedTime: null,
-          createTime: '2026-05-25 14:00:00',
-          updateTime: '2026-05-26 10:00:00'
-        },
-        {
-          id: 'CL_SEED_3',
-          claimNo: 'CL202605200001',
-          relatedPolicyNo: 'POL20260426000000',
-          insuranceCompany: '太平洋保险',
-          buyerName: 'FranceAchat SAS',
-          claimType: 'rejection',
-          claimTypeName: '拒收',
-          lossDescription: '买方以质量异议为由拒收货物，货物滞留目的港',
-          estimatedLossAmount: 95000,
-          lossDate: '2026-05-15',
-          lossCurrency: 'USD',
-          lossLocation: '法国·马赛',
-          currentStep: 3,
-          currentStepName: '调查定损',
-          warningLevel: 'danger',
-          clerkId: 'C002',
-          clerkName: '王芳',
-          delegationAgreement: [
-            { name: '理赔委托合同_CL202605200001.pdf', signed: true, signedAt: '2026-05-22' }
-          ],
-          serviceFeePaid: true,
-          serviceFeeVoucher: [
-            { name: '服务费支付凭证_CL202605200001.pdf', paidAt: '2026-05-23', amount: 475 }
-          ],
-          deductible: 3000,
-          claimDecision: null,
-          calculatedLoss: null,
-          claimAmount: null,
-          payoutVoucher: [],
-          rwaSyncStatus: 'pending',
-          evidenceMaterials: [{ name: '贸易合同.pdf' }, { name: '拒收通知函.pdf' }, { name: '质检报告.pdf' }],
-          relevantDocuments: [{ name: '报案材料.pdf' }, { name: '往来函件记录.pdf' }],
-          status: 'investigating',
-          statusName: '调查中',
-          docStatus: 'passed',
-          docReviewComment: '资料齐全，审核通过',
-          supplementCount: 1,
-          preparedDocs: [
-            { name: '出险通知书.pdf', category: 'appNotice' },
-            { name: '索赔申请书.pdf', category: 'claimForm' },
-            { name: '授权委托书.pdf', category: 'authorization' },
-            { name: '贸易合同.pdf', category: 'tradeContract' },
-            { name: '商业发票.pdf', category: 'invoice' },
-            { name: '提单.pdf', category: 'billOfLading' },
-            { name: '损失证明.pdf', category: 'lossProof' }
-          ],
-          supplementedDocs: [
-            { name: '补充质量检测报告.pdf', uploadedAt: '2026-05-24' }
-          ],
-          clerkConfirmed: true,
-          lossNotified: true,
-          lossNotifiedTime: '2026-05-22 11:00:00',
-          insurerNotified: true,
-          insurerNotifiedTime: '2026-05-22 14:00:00',
-          createTime: '2026-05-20 09:00:00',
-          updateTime: '2026-05-24 16:00:00'
-        }
-      ]
+      this.policies = []
+      this.shipments = []
+      this.claims = []
       this.processTasks = []
       this.contracts = []
       this.payments = []
@@ -854,6 +284,26 @@ export const useBusinessStore = defineStore('business', {
         updateTime: formatDateTime(now)
       }
       this.externalPolicies.unshift(record)
+      // Create a draft policy entry so it shows in the policy list immediately
+      if (!this.policies.find(p => p.externalPolicyId === id)) {
+        this.policies.unshift({
+          id: `P_EXT_DRAFT_${id}`,
+          policyNo: policyNo || id,
+          insuranceCompany: '',
+          policyholder: companyName || '',
+          insured: '',
+          coverageAmount: 0,
+          premium: 0,
+          effectiveDate: '',
+          expiryDate: '',
+          status: 'pending_review',
+          usedQuota: 0,
+          remainingQuota: 0,
+          currency: 'USD',
+          externalPolicyId: id,
+          uploadFileName: file?.name || ''
+        })
+      }
       return { ok: true, data: record }
     },
     completeExternalOcrAndCreateTask(id, ocrFields) {
@@ -909,6 +359,12 @@ export const useBusinessStore = defineStore('business', {
       cur.status = 'platform_review'
       cur.rejectReason = ''
       cur.updateTime = formatDateTime(new Date())
+      // Update corresponding policy entry status
+      const policyEntry = this.policies.find(p => p.externalPolicyId === id)
+      if (policyEntry) {
+        policyEntry.status = 'platform_review'
+        policyEntry.updateTime = formatDateTime(new Date())
+      }
       saveStateToStorage(this.$state)
       return { ok: true, data: cur }
     },
@@ -946,6 +402,37 @@ export const useBusinessStore = defineStore('business', {
       saveStateToStorage(this.$state)
       return { ok: true, data: cur }
     },
+    completePlatformOcrAndPushToClerk(id, ocrFields) {
+      const epIdx = this.externalPolicies.findIndex(p => p.id === id)
+      if (epIdx < 0) return { ok: false, message: '上传记录不存在' }
+      const ep = this.externalPolicies[epIdx]
+      if (ep.status !== 'platform_review' && ep.status !== 'returned') return { ok: false, message: '当前状态不允许OCR识别' }
+      const now = new Date()
+      this.externalPolicies[epIdx] = {
+        ...ep,
+        ...ocrFields,
+        ocrStatus: 'completed',
+        status: 'clerk_review',
+        rejectReason: '',
+        updateTime: formatDateTime(now)
+      }
+      // Update corresponding policies[] draft entry with OCR fields
+      const policyEntry = this.policies.find(p => p.externalPolicyId === id)
+      if (policyEntry) {
+        Object.assign(policyEntry, {
+          insuranceCompany: ocrFields.insuranceCompany || policyEntry.insuranceCompany,
+          insured: ocrFields.insured || policyEntry.insured,
+          coverageAmount: Number(ocrFields.coverageAmount) || policyEntry.coverageAmount,
+          premium: Number(ocrFields.premium) || policyEntry.premium,
+          effectiveDate: ocrFields.effectiveDate || policyEntry.effectiveDate,
+          expiryDate: ocrFields.expiryDate || policyEntry.expiryDate,
+          status: 'clerk_review',
+          updateTime: formatDateTime(now)
+        })
+      }
+      saveStateToStorage(this.$state)
+      return { ok: true, data: this.externalPolicies[epIdx] }
+    },
     createOrUpdateInsuranceApplication(payload) {
       const now = new Date()
       if (payload?.id) {
@@ -960,10 +447,11 @@ export const useBusinessStore = defineStore('business', {
         ...payload,
         id,
         status: 'draft',
-        createTime: formatDate(now),
+        createTime: formatDateTime(now),
         updateTime: formatDateTime(now),
       }
       this.insuranceApplications.unshift(item)
+      saveStateToStorage(this.$state)
       return item
     },
     submitOcrToPlatform(id) {
@@ -988,8 +476,38 @@ export const useBusinessStore = defineStore('business', {
       if (!['draft', 'rejected'].includes(cur.status)) {
         return { ok: false, message: '当前状态不允许提交' }
       }
-      // 客户提交后进入平台处理流程
-      this.insuranceApplications[idx] = { ...cur, status: 'pending_review', updateTime: formatDateTime(now) }
+      const genTime = formatDateTime(now)
+      // 系统内置模板规则生成保单申请书和信息采集表
+      let formData = null, collectionData = null
+      try {
+        const policyWb = generatePolicyApplicationXlsx(cur, {})
+        formData = XLSX.write(policyWb, { type: 'base64', bookType: 'xlsx' })
+      } catch (e) {
+        console.warn('生成投保申请书失败:', e)
+      }
+      try {
+        const buyerWb = generateBuyerInfoXlsx(cur)
+        collectionData = XLSX.write(buyerWb, { type: 'base64', bookType: 'xlsx' })
+      } catch (e) {
+        console.warn('生成买方信息采集表失败:', e)
+      }
+      const formSize = formData ? Math.round((formData.length * 0.75) / 1024 / 1024 * 10) / 10 + ' MB' : '0.3 MB'
+      const collectionSize = collectionData ? Math.round((collectionData.length * 0.75) / 1024 / 1024 * 10) / 10 + ' MB' : '0.2 MB'
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'clerk_review',
+        updateTime: genTime,
+        submitTime: genTime,
+        generateTime: genTime,
+        generateOperator: 'system',
+        generatedForm: [
+          { name: `投保申请书_${cur.id}.xlsx`, size: formSize, generatedAt: genTime, data: formData }
+        ],
+        generatedCollection: [
+          { name: `买方信息采集表_${cur.id}.xlsx`, size: collectionSize, generatedAt: genTime, data: collectionData }
+        ],
+      }
+      saveStateToStorage(this.$state)
       return { ok: true, data: this.insuranceApplications[idx] }
     },
     submitToClerkReview(id) {
@@ -1006,6 +524,47 @@ export const useBusinessStore = defineStore('business', {
         return { ok: true, data: this.insuranceApplications[idx] }
       }
       return { ok: false, message: '当前状态不允许申请跟单员确认' }
+    },
+    generateAndPushToClerk(id) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'pending_review') {
+        return { ok: false, message: '当前状态不允许生成资料推送跟单员' }
+      }
+      const now = new Date()
+      const genTime = formatDateTime(now)
+      // 使用模板数据生成投保申请书和买方信息采集表
+      let formData = null, collectionData = null
+      try {
+        const policyWb = generatePolicyApplicationXlsx(cur, {})
+        formData = XLSX.write(policyWb, { type: 'base64', bookType: 'xlsx' })
+      } catch (e) {
+        console.warn('生成投保申请书失败:', e)
+      }
+      try {
+        const buyerWb = generateBuyerInfoXlsx(cur)
+        collectionData = XLSX.write(buyerWb, { type: 'base64', bookType: 'xlsx' })
+      } catch (e) {
+        console.warn('生成买方信息采集表失败:', e)
+      }
+      const formSize = formData ? Math.round((formData.length * 0.75) / 1024 / 1024 * 10) / 10 + ' MB' : '0.3 MB'
+      const collectionSize = collectionData ? Math.round((collectionData.length * 0.75) / 1024 / 1024 * 10) / 10 + ' MB' : '0.2 MB'
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'clerk_review',
+        updateTime: genTime,
+        generateTime: genTime,
+        generateOperator: '长安银科',
+        generatedForm: [
+          { name: `投保申请书_${cur.id}.xlsx`, size: formSize, generatedAt: genTime, data: formData }
+        ],
+        generatedCollection: [
+          { name: `买方信息采集表_${cur.id}.xlsx`, size: collectionSize, generatedAt: genTime, data: collectionData }
+        ],
+      }
+      saveStateToStorage(this.$state)
+      return { ok: true, data: this.insuranceApplications[idx] }
     },
     approveInsuranceApplication(id) {
       const idx = this.insuranceApplications.findIndex(it => it.id === id)
@@ -1124,6 +683,50 @@ export const useBusinessStore = defineStore('business', {
       }
       return { ok: true, data: this.insuranceApplications[idx] }
     },
+    // 跟单员核保审核（credit_investigating → uw_completed）
+    clerkUnderwriteReview(id, decisionData) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'credit_investigating') return { ok: false, message: '当前状态不允许核保审核' }
+      const now = new Date()
+      this.insuranceApplications[idx] = {
+        ...cur,
+        status: 'uw_completed',
+        uwDecision: decisionData.decision || 'approved',
+        policyNo: decisionData.policyNo || '',
+        insuranceCompanyName: decisionData.insuranceCompany || cur.preferredInsuranceOrgType || '',
+        coverageAmount: Number(decisionData.coverageAmount) || Number(cur.insuranceAmount || 0),
+        premium: Number(decisionData.premium) || 0,
+        uwOpinion: decisionData.opinion || '',
+        uwCompleteTime: formatDateTime(now),
+        updateTime: formatDateTime(now)
+      }
+      saveStateToStorage(this.$state)
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
+    uploadStampedDocuments(id, files) {
+      const idx = this.insuranceApplications.findIndex(it => it.id === id)
+      if (idx < 0) return { ok: false, message: '投保记录不存在' }
+      const cur = this.insuranceApplications[idx]
+      if (cur.status !== 'credit_investigating') return { ok: false, message: '当前状态不允许上传资料' }
+      const now = new Date()
+      this.insuranceApplications[idx] = {
+        ...cur,
+        stampedDocs: files.map(f => ({
+          name: f.name,
+          size: f.size,
+          type: f.type || '',
+          data: f.data || '',
+          uploadedAt: formatDateTime(now)
+        })),
+        stampedDocsUploaded: true,
+        stampedDocsUploadTime: formatDateTime(now),
+        updateTime: formatDateTime(now)
+      }
+      saveStateToStorage(this.$state)
+      return { ok: true, data: this.insuranceApplications[idx] }
+    },
     // 跟单员同步保单至平台
     syncUnderwritingToPlatform(id) {
       const idx = this.insuranceApplications.findIndex(it => it.id === id)
@@ -1213,6 +816,7 @@ export const useBusinessStore = defineStore('business', {
       const cur = this.insuranceApplications[idx]
       if (cur.status !== 'premium_confirmed') return { ok: false, message: '当前状态不允许上传凭证' }
       const now = formatDateTime(new Date())
+      const voucherFiles = proofData.voucherFiles || []
       this.insuranceApplications[idx] = {
         ...cur,
         status: 'payment_uploaded',
@@ -1224,6 +828,7 @@ export const useBusinessStore = defineStore('business', {
         paymentNotified: true,
         voucherFileName: proofData.voucherFileName || '',
         voucherFileType: proofData.voucherFileType || '',
+        voucherFiles: voucherFiles,
         updateTime: now
       }
       // 同步更新保单缴费状态为"保单生效中"
@@ -2487,8 +2092,25 @@ export const useBusinessStore = defineStore('business', {
       const now = new Date()
       cur.status = cur.clerkInitiated ? 'clerk_active' : 'active'
       cur.updateTime = formatDateTime(now)
-      // Create corresponding policy entry
-      if (!this.policies.find(p => p.externalPolicyId === cur.id)) {
+      // Create or update corresponding policy entry
+      const existing = this.policies.find(p => p.externalPolicyId === cur.id)
+      if (existing) {
+        Object.assign(existing, {
+          policyNo: cur.policyNo,
+          insuranceCompany: cur.insuranceCompany,
+          policyholder: cur.policyholder || cur.customerCompany,
+          insured: cur.insured || '',
+          coverageAmount: cur.coverageAmount,
+          premium: cur.premium,
+          effectiveDate: cur.effectiveDate,
+          expiryDate: cur.expiryDate,
+          status: 'active',
+          usedQuota: 0,
+          remainingQuota: cur.coverageAmount,
+          currency: cur.currency,
+          updateTime: formatDateTime(now)
+        })
+      } else {
         this.policies.unshift({
           id: cur.clerkInitiated ? 'P_EXT_CLERK_' + cur.id : 'P_EXT_' + cur.id,
           policyNo: cur.policyNo,
@@ -2500,7 +2122,6 @@ export const useBusinessStore = defineStore('business', {
           effectiveDate: cur.effectiveDate,
           expiryDate: cur.expiryDate,
           status: 'active',
-          statusName: '有效',
           usedQuota: 0,
           remainingQuota: cur.coverageAmount,
           currency: cur.currency,
@@ -2900,7 +2521,7 @@ export const useBusinessStore = defineStore('business', {
         status: 'contract_signing',
         updateTime: formatDateTime(now)
       }
-      return { ok: true, data: this.insuranceApplications[idx] }
+      saveStateToStorage(this.$state)
     },
     pushToClerk(id) {
       const idx = this.insuranceApplications.findIndex(it => it.id === id)
@@ -2912,7 +2533,7 @@ export const useBusinessStore = defineStore('business', {
       const now = new Date()
       this.insuranceApplications[idx] = {
         ...cur,
-        status: 'clerk_review',
+        status: 'credit_investigating',
         updateTime: formatDateTime(now)
       }
       return { ok: true, data: this.insuranceApplications[idx] }
@@ -2964,7 +2585,7 @@ export const useBusinessStore = defineStore('business', {
         paymentSubject: paymentInfo.paymentSubject || cur.companyName,
         paymentMethod: paymentInfo.paymentMethod || 'online',
         serviceFeePayTime: formatDateTime(now),
-        status: 'service_fee_paid',
+        status: 'credit_investigating',
         updateTime: formatDateTime(now)
       }
       return { ok: true, data: this.insuranceApplications[idx] }
